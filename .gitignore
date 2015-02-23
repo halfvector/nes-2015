@@ -1,1 +1,6 @@
 **/.idea
+build
+bin
+cmake
+deps
+bii/.hive.db
