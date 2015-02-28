@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Cartridge.h"
+
 enum AddressModes {
     ADDR_MODE_NONE = 0, ADDR_MODE_ABSOLUTE, ADDR_MODE_IMMEDIATE, ADDR_MODE_ZEROPAGE, ADDR_MODE_RELATIVE,
     ADDR_MODE_INDEXED_INDIRECT, ADDR_MODE_INDIRECT_INDEXED, ADDR_MODE_INDIRECT_ABSOLUTE,
@@ -150,4 +152,9 @@ enum Register { ACCUMULATOR, REGISTER_X, REGISTER_Y };
 
 static const char* REGISTER_NAME[] = {
         "Accumulator", "Register X", "Register Y"
+};
+
+class CPU {
+public:
+    void load(Cartridge);
 };

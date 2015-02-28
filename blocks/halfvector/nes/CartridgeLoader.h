@@ -1,10 +1,10 @@
 #pragma once
 
-#include "CartridgeFormat.h"
+#include "Cartridge.h"
 
 class CartridgeLoader {
 public:
-    Cartridge readCartridge(char const *string);
+    Cartridge loadCartridge(char const *string);
 
 protected:
     void readHeader(std::fstream &, Cartridge &);

@@ -1,16 +1,18 @@
 #pragma once
 
+#include <stdint.h>
+
 const unsigned int PRG_ROM_PAGE_SIZE = 16384;
 const unsigned int CHR_ROM_PAGE_SIZE = 8192;
 
 struct RomHeader {
-    char signature[4];
-    unsigned char programData;
-    unsigned char characterData;
-    char CB1;
-    char CB2;
+    int8_t signature[4];
+    uint8_t programData;
+    uint8_t characterData;
+    int8_t CB1;
+    int8_t CB2;
 
-    char reserved[8];
+    int8_t reserved[8];
 };
 
 struct RomInfo {
@@ -22,16 +24,16 @@ struct RomInfo {
     bool trainerPresent;
     bool fourScreenVRAM;
 
-    unsigned char numPrgPages;
-    unsigned char numChrPages;
+    uint8_t numPrgPages;
+    uint8_t numChrPages;
 };
 
 struct PrgRomPage {
-    unsigned char buffer[16384];
+    uint8_t buffer[16384];
 };
 
 struct ChrRomPage {
-    unsigned char buffer[8192];
+    uint8_t buffer[8192];
 };
 
 struct Cartridge {

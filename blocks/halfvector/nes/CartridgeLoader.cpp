@@ -8,7 +8,7 @@
 * Load ROM from filepath
 */
 Cartridge
-CartridgeLoader::readCartridge(char const *string) {
+CartridgeLoader::loadCartridge(char const *string) {
     std::fstream fh;
     fh.open(string, std::fstream::in | std::fstream::binary);
 
@@ -34,8 +34,8 @@ CartridgeLoader::readHeader(std::fstream &fh, Cartridge &rom) {
     fh.read((char *) &rom.header, sizeof(rom.header));
 
     PrintInfo("signature: %d") % rom.header.signature;
-    PrintInfo("programData: 0x%02x") % rom.header.programData;
-    PrintInfo("characterData: 0x%02x") % rom.header.characterData;
+    PrintInfo("programData: %d") % (uint16_t) rom.header.programData;
+    PrintInfo("characterData: %d") % (uint16_t) rom.header.characterData;
 
     bool headerIsClean = true;
     for (unsigned int i = 0; i < 8; i++) {
@@ -68,13 +68,18 @@ CartridgeLoader::analyzeHeader(Cartridge &rom) {
     rom.info.numPrgPages = rom.header.programData;
     rom.info.numChrPages = rom.header.characterData;
 
+    // sanity check
+    assert(rom.info.numPrgPages < 10);
+    assert(rom.info.numChrPages < 10);
+
+    // determine memory mapper type (256 possible variants)
     int MapperId = ((rom.header.CB1 & 0xF0) >> 4) + ((rom.header.CB2 & 0xF0) >> 4);
-    LOG(INFO) << "Rom requires Memory Mapper #" << MapperId;
+    PrintInfo("ROM requires Memory Mapper #%d") % MapperId;
 
     if (rom.info.trainerPresent) {    // read the 512 bytes trainer
-        LOG(INFO) << "512 Byte Trainer Found";
+        PrintInfo("512 Byte Trainer Found");
     } else
-        LOG(INFO) << "No 512 Byte Trainer Present";
+        PrintInfo("No 512 Byte Trainer Present");
 }
 
 /**
@@ -82,27 +87,29 @@ CartridgeLoader::analyzeHeader(Cartridge &rom) {
 */
 void
 CartridgeLoader::readData(std::fstream &fh, Cartridge &rom) {
-    // sanity check
-    assert(rom.info.numPrgPages < 10);
-    assert(rom.info.numChrPages < 10);
-
     // read prg pages
-    PrintInfo("Reading %d PRG-ROM Pages (%d bytes)") % (int) rom.info.numPrgPages % (rom.info.numPrgPages * PRG_ROM_PAGE_SIZE);
-    for (unsigned int i = 0; i < rom.info.numPrgPages; i++) {
+    PrintInfo("Reading %d PRG-ROM Pages (%d bytes)")
+            % (int) rom.info.numPrgPages
+            % (rom.info.numPrgPages * PRG_ROM_PAGE_SIZE);
+
+    for (uint8_t i = 0; i < rom.info.numPrgPages; i++) {
         fh.read((char *) rom.programDataPages[i].buffer, PRG_ROM_PAGE_SIZE);
     }
 
-    PrintInfo("Reading %d CHR-ROM Pages (%d bytes)") % (int) rom.info.numChrPages % (rom.info.numChrPages * CHR_ROM_PAGE_SIZE);
-    for (unsigned int i = 0; i < rom.info.numChrPages; i++) {
+    PrintInfo("Reading %d CHR-ROM Pages (%d bytes)")
+            % (int) rom.info.numChrPages
+            % (rom.info.numChrPages * CHR_ROM_PAGE_SIZE);
+
+    for (uint8_t i = 0; i < rom.info.numChrPages; i++) {
         fh.read((char *) rom.characterDataPages[i].buffer, CHR_ROM_PAGE_SIZE);
     }
 
     // bytes read so far
-    int totalRead = fh.tellg();
+    int64_t totalRead = fh.tellg();
 
     // total file length
     fh.seekg(0, fh.end);
-    int fileLength = fh.tellg();
+    int64_t fileLength = fh.tellg();
 
     // assert no content left unread in rom file
     if (totalRead != fileLength) {

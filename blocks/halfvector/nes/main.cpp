@@ -1,16 +1,13 @@
 #include <iostream>
 #include "boost/format.hpp"
 #include "boost/filesystem.hpp"
-#include "CartridgeFormat.h"
+#include "Cartridge.h"
 #include "CartridgeLoader.h"
 #include "Logging.h"
+#include "CPU.h"
 
 using namespace boost;
 using namespace boost::filesystem;
-
-INITIALIZE_EASYLOGGINGPP;
-
-el::Logger *log = el::Loggers::getLogger("default");
 
 int main() {
     TIMED_FUNC(root);
@@ -21,6 +18,10 @@ int main() {
     LOG(INFO) << "CWD: " << boost::filesystem::current_path();
 
     CartridgeLoader loader;
-    Cartridge rom = loader.readCartridge("../roms/Super Mario Bros (E).nes");
+    Cartridge rom = loader.loadCartridge("../roms/Super Mario Bros (E).nes");
+
+
+    CPU cpu;
+    cpu.load(rom);
 }
 
