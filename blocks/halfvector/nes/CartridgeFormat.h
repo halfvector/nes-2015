@@ -1,10 +1,12 @@
-#ifndef HALFVECTOR_NES_ROM_H
-#define HALFVECTOR_NES_ROM_H
+#pragma once
+
+const unsigned int PRG_ROM_PAGE_SIZE = 16384;
+const unsigned int CHR_ROM_PAGE_SIZE = 8192;
 
 struct RomHeader {
     char signature[4];
-    char programData;
-    char characterData;
+    unsigned char programData;
+    unsigned char characterData;
     char CB1;
     char CB2;
 
@@ -15,10 +17,10 @@ struct RomInfo {
     enum eMirroringType {
         VERTICAL_MIRRORING, HORIZONTAL_MIRRORING
     };
-    eMirroringType Mirroring;
-    bool SRAM_Enabled;
-    bool TrainPresent;
-    bool FourScreenVRAM;
+    eMirroringType mirroring;
+    bool sramEnabled;
+    bool trainerPresent;
+    bool fourScreenVRAM;
 
     unsigned char numPrgPages;
     unsigned char numChrPages;
@@ -39,5 +41,3 @@ struct Cartridge {
     PrgRomPage programDataPages[20];
     ChrRomPage characterDataPages[10];
 };
-
-#endif
