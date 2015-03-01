@@ -46,6 +46,13 @@ void CPU::writeChrPage(uint8_t buffer[]) {
 
 void CPU::run() {
     reset();
+
+    while(cpuAlive) {
+        // grab next instruction
+        tCPU::byte opCode = cpuMemoryAccessor->readByteDirectly(registers.PC);
+
+
+    }
 }
 
 /**

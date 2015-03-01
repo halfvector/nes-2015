@@ -11,17 +11,17 @@ extern el::Logger *log;
 #define PrintError      LOG(ERROR) << boost::format
 #define PrintMemory     LOG(DEBUG) << boost::format
 
-std::string boostFormatWrapper(boost::format &f) {
+static std::string boostFormatWrapper(boost::format &f) {
     return boost::str(f);
 }
 
 template<class T, class... Args>
-std::string boostFormatWrapper(boost::format &f, T &&t, Args &&... args) {
+static std::string boostFormatWrapper(boost::format &f, T &&t, Args &&... args) {
     return boostFormatWrapper(f % std::forward<T>(t), std::forward<Args>(args)...);
 }
 
 template<typename... Arguments>
-void ThrowException(std::string const &fmt, Arguments &&... args) {
+static void ThrowException(std::string const &fmt, Arguments &&... args) {
     boost::format f(fmt);
     auto result = boostFormatWrapper(f, std::forward<Arguments>(args)...);
     throw new std::runtime_error(result);
