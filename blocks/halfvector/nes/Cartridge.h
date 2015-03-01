@@ -7,8 +7,8 @@ const unsigned int CHR_ROM_PAGE_SIZE = 8192;
 
 struct RomHeader {
     int8_t signature[4];
-    uint8_t programData;
-    uint8_t characterData;
+    uint8_t numPrgPages;
+    uint8_t numChrPages;
     int8_t CB1;
     int8_t CB2;
 
@@ -23,9 +23,6 @@ struct RomInfo {
     bool sramEnabled;
     bool trainerPresent;
     bool fourScreenVRAM;
-
-    uint8_t numPrgPages;
-    uint8_t numChrPages;
 };
 
 struct PrgRomPage {

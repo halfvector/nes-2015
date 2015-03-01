@@ -12,16 +12,12 @@ using namespace boost::filesystem;
 int main() {
     TIMED_FUNC(root);
 
-    // run performance tests
-    //simpleLoopPerformanceTests();
-
-    LOG(INFO) << "CWD: " << boost::filesystem::current_path();
-
     CartridgeLoader loader;
     Cartridge rom = loader.loadCartridge("../roms/Super Mario Bros (E).nes");
 
-
     CPU cpu;
     cpu.load(rom);
+
+    cpu.run();
 }
 

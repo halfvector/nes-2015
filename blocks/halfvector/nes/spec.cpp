@@ -4,7 +4,6 @@
 
 using namespace bandit;
 
-// Tell bandit there are tests here.
 go_bandit([]() {
     describe("rom:", []() {
         it("can load super mario brothers", [&]() {

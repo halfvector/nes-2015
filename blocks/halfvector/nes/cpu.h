@@ -1,6 +1,10 @@
 #pragma once
 
+#include <cstdint>
 #include "Cartridge.h"
+#include "Logging.h"
+#include "Memory.h"
+#include "Platform.h"
 
 enum AddressModes {
     ADDR_MODE_NONE = 0, ADDR_MODE_ABSOLUTE, ADDR_MODE_IMMEDIATE, ADDR_MODE_ZEROPAGE, ADDR_MODE_RELATIVE,
@@ -21,13 +25,7 @@ static unsigned short AddressModeMask[] = {
         0x00, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x100, 0x200, 0x400, 0x800, 0x1000, 0x2000, 0x4000, 0x8000
 };
 
-struct tCPU {
-    typedef unsigned char byte;
-    typedef unsigned short word;
-    typedef unsigned int dword;
 
-    typedef unsigned short MemoryAddress;
-};
 
 // bit numbering starts with 0, so last bit in a byte is #7
 template<unsigned char BitPlace>
@@ -139,12 +137,10 @@ struct Registers
 
     ProcessorStatusRegister P;
 
-    // current program counter, already the next instruction at the time of the execution
-    // unless of course i change shit to work from a microcode level, then every insturction
-    // will kinda have to increment the pc manually or somethin
+    // "program counter" - next instruction to be executed
     unsigned short PC;
 
-    // pc of instruction being executed
+    // current instruction being executed
     unsigned short LastPC;
 };
 
@@ -156,5 +152,20 @@ static const char* REGISTER_NAME[] = {
 
 class CPU {
 public:
+    CPU();
     void load(Cartridge);
+    void run();
+
+protected:
+    tCPU::byte cpuMemory[0x100000];
+    tCPU::byte ppuMemory[0x4000];
+
+    Memory* cpuMemoryAccessor;
+
+    Registers registers;
+
+    void writePrgPage(int i, uint8_t buffer[]);
+    void writeChrPage(uint8_t buffer[]);
+
+    void reset();
 };
