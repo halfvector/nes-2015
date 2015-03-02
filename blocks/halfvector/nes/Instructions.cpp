@@ -1,6 +1,7 @@
-#include <Python/Python.h>
+#include <stdint.h>
 #include "Instructions.h"
 #include "Memory.h"
+#include "CPU.h"
 
 Instructions::Instructions(Opcode *opcodes) {
     this->opcodes = opcodes;
@@ -8,6 +9,13 @@ Instructions::Instructions(Opcode *opcodes) {
 
 #define SET_OPCODE_DATA(opcode, size, cycles, pbcondition, description, mnemonic, addrmode) \
     opcodes[opcode].set(mnemonic,size,cycles,pbcondition,description,addrmode);
+
+void
+Instructions::execute(int opcode, InstructionContext *ctx) {
+    assert(opcodes[opcode].execute != nullptr);
+
+    opcodes[opcode].execute(ctx);
+}
 
 void
 Instructions::initialize() {
@@ -171,10 +179,12 @@ Instructions::initialize() {
     SET_OPCODE_DATA(0x8A, 1, 2, 0, "TXA", "TXA", ADDR_MODE_NONE);
 
     assignAddressModes();
+
+    PrintInfo("All OpCodes Initialized");
 }
 
 void Instructions::prepareAddressModes() {// initialize address mode offsets
-    for(int i = 0; i < 16; i ++) {
+    for (int i = 0; i < 16; i++) {
         addressModes[i].offset = 0;
         addressModes[i].cycles = 0;
     }
@@ -202,64 +212,111 @@ void Instructions::prepareAddressModes() {// initialize address mode offsets
     addressModes[ADDR_MODE_INDIRECT_ABSOLUTE].cycles = +2;
 }
 
+template<InstructionMnemonic opcode, enum AddressMode mode>
+struct UnrollInstructions {
+    static void unroll(Opcode *opcodes, AddressModeProperties *props) {
+        // calculate opcode variant given a memory address mode
+        uint8_t opcodeVariant = opcode + props[mode].offset;
+
+        // there are some exceptions to the formula above.
+        // * LDX with absolute indexed Y register address mode uses +0x10 offset instead of +0xC
+
+        if (opcode == LDX && mode == ADDR_MODE_ABSOLUTE_INDEXED_Y) {
+            opcodeVariant = opcode + uint8_t(0x10); // 0xBE
+        }
+
+        PrintInfo("  opcode=%i variant=%i offset=%i") % opcode % (int)opcodeVariant % (int)props[mode].offset;
+
+        opcodes[opcodeVariant].execute = InstructionImplementation<opcode, mode>::instructionImplementation;
+
+        UnrollInstructions<opcode, static_cast<AddressMode>(mode - 1)>::unroll(opcodes, props);
+    }
+};
+
+// terminating condition for specialized template unroll
+template<InstructionMnemonic opcode>
+struct UnrollInstructions<opcode, ADDR_MODE_NONE> {
+    static void unroll(Opcode *opcodes, AddressModeProperties *props) {
+        PrintInfo("Unroll completed for opcode=%i") % opcode;
+    }
+};
+
+template<InstructionMnemonic opcode>
+struct tAddressModeMask {
+    static void Create(Opcode *opcodes, AddressModeProperties *props, int Mask1 = 0, int Mask2 = 0, int Mask3 = 0, int Mask4 = 0, int Mask5 = 0, int Mask6 = 0, int Mask7 = 0, int Mask8 = 0) {
+        uint16_t mask = AddressModeMask[Mask1] + AddressModeMask[Mask2]
+                + AddressModeMask[Mask3] + AddressModeMask[Mask4] + AddressModeMask[Mask5]
+                + AddressModeMask[Mask6] + AddressModeMask[Mask7] + AddressModeMask[Mask8];
+
+        PrintInfo("assigning mask=%d") % std::bitset<8>(mask).to_string('0', '1');
+
+        opcodes[opcode].AddressModeMask = mask;
+
+        UnrollInstructions<opcode, static_cast<AddressMode>(ADDRESS_MODE_SIZE-1)>::unroll(opcodes, props);
+    }
+};
+
 void
 Instructions::assignAddressModes() {
-    applyAddressModes(ADC, ADDR_MODE_IMMEDIATE, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X, ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X, ADDR_MODE_ABSOLUTE_INDEXED_Y, ADDR_MODE_INDEXED_INDIRECT, ADDR_MODE_INDIRECT_INDEXED);
-    applyAddressModes(AND, ADDR_MODE_IMMEDIATE, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X, ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X, ADDR_MODE_ABSOLUTE_INDEXED_Y, ADDR_MODE_INDEXED_INDIRECT, ADDR_MODE_INDIRECT_INDEXED);
-    applyAddressModes(ASL, ADDR_MODE_ACCUMULATOR, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X, ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X);
-    applyAddressModes(BCC, ADDR_MODE_RELATIVE);
-    applyAddressModes(BCS, ADDR_MODE_RELATIVE);
-    applyAddressModes(BEQ, ADDR_MODE_RELATIVE);
-    applyAddressModes(BIT, ADDR_MODE_ZEROPAGE, ADDR_MODE_ABSOLUTE);
-    applyAddressModes(BMI, ADDR_MODE_RELATIVE);
-    applyAddressModes(BNE, ADDR_MODE_RELATIVE);
-    applyAddressModes(BPL, ADDR_MODE_RELATIVE);
-    applyAddressModes(BRK, ADDR_MODE_NONE);
-    applyAddressModes(BVC, ADDR_MODE_RELATIVE);
-    applyAddressModes(BVS, ADDR_MODE_RELATIVE);
-    applyAddressModes(CLC, ADDR_MODE_NONE);
-    applyAddressModes(CLD, ADDR_MODE_NONE);
-    applyAddressModes(CLI, ADDR_MODE_NONE);
-    applyAddressModes(CLV, ADDR_MODE_NONE);
-    applyAddressModes(CMP, ADDR_MODE_IMMEDIATE, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X, ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X, ADDR_MODE_ABSOLUTE_INDEXED_Y, ADDR_MODE_INDEXED_INDIRECT, ADDR_MODE_INDIRECT_INDEXED);
-    applyAddressModes(CPX, ADDR_MODE_IMMEDIATE_TO_XY, ADDR_MODE_ZEROPAGE, ADDR_MODE_ABSOLUTE);
-    applyAddressModes(CPY, ADDR_MODE_IMMEDIATE_TO_XY, ADDR_MODE_ZEROPAGE, ADDR_MODE_ABSOLUTE);
-    applyAddressModes(DEC, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X, ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X);
-    applyAddressModes(DEX, ADDR_MODE_NONE);
-    applyAddressModes(DEY, ADDR_MODE_NONE);
-    applyAddressModes(EOR, ADDR_MODE_IMMEDIATE, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X, ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X, ADDR_MODE_ABSOLUTE_INDEXED_Y, ADDR_MODE_INDEXED_INDIRECT, ADDR_MODE_INDIRECT_INDEXED);
-    applyAddressModes(INC, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X, ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X);
-    applyAddressModes(INX, ADDR_MODE_NONE);
-    applyAddressModes(INY, ADDR_MODE_NONE);
-    applyAddressModes(JMP, ADDR_MODE_ABSOLUTE, ADDR_MODE_INDIRECT_ABSOLUTE);
-    applyAddressModes(JSR, ADDR_MODE_ABSOLUTE);
-    applyAddressModes(LDA, ADDR_MODE_IMMEDIATE, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X, ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X, ADDR_MODE_ABSOLUTE_INDEXED_Y, ADDR_MODE_INDEXED_INDIRECT, ADDR_MODE_INDIRECT_INDEXED);
-    applyAddressModes(LDX, ADDR_MODE_IMMEDIATE_TO_XY, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_Y, ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_Y);
-    applyAddressModes(LDY, ADDR_MODE_IMMEDIATE_TO_XY, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X, ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X);
-    applyAddressModes(LSR, ADDR_MODE_ACCUMULATOR, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X, ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X);
-    applyAddressModes(NOP, ADDR_MODE_NONE);
-    applyAddressModes(ORA, ADDR_MODE_IMMEDIATE, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X, ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X, ADDR_MODE_ABSOLUTE_INDEXED_Y, ADDR_MODE_INDEXED_INDIRECT, ADDR_MODE_INDIRECT_INDEXED);
-    applyAddressModes(PHA, ADDR_MODE_NONE);
-    applyAddressModes(PHP, ADDR_MODE_NONE);
-    applyAddressModes(PLA, ADDR_MODE_NONE);
-    applyAddressModes(PLP, ADDR_MODE_NONE);
-    applyAddressModes(ROL, ADDR_MODE_ACCUMULATOR, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X, ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X);
-    applyAddressModes(ROR, ADDR_MODE_ACCUMULATOR, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X, ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X);
-    applyAddressModes(RTI, ADDR_MODE_NONE);
-    applyAddressModes(RTS, ADDR_MODE_NONE);
-    applyAddressModes(SBC, ADDR_MODE_IMMEDIATE, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X, ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X, ADDR_MODE_ABSOLUTE_INDEXED_Y, ADDR_MODE_INDEXED_INDIRECT, ADDR_MODE_INDIRECT_INDEXED);
-    applyAddressModes(SEC, ADDR_MODE_NONE);
-    applyAddressModes(SED, ADDR_MODE_NONE);
-    applyAddressModes(SEI, ADDR_MODE_NONE);
-    applyAddressModes(STA, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X, ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X, ADDR_MODE_ABSOLUTE_INDEXED_Y, ADDR_MODE_INDEXED_INDIRECT, ADDR_MODE_INDIRECT_INDEXED);
-    applyAddressModes(STX, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_Y, ADDR_MODE_ABSOLUTE);
-    applyAddressModes(STY, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X, ADDR_MODE_ABSOLUTE);
-    applyAddressModes(TAX, ADDR_MODE_NONE);
-    applyAddressModes(TAY, ADDR_MODE_NONE);
-    applyAddressModes(TSX, ADDR_MODE_NONE);
-    applyAddressModes(TXA, ADDR_MODE_NONE);
-    applyAddressModes(TXS, ADDR_MODE_NONE);
-    applyAddressModes(TYA, ADDR_MODE_NONE);
+
+    // generate opcode-variances for each address mode
+
+    tAddressModeMask<ADC>::Create(opcodes, addressModes, ADDR_MODE_IMMEDIATE, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X, ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X, ADDR_MODE_ABSOLUTE_INDEXED_Y, ADDR_MODE_INDEXED_INDIRECT, ADDR_MODE_INDIRECT_INDEXED);
+    tAddressModeMask<AND>::Create(opcodes, addressModes, ADDR_MODE_IMMEDIATE, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X, ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X, ADDR_MODE_ABSOLUTE_INDEXED_Y, ADDR_MODE_INDEXED_INDIRECT, ADDR_MODE_INDIRECT_INDEXED);
+    tAddressModeMask<ASL>::Create(opcodes, addressModes, ADDR_MODE_ACCUMULATOR, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X, ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X);
+    tAddressModeMask<BCC>::Create(opcodes, addressModes, ADDR_MODE_RELATIVE);
+    tAddressModeMask<BCS>::Create(opcodes, addressModes, ADDR_MODE_RELATIVE);
+    tAddressModeMask<BEQ>::Create(opcodes, addressModes, ADDR_MODE_RELATIVE);
+    tAddressModeMask<BIT>::Create(opcodes, addressModes, ADDR_MODE_ZEROPAGE, ADDR_MODE_ABSOLUTE);
+    tAddressModeMask<BMI>::Create(opcodes, addressModes, ADDR_MODE_RELATIVE);
+    tAddressModeMask<BNE>::Create(opcodes, addressModes, ADDR_MODE_RELATIVE);
+    tAddressModeMask<BPL>::Create(opcodes, addressModes, ADDR_MODE_RELATIVE);
+    tAddressModeMask<BRK>::Create(opcodes, addressModes, ADDR_MODE_NONE);
+    tAddressModeMask<BVC>::Create(opcodes, addressModes, ADDR_MODE_RELATIVE);
+    tAddressModeMask<BVS>::Create(opcodes, addressModes, ADDR_MODE_RELATIVE);
+    tAddressModeMask<CLC>::Create(opcodes, addressModes, ADDR_MODE_NONE);
+    tAddressModeMask<CLD>::Create(opcodes, addressModes, ADDR_MODE_NONE);
+    tAddressModeMask<CLI>::Create(opcodes, addressModes, ADDR_MODE_NONE);
+    tAddressModeMask<CLV>::Create(opcodes, addressModes, ADDR_MODE_NONE);
+    tAddressModeMask<CMP>::Create(opcodes, addressModes, ADDR_MODE_IMMEDIATE, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X, ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X, ADDR_MODE_ABSOLUTE_INDEXED_Y, ADDR_MODE_INDEXED_INDIRECT, ADDR_MODE_INDIRECT_INDEXED);
+    tAddressModeMask<CPX>::Create(opcodes, addressModes, ADDR_MODE_IMMEDIATE_TO_XY, ADDR_MODE_ZEROPAGE, ADDR_MODE_ABSOLUTE);
+    tAddressModeMask<CPY>::Create(opcodes, addressModes, ADDR_MODE_IMMEDIATE_TO_XY, ADDR_MODE_ZEROPAGE, ADDR_MODE_ABSOLUTE);
+    tAddressModeMask<DEC>::Create(opcodes, addressModes, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X, ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X);
+    tAddressModeMask<DEX>::Create(opcodes, addressModes, ADDR_MODE_NONE);
+    tAddressModeMask<DEY>::Create(opcodes, addressModes, ADDR_MODE_NONE);
+    tAddressModeMask<EOR>::Create(opcodes, addressModes, ADDR_MODE_IMMEDIATE, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X, ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X, ADDR_MODE_ABSOLUTE_INDEXED_Y, ADDR_MODE_INDEXED_INDIRECT, ADDR_MODE_INDIRECT_INDEXED);
+    tAddressModeMask<INC>::Create(opcodes, addressModes, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X, ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X);
+    tAddressModeMask<INX>::Create(opcodes, addressModes, ADDR_MODE_NONE);
+    tAddressModeMask<INY>::Create(opcodes, addressModes, ADDR_MODE_NONE);
+    tAddressModeMask<JMP>::Create(opcodes, addressModes, ADDR_MODE_ABSOLUTE, ADDR_MODE_INDIRECT_ABSOLUTE);
+    tAddressModeMask<JSR>::Create(opcodes, addressModes, ADDR_MODE_ABSOLUTE);
+    tAddressModeMask<LDA>::Create(opcodes, addressModes, ADDR_MODE_IMMEDIATE, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X, ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X, ADDR_MODE_ABSOLUTE_INDEXED_Y, ADDR_MODE_INDEXED_INDIRECT, ADDR_MODE_INDIRECT_INDEXED);
+    tAddressModeMask<LDX>::Create(opcodes, addressModes, ADDR_MODE_IMMEDIATE_TO_XY, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_Y, ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_Y);
+    tAddressModeMask<LDY>::Create(opcodes, addressModes, ADDR_MODE_IMMEDIATE_TO_XY, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X, ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X);
+    tAddressModeMask<LSR>::Create(opcodes, addressModes, ADDR_MODE_ACCUMULATOR, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X, ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X);
+    tAddressModeMask<NOP>::Create(opcodes, addressModes, ADDR_MODE_NONE);
+    tAddressModeMask<ORA>::Create(opcodes, addressModes, ADDR_MODE_IMMEDIATE, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X, ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X, ADDR_MODE_ABSOLUTE_INDEXED_Y, ADDR_MODE_INDEXED_INDIRECT, ADDR_MODE_INDIRECT_INDEXED);
+    tAddressModeMask<PHA>::Create(opcodes, addressModes, ADDR_MODE_NONE);
+    tAddressModeMask<PHP>::Create(opcodes, addressModes, ADDR_MODE_NONE);
+    tAddressModeMask<PLA>::Create(opcodes, addressModes, ADDR_MODE_NONE);
+    tAddressModeMask<PLP>::Create(opcodes, addressModes, ADDR_MODE_NONE);
+    tAddressModeMask<ROL>::Create(opcodes, addressModes, ADDR_MODE_ACCUMULATOR, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X, ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X);
+    tAddressModeMask<ROR>::Create(opcodes, addressModes, ADDR_MODE_ACCUMULATOR, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X, ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X);
+    tAddressModeMask<RTI>::Create(opcodes, addressModes, ADDR_MODE_NONE);
+    tAddressModeMask<RTS>::Create(opcodes, addressModes, ADDR_MODE_NONE);
+    tAddressModeMask<SBC>::Create(opcodes, addressModes, ADDR_MODE_IMMEDIATE, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X, ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X, ADDR_MODE_ABSOLUTE_INDEXED_Y, ADDR_MODE_INDEXED_INDIRECT, ADDR_MODE_INDIRECT_INDEXED);
+    tAddressModeMask<SEC>::Create(opcodes, addressModes, ADDR_MODE_NONE);
+    tAddressModeMask<SED>::Create(opcodes, addressModes, ADDR_MODE_NONE);
+    tAddressModeMask<SEI>::Create(opcodes, addressModes, ADDR_MODE_NONE);
+    tAddressModeMask<STA>::Create(opcodes, addressModes, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X, ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X, ADDR_MODE_ABSOLUTE_INDEXED_Y, ADDR_MODE_INDEXED_INDIRECT, ADDR_MODE_INDIRECT_INDEXED);
+    tAddressModeMask<STX>::Create(opcodes, addressModes, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_Y, ADDR_MODE_ABSOLUTE);
+    tAddressModeMask<STY>::Create(opcodes, addressModes, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X, ADDR_MODE_ABSOLUTE);
+    tAddressModeMask<TAX>::Create(opcodes, addressModes, ADDR_MODE_NONE);
+    tAddressModeMask<TAY>::Create(opcodes, addressModes, ADDR_MODE_NONE);
+    tAddressModeMask<TSX>::Create(opcodes, addressModes, ADDR_MODE_NONE);
+    tAddressModeMask<TXA>::Create(opcodes, addressModes, ADDR_MODE_NONE);
+    tAddressModeMask<TXS>::Create(opcodes, addressModes, ADDR_MODE_NONE);
+    tAddressModeMask<TYA>::Create(opcodes, addressModes, ADDR_MODE_NONE);
 }
 
 void
@@ -271,21 +328,30 @@ Instructions::applyAddressModes(int opcode, int Mask1, int Mask2, int Mask3, int
     opcodes[opcode].AddressModeMask = mask;
 
     applyAddressModeMask(opcode, mask);
+
 }
 
+
 void
-Instructions::applyAddressModeMask(int opcode, unsigned short mask)
-{
-//    for(int i = 0; i < ADDRESS_MODE_SIZE; i ++) {
-//        if( mask & AddressModeMask[i] )
-//        {	// opcode supports this address mode
-//            //unsigned char OpCodeVariant = unsigned char( (int) Mnemonic + tOpCodeOffset<AddressMode>::Offset );
-//            unsigned char OpCodeVariant = Mnemonic + CPU_Instructions::Singleton()->GetAddressModeOffset( AddressMode );
-//
-//            // there is one? exception LDX absolute indexed y
-//            // which is +$10 and not +$C
-//            if( Mnemonic == LDX && AddressMode == ADDR_MODE_ABSOLUTE_INDEXED_Y )
-//                OpCodeVariant = (unsigned char) (Mnemonic + 0x10);	// 0xBE
+Instructions::applyAddressModeMask(uint16_t opcode, uint16_t mask) {
+    for (int i = 0; i < ADDRESS_MODE_SIZE; i++) {
+        if (mask & AddressModeMask[i]) {
+            // opcode supports this address mode
+            unsigned short opcodeVariant = opcode + addressModes[opcode].offset;
+
+            // exceptions:
+            // LDX with absolute indexed Y register address mode uses +0x10 offset instead of +0xC
+
+            if (opcode == LDX && i == ADDR_MODE_ABSOLUTE_INDEXED_Y) {
+                opcodeVariant = opcode + uint16_t(0x10); // 0xBE
+            }
+
+            //opcodes[opcodeVariant].execute = tInstructionLookup<opcode>::Instruction<i>::Execute;
+
+            // register opcode execution
+            // it will be responsible for updating cpu registers and flags
+
+//            opcodes[opcodeVariant].execute =
 //
 //            CPU_Instructions::Singleton()->AddInstruction( OpCodeVariant, tInstructionLookup< Mnemonic >::Instruction<AddressMode>::Execute );
 //
@@ -295,8 +361,8 @@ Instructions::applyAddressModeMask(int opcode, unsigned short mask)
 //                VariantCycles = 2;
 //
 //            int OldCycles = CPU_Instructions::Singleton()->OpcodeData[OpCodeVariant].Cycles;
-//        }
-//
+        }
+
 //        if( Mask )
 //        {
 //            tUnrollOpCodeModes<Mnemonic>::Helper<(eAddressMode) (AddressMode-1)>::Unroll();
@@ -304,5 +370,47 @@ Instructions::applyAddressModeMask(int opcode, unsigned short mask)
 //        {	// no address modes supported
 //            CPU_Instructions::Singleton()->AddInstruction( Mnemonic, tInstructionLookup< Mnemonic >::Instruction<ADDR_MODE_NONE>::Execute );
 //        }
-//    }
+    }
 }
+
+
+auto Instruction_SEI = [](AddressMode mode, InstructionContext *ctx) {
+    //ctx->registers->P.I = 1;
+};
+
+auto Instruction_JMP = [](AddressMode mode, InstructionContext *ctx) {
+    //ctx->registers->PC = tMemoryAddressLookup<AddressMode>::GetEffectiveAddress();
+};
+
+template<enum AddressMode mode>
+struct InstructionImplementation<SEI, mode> {
+    static void instructionImplementation(InstructionContext *ctx) {
+
+    }
+};
+
+
+//DEFINE_INSTRUCTION(SEI) {
+//    PrintInfo("Executing SEI!");
+//}
+
+//
+//// shortcut macro:
+//#define DECLARE_INSTRUCTION(opcode) \
+//    template<enum AddressMode mode> void Instruction<mode, SEI>::execute(InstructionContext* ctx)
+//
+//// partial specialization macro usage:
+//DECLARE_INSTRUCTION(SEI) {
+//    ctx->registers->P.I = 1;
+//}
+//
+//// execute partial specialized method:
+//void testInstructions() {
+//    Instruction<ADDR_MODE_ABSOLUTE, SEI>::execute(nullptr);
+//}
+//
+//struct Instruction<SEI> {
+//    static void Execute(Memory* mem, Registers* reg) {
+//        reg->P.I = 1;
+//    }
+//};

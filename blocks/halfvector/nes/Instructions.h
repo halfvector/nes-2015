@@ -1,6 +1,13 @@
 #pragma once
 
 #include "Memory.h"
+#include "Logging.h"
+#include "Registers.h"
+
+struct InstructionContext {
+    Memory *mem;
+    Registers *registers;
+};
 
 struct Opcode {
     unsigned char Bytes;
@@ -8,9 +15,12 @@ struct Opcode {
     bool PageBoundaryCondition;    // add another cycle on page boundary cross
     const char *Description;
     const char *Mnemonic;
-    AddressMode AddressMode;
+    enum AddressMode AddressMode;
     bool Invalid;
     unsigned short AddressModeMask = 0;
+
+    typedef void (*opcodeImplementation)(InstructionContext*);
+    opcodeImplementation execute;
 
     void set(const char *M, unsigned char B, unsigned char C, bool PBC,
             const char *D, enum AddressMode A, bool I = false) {
@@ -25,8 +35,8 @@ struct Opcode {
 };
 
 struct AddressModeProperties {
-    unsigned short offset;
-    unsigned short cycles;
+    int8_t offset;
+    int8_t cycles;
 };
 
 enum InstructionMnemonic {
@@ -40,6 +50,30 @@ enum InstructionMnemonic {
     STY = 0x8C, TAX = 0xAA, TAY = 0xA8, TSX = 0xBA, TXA = 0x8A, TXS = 0x9A, TYA = 0x98
 };
 
+struct tInstructionBase {
+    InstructionMnemonic opcode;
+};
+
+template<enum AddressMode mode>
+struct tUnsupportedOpcode : tInstructionBase {
+    bool Execute() {
+        PrintError("Unsupported opcode in address mode: %s")
+                % AddressModeTitle[static_cast<uint16_t>(mode)];
+    }
+};
+
+template<uint16_t opcode, enum AddressMode mode>
+struct InstructionImplementation {
+    static void instructionImplementation(InstructionContext *ctx) {
+        PrintError("Unhandled opcode = %d in address mode: %s")
+                % opcode
+                % AddressModeTitle[static_cast<uint16_t>(mode)];
+    }
+};
+
+#define DEFINE_INSTRUCTION(opcode) \
+    template<enum AddressMode mode> void \
+    InstructionImplementation<opcode, mode>::instructionImplementation(InstructionContext *ctx) \
 
 class Instructions {
 public:
@@ -52,9 +86,11 @@ public:
 
     void assignAddressModes();
 
-    void applyAddressModeMask(int opcode, unsigned short mask);
+    void applyAddressModeMask(uint16_t opcode, uint16_t mask);
 
     void applyAddressModes(int opcode, int Mask1 = 0, int Mask2 = 0, int Mask3 = 0, int Mask4 = 0, int Mask5 = 0, int Mask6 = 0, int Mask7 = 0, int Mask8 = 0);
+
+    void execute(int opcode, InstructionContext* ctx);
 
 protected:
 
