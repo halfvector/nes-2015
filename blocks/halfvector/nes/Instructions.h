@@ -37,6 +37,7 @@ struct Opcode {
 struct AddressModeProperties {
     int8_t offset;
     int8_t cycles;
+    const char* addressLine;
 };
 
 enum InstructionMnemonic {
@@ -64,7 +65,7 @@ struct tUnsupportedOpcode : tInstructionBase {
 
 template<uint16_t opcode, enum AddressMode mode>
 struct InstructionImplementation {
-    static void instructionImplementation(InstructionContext *ctx) {
+    static void execute(InstructionContext *ctx) {
         PrintError("Unhandled opcode = %d in address mode: %s")
                 % opcode
                 % AddressModeTitle[static_cast<uint16_t>(mode)];
@@ -73,7 +74,7 @@ struct InstructionImplementation {
 
 #define DEFINE_INSTRUCTION(opcode) \
     template<enum AddressMode mode> void \
-    InstructionImplementation<opcode, mode>::instructionImplementation(InstructionContext *ctx) \
+    InstructionImplementation<opcode, mode>::execute(InstructionContext *ctx) \
 
 class Instructions {
 public:
@@ -85,10 +86,6 @@ public:
     void prepareAddressModes();
 
     void assignAddressModes();
-
-    void applyAddressModeMask(uint16_t opcode, uint16_t mask);
-
-    void applyAddressModes(int opcode, int Mask1 = 0, int Mask2 = 0, int Mask3 = 0, int Mask4 = 0, int Mask5 = 0, int Mask6 = 0, int Mask7 = 0, int Mask8 = 0);
 
     void execute(int opcode, InstructionContext* ctx);
 

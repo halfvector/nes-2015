@@ -7,13 +7,9 @@ Instructions::Instructions(Opcode *opcodes) {
     this->opcodes = opcodes;
 }
 
-#define SET_OPCODE_DATA(opcode, size, cycles, pbcondition, description, mnemonic, addrmode) \
-    opcodes[opcode].set(mnemonic,size,cycles,pbcondition,description,addrmode);
-
 void
 Instructions::execute(int opcode, InstructionContext *ctx) {
     assert(opcodes[opcode].execute != nullptr);
-
     opcodes[opcode].execute(ctx);
 }
 
@@ -21,169 +17,172 @@ void
 Instructions::initialize() {
     prepareAddressModes();
 
-    // unknown opcodes to take up 1 byte and 1 cycle
-    for (unsigned int i = 0; i < 256; i++)
+    // Unrecognized opcodes will take up 1 byte and 1 cycle
+    for (uint8_t i = 0; i < 256; i++)
         opcodes[i].set("---", 1, 1, 0, "Unknown Opcode", ADDR_MODE_NONE, true);
 
-    // 151 OpCodes
-    SET_OPCODE_DATA(0xE9, 2, 2, 0, "SBC #nn", "SBC", ADDR_MODE_IMMEDIATE);
-    SET_OPCODE_DATA(0xE5, 2, 3, 0, "SBC nn", "SBC", ADDR_MODE_ZEROPAGE);
-    SET_OPCODE_DATA(0xF5, 2, 4, 0, "SBC nn,X", "SBC", ADDR_MODE_ZEROPAGE_INDEXED_X);
-    SET_OPCODE_DATA(0xED, 3, 4, 0, "SBC nnnn", "SBC", ADDR_MODE_ABSOLUTE);
-    SET_OPCODE_DATA(0xFD, 3, 4, 1, "SBC nnnn,X", "SBC", ADDR_MODE_ABSOLUTE_INDEXED_X);
-    SET_OPCODE_DATA(0xF9, 3, 4, 1, "SBC nnnn,Y", "SBC", ADDR_MODE_ABSOLUTE_INDEXED_Y);
-    SET_OPCODE_DATA(0xE1, 2, 6, 0, "SBC (nn,X)", "SBC", ADDR_MODE_INDEXED_INDIRECT);
-    SET_OPCODE_DATA(0xF1, 2, 5, 1, "SBC (nn),Y", "SBC", ADDR_MODE_INDIRECT_INDEXED);
-    SET_OPCODE_DATA(0xB0, 2, 2, 1, "BCS disp", "BCS", ADDR_MODE_RELATIVE);
-    SET_OPCODE_DATA(0x70, 2, 2, 1, "BVS disp", "BVS", ADDR_MODE_RELATIVE);
-    SET_OPCODE_DATA(0xD8, 1, 2, 0, "CLD", "CLD", ADDR_MODE_NONE);
-    SET_OPCODE_DATA(0xAA, 1, 2, 0, "TAX", "TAX", ADDR_MODE_NONE);
-    SET_OPCODE_DATA(0xB8, 1, 2, 0, "CLV", "CLV", ADDR_MODE_NONE);
-    SET_OPCODE_DATA(0x88, 1, 2, 0, "DEY", "DEY", ADDR_MODE_NONE);
-    SET_OPCODE_DATA(0xF8, 1, 2, 0, "SED", "SED", ADDR_MODE_NONE);
-    SET_OPCODE_DATA(0xC9, 2, 2, 0, "CMP #nn", "CMP", ADDR_MODE_IMMEDIATE);
-    SET_OPCODE_DATA(0xC5, 2, 3, 0, "CMP nn", "CMP", ADDR_MODE_ZEROPAGE);
-    SET_OPCODE_DATA(0xD5, 2, 4, 0, "CMP nn,X", "CMP", ADDR_MODE_ZEROPAGE_INDEXED_X);
-    SET_OPCODE_DATA(0xCD, 3, 4, 0, "CMP nnnn", "CMP", ADDR_MODE_ABSOLUTE);
-    SET_OPCODE_DATA(0xDD, 3, 4, 1, "CMP nnnn,X", "CMP", ADDR_MODE_ABSOLUTE_INDEXED_X);
-    SET_OPCODE_DATA(0xD9, 3, 4, 1, "CMP nnnn,Y", "CMP", ADDR_MODE_ABSOLUTE_INDEXED_Y);
-    SET_OPCODE_DATA(0xC1, 2, 6, 0, "CMP (nn,X)", "CMP", ADDR_MODE_INDEXED_INDIRECT);
-    SET_OPCODE_DATA(0xD1, 2, 5, 1, "CMP (nn),Y", "CMP", ADDR_MODE_INDIRECT_INDEXED);
-    SET_OPCODE_DATA(0x30, 2, 2, 1, "BMI disp", "BMI", ADDR_MODE_RELATIVE);
-    SET_OPCODE_DATA(0x20, 3, 6, 0, "JSR nnnn", "JSR", ADDR_MODE_ABSOLUTE);
-    SET_OPCODE_DATA(0xF0, 2, 2, 1, "BEQ disp", "BEQ", ADDR_MODE_RELATIVE);
-    SET_OPCODE_DATA(0xE6, 2, 5, 0, "INC nn", "INC", ADDR_MODE_ZEROPAGE);
-    SET_OPCODE_DATA(0xF6, 2, 6, 0, "INC nn,X", "INC", ADDR_MODE_ZEROPAGE_INDEXED_X);
-    SET_OPCODE_DATA(0xEE, 3, 6, 0, "INC nnnn", "INC", ADDR_MODE_ABSOLUTE);
-    SET_OPCODE_DATA(0xFE, 3, 7, 0, "INC nnnn,X", "INC", ADDR_MODE_ABSOLUTE_INDEXED_X);
-    SET_OPCODE_DATA(0x98, 1, 2, 0, "TYA", "TYA", ADDR_MODE_NONE);
-    SET_OPCODE_DATA(0x29, 2, 2, 0, "AND #nn", "AND", ADDR_MODE_IMMEDIATE);
-    SET_OPCODE_DATA(0x25, 2, 3, 0, "AND nn", "AND", ADDR_MODE_ZEROPAGE);
-    SET_OPCODE_DATA(0x35, 2, 4, 0, "AND nn,X", "AND", ADDR_MODE_ZEROPAGE_INDEXED_X);
-    SET_OPCODE_DATA(0x2D, 3, 4, 0, "AND nnnn", "AND", ADDR_MODE_ABSOLUTE);
-    SET_OPCODE_DATA(0x3D, 3, 4, 1, "AND nnnn,X", "AND", ADDR_MODE_ABSOLUTE_INDEXED_X);
-    SET_OPCODE_DATA(0x39, 3, 4, 1, "AND nnnn,Y", "AND", ADDR_MODE_ABSOLUTE_INDEXED_Y);
-    SET_OPCODE_DATA(0x21, 2, 6, 0, "AND (nn,X)", "AND", ADDR_MODE_INDEXED_INDIRECT);
-    SET_OPCODE_DATA(0x31, 2, 5, 1, "AND (nn),Y", "AND", ADDR_MODE_INDIRECT_INDEXED);
-    SET_OPCODE_DATA(0xD0, 2, 2, 1, "BNE disp", "BNE", ADDR_MODE_RELATIVE);
-    SET_OPCODE_DATA(0x68, 1, 4, 0, "PLA", "PLA", ADDR_MODE_NONE);
-    SET_OPCODE_DATA(0x60, 1, 6, 0, "RTS", "RTS", ADDR_MODE_NONE);
-    SET_OPCODE_DATA(0xCA, 1, 2, 0, "DEX", "DEX", ADDR_MODE_NONE);
-    SET_OPCODE_DATA(0x86, 2, 3, 0, "STX nn", "STX", ADDR_MODE_ZEROPAGE);
-    SET_OPCODE_DATA(0x96, 2, 4, 0, "STX nn,Y", "STX", ADDR_MODE_ZEROPAGE_INDEXED_Y);
-    SET_OPCODE_DATA(0x8E, 3, 4, 0, "STX nnnn", "STX", ADDR_MODE_ABSOLUTE);
-    SET_OPCODE_DATA(0x90, 2, 2, 1, "BCC disp", "BCC", ADDR_MODE_RELATIVE);
-    SET_OPCODE_DATA(0x6A, 1, 2, 0, "ROR A", "ROR", ADDR_MODE_ACCUMULATOR);
-    SET_OPCODE_DATA(0x66, 2, 5, 0, "ROR nn", "ROR", ADDR_MODE_ZEROPAGE);
-    SET_OPCODE_DATA(0x76, 2, 6, 0, "ROR nn,X", "ROR", ADDR_MODE_ZEROPAGE_INDEXED_X);
-    SET_OPCODE_DATA(0x6E, 3, 6, 0, "ROR nnnn", "ROR", ADDR_MODE_ABSOLUTE);
-    SET_OPCODE_DATA(0x7E, 3, 7, 0, "ROR nnnn,X", "ROR", ADDR_MODE_ABSOLUTE_INDEXED_X);
-    SET_OPCODE_DATA(0xC0, 2, 2, 0, "CPY #nn", "CPY", ADDR_MODE_IMMEDIATE);
-    SET_OPCODE_DATA(0xC4, 2, 3, 0, "CPY nn", "CPY", ADDR_MODE_ZEROPAGE);
-    SET_OPCODE_DATA(0xCC, 3, 4, 0, "CPY nnnn", "CPY", ADDR_MODE_ABSOLUTE);
-    SET_OPCODE_DATA(0x49, 2, 2, 0, "EOR #nn", "EOR", ADDR_MODE_IMMEDIATE);
-    SET_OPCODE_DATA(0x45, 2, 3, 0, "EOR nn", "EOR", ADDR_MODE_ZEROPAGE);
-    SET_OPCODE_DATA(0x55, 2, 4, 0, "EOR nn,X", "EOR", ADDR_MODE_ZEROPAGE_INDEXED_X);
-    SET_OPCODE_DATA(0x4D, 3, 4, 0, "EOR nnnn", "EOR", ADDR_MODE_ABSOLUTE);
-    SET_OPCODE_DATA(0x5D, 3, 4, 1, "EOR nnnn,X", "EOR", ADDR_MODE_ABSOLUTE_INDEXED_X);
-    SET_OPCODE_DATA(0x59, 3, 4, 1, "EOR nnnn,Y", "EOR", ADDR_MODE_ABSOLUTE_INDEXED_Y);
-    SET_OPCODE_DATA(0x41, 2, 6, 0, "EOR (nn,X)", "EOR", ADDR_MODE_INDEXED_INDIRECT);
-    SET_OPCODE_DATA(0x51, 2, 5, 1, "EOR (nn),Y", "EOR", ADDR_MODE_INDIRECT_INDEXED);
-    SET_OPCODE_DATA(0x40, 1, 6, 0, "RTI", "RTI", ADDR_MODE_NONE);
-    SET_OPCODE_DATA(0x38, 1, 2, 0, "SEC", "SEC", ADDR_MODE_NONE);
-    SET_OPCODE_DATA(0xBA, 1, 2, 0, "TSX", "TSX", ADDR_MODE_NONE);
-    SET_OPCODE_DATA(0x09, 2, 2, 0, "ORA #nn", "ORA", ADDR_MODE_IMMEDIATE);
-    SET_OPCODE_DATA(0x05, 2, 3, 0, "ORA nn", "ORA", ADDR_MODE_ZEROPAGE);
-    SET_OPCODE_DATA(0x15, 2, 4, 0, "ORA nn,X", "ORA", ADDR_MODE_ZEROPAGE_INDEXED_X);
-    SET_OPCODE_DATA(0x0D, 3, 4, 0, "ORA nnnn", "ORA", ADDR_MODE_ABSOLUTE);
-    SET_OPCODE_DATA(0x1D, 3, 4, 1, "ORA nnnn,X", "ORA", ADDR_MODE_ABSOLUTE_INDEXED_X);
-    SET_OPCODE_DATA(0x19, 3, 4, 1, "ORA nnnn,Y", "ORA", ADDR_MODE_ABSOLUTE_INDEXED_Y);
-    SET_OPCODE_DATA(0x01, 2, 6, 0, "ORA (nn,X)", "ORA", ADDR_MODE_INDEXED_INDIRECT);
-    SET_OPCODE_DATA(0x11, 2, 5, 1, "ORA (nn),Y", "ORA", ADDR_MODE_INDIRECT_INDEXED);
-    SET_OPCODE_DATA(0xC6, 2, 5, 0, "DEC nn", "DEC", ADDR_MODE_ZEROPAGE);
-    SET_OPCODE_DATA(0xD6, 2, 6, 0, "DEC nn,X", "DEC", ADDR_MODE_ZEROPAGE_INDEXED_X);
-    SET_OPCODE_DATA(0xCE, 3, 6, 0, "DEC nnnn", "DEC", ADDR_MODE_ABSOLUTE);
-    SET_OPCODE_DATA(0xDE, 3, 7, 0, "DEC nnnn,X", "DEC", ADDR_MODE_ABSOLUTE_INDEXED_X);
-    SET_OPCODE_DATA(0x10, 2, 2, 1, "BPL disp", "BPL", ADDR_MODE_RELATIVE);
-    SET_OPCODE_DATA(0xC8, 1, 2, 0, "INY", "INY", ADDR_MODE_NONE);
-    SET_OPCODE_DATA(0x0A, 1, 2, 0, "ASL A", "ASL", ADDR_MODE_ACCUMULATOR);
-    SET_OPCODE_DATA(0x06, 2, 5, 0, "ASL nn", "ASL", ADDR_MODE_ZEROPAGE);
-    SET_OPCODE_DATA(0x16, 2, 6, 0, "ASL nn,X", "ASL", ADDR_MODE_ZEROPAGE_INDEXED_X);
-    SET_OPCODE_DATA(0x0E, 3, 6, 0, "ASL nnnn", "ASL", ADDR_MODE_ABSOLUTE);
-    SET_OPCODE_DATA(0x1E, 3, 7, 0, "ASL nnnn,X", "ASL", ADDR_MODE_ABSOLUTE_INDEXED_X);
-    SET_OPCODE_DATA(0x58, 1, 2, 0, "CLI", "CLI", ADDR_MODE_NONE);
-    SET_OPCODE_DATA(0xEA, 1, 2, 0, "NOP", "NOP", ADDR_MODE_NONE);
-    SET_OPCODE_DATA(0x4A, 1, 2, 0, "LSR A", "LSR", ADDR_MODE_ACCUMULATOR);
-    SET_OPCODE_DATA(0x46, 2, 5, 0, "LSR nn", "LSR", ADDR_MODE_ZEROPAGE);
-    SET_OPCODE_DATA(0x56, 2, 6, 0, "LSR nn,X", "LSR", ADDR_MODE_ZEROPAGE_INDEXED_X);
-    SET_OPCODE_DATA(0x4E, 3, 6, 0, "LSR nnnn", "LSR", ADDR_MODE_ABSOLUTE);
-    SET_OPCODE_DATA(0x5E, 3, 7, 0, "LSR nnnn,X", "LSR", ADDR_MODE_ABSOLUTE_INDEXED_X);
-    SET_OPCODE_DATA(0x24, 2, 3, 0, "BIT nn", "BIT", ADDR_MODE_ZEROPAGE);
-    SET_OPCODE_DATA(0x2C, 3, 4, 0, "BIT nnnn", "BIT", ADDR_MODE_ABSOLUTE);
-    SET_OPCODE_DATA(0x2A, 1, 2, 0, "ROL A", "ROL", ADDR_MODE_ACCUMULATOR);
-    SET_OPCODE_DATA(0x26, 2, 5, 0, "ROL nn", "ROL", ADDR_MODE_ZEROPAGE);
-    SET_OPCODE_DATA(0x36, 2, 6, 0, "ROL nn,X", "ROL", ADDR_MODE_ZEROPAGE_INDEXED_X);
-    SET_OPCODE_DATA(0x2E, 3, 6, 0, "ROL nnnn", "ROL", ADDR_MODE_ABSOLUTE);
-    SET_OPCODE_DATA(0x3E, 3, 7, 0, "ROL nnnn,X", "ROL", ADDR_MODE_ABSOLUTE_INDEXED_X);
-    SET_OPCODE_DATA(0xA2, 2, 2, 0, "LDX #nn", "LDX", ADDR_MODE_IMMEDIATE);
-    SET_OPCODE_DATA(0xA6, 2, 3, 0, "LDX nn", "LDX", ADDR_MODE_ZEROPAGE);
-    SET_OPCODE_DATA(0xB6, 2, 4, 0, "LDX nn,Y", "LDX", ADDR_MODE_ZEROPAGE_INDEXED_Y);
-    SET_OPCODE_DATA(0xAE, 3, 4, 0, "LDX nnnn", "LDX", ADDR_MODE_ABSOLUTE);
-    SET_OPCODE_DATA(0xBE, 3, 4, 1, "LDX nnnn,Y", "LDX", ADDR_MODE_ABSOLUTE_INDEXED_Y);
-    SET_OPCODE_DATA(0xE8, 1, 2, 0, "INX", "INX", ADDR_MODE_NONE);
-    SET_OPCODE_DATA(0x18, 1, 2, 0, "CLC", "CLC", ADDR_MODE_NONE);
-    SET_OPCODE_DATA(0x4C, 3, 3, 0, "JMP nnnn", "JMP", ADDR_MODE_ABSOLUTE);
-    SET_OPCODE_DATA(0x6C, 3, 5, 0, "JMP (nnnn)", "JMP", ADDR_MODE_INDIRECT_ABSOLUTE);
-    SET_OPCODE_DATA(0x48, 1, 3, 0, "PHA", "PHA", ADDR_MODE_NONE);
-    SET_OPCODE_DATA(0x78, 1, 2, 0, "SEI", "SEI", ADDR_MODE_NONE);
-    SET_OPCODE_DATA(0x85, 2, 3, 0, "STA nn", "STA", ADDR_MODE_ZEROPAGE);
-    SET_OPCODE_DATA(0x95, 2, 4, 0, "STA nn,X", "STA", ADDR_MODE_ZEROPAGE_INDEXED_X);
-    SET_OPCODE_DATA(0x8D, 3, 4, 0, "STA nnnn", "STA", ADDR_MODE_ABSOLUTE);
-    SET_OPCODE_DATA(0x9D, 3, 5, 0, "STA nnnn,X", "STA", ADDR_MODE_ABSOLUTE_INDEXED_X);
-    SET_OPCODE_DATA(0x99, 3, 5, 0, "STA nnnn,Y", "STA", ADDR_MODE_ABSOLUTE_INDEXED_Y);
-    SET_OPCODE_DATA(0x81, 2, 6, 0, "STA (nn,X)", "STA", ADDR_MODE_INDEXED_INDIRECT);
-    SET_OPCODE_DATA(0x91, 2, 6, 0, "STA (nn),Y", "STA", ADDR_MODE_INDIRECT_INDEXED);
-    SET_OPCODE_DATA(0x84, 2, 3, 0, "STY nn", "STY", ADDR_MODE_ZEROPAGE);
-    SET_OPCODE_DATA(0x94, 2, 4, 0, "STY nn,X", "STY", ADDR_MODE_ZEROPAGE_INDEXED_X);
-    SET_OPCODE_DATA(0x8C, 3, 4, 0, "STY nnnn", "STY", ADDR_MODE_ABSOLUTE);
-    SET_OPCODE_DATA(0x9A, 1, 2, 0, "TXS", "TXS", ADDR_MODE_NONE);
-    SET_OPCODE_DATA(0x69, 2, 2, 0, "ADC #nn", "ADC", ADDR_MODE_IMMEDIATE);
-    SET_OPCODE_DATA(0x65, 2, 3, 0, "ADC nn", "ADC", ADDR_MODE_ZEROPAGE);
-    SET_OPCODE_DATA(0x75, 2, 4, 0, "ADC nn,X", "ADC", ADDR_MODE_ZEROPAGE_INDEXED_X);
-    SET_OPCODE_DATA(0x6D, 3, 4, 0, "ADC nnnn", "ADC", ADDR_MODE_ABSOLUTE);
-    SET_OPCODE_DATA(0x7D, 3, 4, 1, "ADC nnnn,X", "ADC", ADDR_MODE_ABSOLUTE_INDEXED_X);
-    SET_OPCODE_DATA(0x79, 3, 4, 1, "ADC nnnn,Y", "ADC", ADDR_MODE_ABSOLUTE_INDEXED_Y);
-    SET_OPCODE_DATA(0x61, 2, 6, 0, "ADC (nn,X)", "ADC", ADDR_MODE_INDEXED_INDIRECT);
-    SET_OPCODE_DATA(0x71, 2, 5, 1, "ADC (nn),Y", "ADC", ADDR_MODE_INDIRECT_INDEXED);
-    SET_OPCODE_DATA(0x00, 1, 7, 0, "BRK", "BRK", ADDR_MODE_NONE);
-    SET_OPCODE_DATA(0x50, 2, 2, 1, "BVC disp", "BVC", ADDR_MODE_RELATIVE);
-    SET_OPCODE_DATA(0x28, 1, 4, 0, "PLP", "PLP", ADDR_MODE_NONE);
-    SET_OPCODE_DATA(0xA8, 1, 2, 0, "TAY", "TAY", ADDR_MODE_NONE);
-    SET_OPCODE_DATA(0xE0, 2, 2, 0, "CPX #nn", "CPX", ADDR_MODE_IMMEDIATE);
-    SET_OPCODE_DATA(0xE4, 2, 3, 0, "CPX nn", "CPX", ADDR_MODE_ZEROPAGE);
-    SET_OPCODE_DATA(0xEC, 3, 4, 0, "CPX nnnn", "CPX", ADDR_MODE_ABSOLUTE);
-    SET_OPCODE_DATA(0xA0, 2, 2, 0, "LDY #nn", "LDY", ADDR_MODE_IMMEDIATE);
-    SET_OPCODE_DATA(0xA4, 2, 3, 0, "LDY nn", "LDY", ADDR_MODE_ZEROPAGE);
-    SET_OPCODE_DATA(0xB4, 2, 4, 0, "LDY nn,X", "LDY", ADDR_MODE_ZEROPAGE_INDEXED_X);
-    SET_OPCODE_DATA(0xAC, 3, 4, 0, "LDY nnnn", "LDY", ADDR_MODE_ABSOLUTE);
-    SET_OPCODE_DATA(0xBC, 3, 4, 1, "LDY nnnn,X", "LDY", ADDR_MODE_ABSOLUTE_INDEXED_X);
-    SET_OPCODE_DATA(0xA9, 2, 2, 0, "LDA #nn", "LDA", ADDR_MODE_IMMEDIATE);
-    SET_OPCODE_DATA(0xA5, 2, 3, 0, "LDA nn", "LDA", ADDR_MODE_ZEROPAGE);
-    SET_OPCODE_DATA(0xB5, 2, 4, 0, "LDA nn,X", "LDA", ADDR_MODE_ZEROPAGE_INDEXED_X);
-    SET_OPCODE_DATA(0xAD, 3, 4, 0, "LDA nnnn", "LDA", ADDR_MODE_ABSOLUTE);
-    SET_OPCODE_DATA(0xBD, 3, 4, 1, "LDA nnnn,X", "LDA", ADDR_MODE_ABSOLUTE_INDEXED_X);
-    SET_OPCODE_DATA(0xB9, 3, 4, 1, "LDA nnnn,Y", "LDA", ADDR_MODE_ABSOLUTE_INDEXED_Y);
-    SET_OPCODE_DATA(0xA1, 2, 6, 0, "LDA (nn,X)", "LDA", ADDR_MODE_INDEXED_INDIRECT);
-    SET_OPCODE_DATA(0xB1, 2, 5, 1, "LDA (nn),Y", "LDA", ADDR_MODE_INDIRECT_INDEXED);
-    SET_OPCODE_DATA(0x08, 1, 3, 0, "PHP", "PHP", ADDR_MODE_NONE);
-    SET_OPCODE_DATA(0x8A, 1, 2, 0, "TXA", "TXA", ADDR_MODE_NONE);
+    // Reference for instruction variants
+    opcodes[0xE9].set("SBC", 2, 2, 0, "SBC #nn", ADDR_MODE_IMMEDIATE);
+    opcodes[0xE5].set("SBC", 2, 3, 0, "SBC nn", ADDR_MODE_ZEROPAGE);
+    opcodes[0xF5].set("SBC", 2, 4, 0, "SBC nn,X", ADDR_MODE_ZEROPAGE_INDEXED_X);
+    opcodes[0xED].set("SBC", 3, 4, 0, "SBC nnnn", ADDR_MODE_ABSOLUTE);
+    opcodes[0xFD].set("SBC", 3, 4, 1, "SBC nnnn,X", ADDR_MODE_ABSOLUTE_INDEXED_X);
+    opcodes[0xF9].set("SBC", 3, 4, 1, "SBC nnnn,Y", ADDR_MODE_ABSOLUTE_INDEXED_Y);
+    opcodes[0xE1].set("SBC", 2, 6, 0, "SBC (nn,X)", ADDR_MODE_INDEXED_INDIRECT);
+    opcodes[0xF1].set("SBC", 2, 5, 1, "SBC (nn),Y", ADDR_MODE_INDIRECT_INDEXED);
+    opcodes[0xB0].set("BCS", 2, 2, 1, "BCS disp", ADDR_MODE_RELATIVE);
+    opcodes[0x70].set("BVS", 2, 2, 1, "BVS disp", ADDR_MODE_RELATIVE);
+    opcodes[0xD8].set("CLD", 1, 2, 0, "CLD", ADDR_MODE_NONE);
+    opcodes[0xAA].set("TAX", 1, 2, 0, "TAX", ADDR_MODE_NONE);
+    opcodes[0xB8].set("CLV", 1, 2, 0, "CLV", ADDR_MODE_NONE);
+    opcodes[0x88].set("DEY", 1, 2, 0, "DEY", ADDR_MODE_NONE);
+    opcodes[0xF8].set("SED", 1, 2, 0, "SED", ADDR_MODE_NONE);
+    opcodes[0xC9].set("CMP", 2, 2, 0, "CMP #nn", ADDR_MODE_IMMEDIATE);
+    opcodes[0xC5].set("CMP", 2, 3, 0, "CMP nn", ADDR_MODE_ZEROPAGE);
+    opcodes[0xD5].set("CMP", 2, 4, 0, "CMP nn,X", ADDR_MODE_ZEROPAGE_INDEXED_X);
+    opcodes[0xCD].set("CMP", 3, 4, 0, "CMP nnnn", ADDR_MODE_ABSOLUTE);
+    opcodes[0xDD].set("CMP", 3, 4, 1, "CMP nnnn,X", ADDR_MODE_ABSOLUTE_INDEXED_X);
+    opcodes[0xD9].set("CMP", 3, 4, 1, "CMP nnnn,Y", ADDR_MODE_ABSOLUTE_INDEXED_Y);
+    opcodes[0xC1].set("CMP", 2, 6, 0, "CMP (nn,X)", ADDR_MODE_INDEXED_INDIRECT);
+    opcodes[0xD1].set("CMP", 2, 5, 1, "CMP (nn),Y", ADDR_MODE_INDIRECT_INDEXED);
+    opcodes[0x30].set("BMI", 2, 2, 1, "BMI disp", ADDR_MODE_RELATIVE);
+    opcodes[0x20].set("JSR", 3, 6, 0, "JSR nnnn", ADDR_MODE_ABSOLUTE);
+    opcodes[0xF0].set("BEQ", 2, 2, 1, "BEQ disp", ADDR_MODE_RELATIVE);
+    opcodes[0xE6].set("INC", 2, 5, 0, "INC nn", ADDR_MODE_ZEROPAGE);
+    opcodes[0xF6].set("INC", 2, 6, 0, "INC nn,X", ADDR_MODE_ZEROPAGE_INDEXED_X);
+    opcodes[0xEE].set("INC", 3, 6, 0, "INC nnnn", ADDR_MODE_ABSOLUTE);
+    opcodes[0xFE].set("INC", 3, 7, 0, "INC nnnn,X", ADDR_MODE_ABSOLUTE_INDEXED_X);
+    opcodes[0x98].set("TYA", 1, 2, 0, "TYA", ADDR_MODE_NONE);
+    opcodes[0x29].set("AND", 2, 2, 0, "AND #nn", ADDR_MODE_IMMEDIATE);
+    opcodes[0x25].set("AND", 2, 3, 0, "AND nn", ADDR_MODE_ZEROPAGE);
+    opcodes[0x35].set("AND", 2, 4, 0, "AND nn,X", ADDR_MODE_ZEROPAGE_INDEXED_X);
+    opcodes[0x2D].set("AND", 3, 4, 0, "AND nnnn", ADDR_MODE_ABSOLUTE);
+    opcodes[0x3D].set("AND", 3, 4, 1, "AND nnnn,X", ADDR_MODE_ABSOLUTE_INDEXED_X);
+    opcodes[0x39].set("AND", 3, 4, 1, "AND nnnn,Y", ADDR_MODE_ABSOLUTE_INDEXED_Y);
+    opcodes[0x21].set("AND", 2, 6, 0, "AND (nn,X)", ADDR_MODE_INDEXED_INDIRECT);
+    opcodes[0x31].set("AND", 2, 5, 1, "AND (nn),Y", ADDR_MODE_INDIRECT_INDEXED);
+    opcodes[0xD0].set("BNE", 2, 2, 1, "BNE disp", ADDR_MODE_RELATIVE);
+    opcodes[0x68].set("PLA", 1, 4, 0, "PLA", ADDR_MODE_NONE);
+    opcodes[0x60].set("RTS", 1, 6, 0, "RTS", ADDR_MODE_NONE);
+    opcodes[0xCA].set("DEX", 1, 2, 0, "DEX", ADDR_MODE_NONE);
+    opcodes[0x86].set("STX", 2, 3, 0, "STX nn", ADDR_MODE_ZEROPAGE);
+    opcodes[0x96].set("STX", 2, 4, 0, "STX nn,Y", ADDR_MODE_ZEROPAGE_INDEXED_Y);
+    opcodes[0x8E].set("STX", 3, 4, 0, "STX nnnn", ADDR_MODE_ABSOLUTE);
+    opcodes[0x90].set("BCC", 2, 2, 1, "BCC disp", ADDR_MODE_RELATIVE);
+    opcodes[0x6A].set("ROR", 1, 2, 0, "ROR A", ADDR_MODE_ACCUMULATOR);
+    opcodes[0x66].set("ROR", 2, 5, 0, "ROR nn", ADDR_MODE_ZEROPAGE);
+    opcodes[0x76].set("ROR", 2, 6, 0, "ROR nn,X", ADDR_MODE_ZEROPAGE_INDEXED_X);
+    opcodes[0x6E].set("ROR", 3, 6, 0, "ROR nnnn", ADDR_MODE_ABSOLUTE);
+    opcodes[0x7E].set("ROR", 3, 7, 0, "ROR nnnn,X", ADDR_MODE_ABSOLUTE_INDEXED_X);
+    opcodes[0xC0].set("CPY", 2, 2, 0, "CPY #nn", ADDR_MODE_IMMEDIATE);
+    opcodes[0xC4].set("CPY", 2, 3, 0, "CPY nn", ADDR_MODE_ZEROPAGE);
+    opcodes[0xCC].set("CPY", 3, 4, 0, "CPY nnnn", ADDR_MODE_ABSOLUTE);
+    opcodes[0x49].set("EOR", 2, 2, 0, "EOR #nn", ADDR_MODE_IMMEDIATE);
+    opcodes[0x45].set("EOR", 2, 3, 0, "EOR nn", ADDR_MODE_ZEROPAGE);
+    opcodes[0x55].set("EOR", 2, 4, 0, "EOR nn,X", ADDR_MODE_ZEROPAGE_INDEXED_X);
+    opcodes[0x4D].set("EOR", 3, 4, 0, "EOR nnnn", ADDR_MODE_ABSOLUTE);
+    opcodes[0x5D].set("EOR", 3, 4, 1, "EOR nnnn,X", ADDR_MODE_ABSOLUTE_INDEXED_X);
+    opcodes[0x59].set("EOR", 3, 4, 1, "EOR nnnn,Y", ADDR_MODE_ABSOLUTE_INDEXED_Y);
+    opcodes[0x41].set("EOR", 2, 6, 0, "EOR (nn,X)", ADDR_MODE_INDEXED_INDIRECT);
+    opcodes[0x51].set("EOR", 2, 5, 1, "EOR (nn),Y", ADDR_MODE_INDIRECT_INDEXED);
+    opcodes[0x40].set("RTI", 1, 6, 0, "RTI", ADDR_MODE_NONE);
+    opcodes[0x38].set("SEC", 1, 2, 0, "SEC", ADDR_MODE_NONE);
+    opcodes[0xBA].set("TSX", 1, 2, 0, "TSX", ADDR_MODE_NONE);
+    opcodes[0x09].set("ORA", 2, 2, 0, "ORA #nn", ADDR_MODE_IMMEDIATE);
+    opcodes[0x05].set("ORA", 2, 3, 0, "ORA nn", ADDR_MODE_ZEROPAGE);
+    opcodes[0x15].set("ORA", 2, 4, 0, "ORA nn,X", ADDR_MODE_ZEROPAGE_INDEXED_X);
+    opcodes[0x0D].set("ORA", 3, 4, 0, "ORA nnnn", ADDR_MODE_ABSOLUTE);
+    opcodes[0x1D].set("ORA", 3, 4, 1, "ORA nnnn,X", ADDR_MODE_ABSOLUTE_INDEXED_X);
+    opcodes[0x19].set("ORA", 3, 4, 1, "ORA nnnn,Y", ADDR_MODE_ABSOLUTE_INDEXED_Y);
+    opcodes[0x01].set("ORA", 2, 6, 0, "ORA (nn,X)", ADDR_MODE_INDEXED_INDIRECT);
+    opcodes[0x11].set("ORA", 2, 5, 1, "ORA (nn),Y", ADDR_MODE_INDIRECT_INDEXED);
+    opcodes[0xC6].set("DEC", 2, 5, 0, "DEC nn", ADDR_MODE_ZEROPAGE);
+    opcodes[0xD6].set("DEC", 2, 6, 0, "DEC nn,X", ADDR_MODE_ZEROPAGE_INDEXED_X);
+    opcodes[0xCE].set("DEC", 3, 6, 0, "DEC nnnn", ADDR_MODE_ABSOLUTE);
+    opcodes[0xDE].set("DEC", 3, 7, 0, "DEC nnnn,X", ADDR_MODE_ABSOLUTE_INDEXED_X);
+    opcodes[0x10].set("BPL", 2, 2, 1, "BPL disp", ADDR_MODE_RELATIVE);
+    opcodes[0xC8].set("INY", 1, 2, 0, "INY", ADDR_MODE_NONE);
+    opcodes[0x0A].set("ASL", 1, 2, 0, "ASL A", ADDR_MODE_ACCUMULATOR);
+    opcodes[0x06].set("ASL", 2, 5, 0, "ASL nn", ADDR_MODE_ZEROPAGE);
+    opcodes[0x16].set("ASL", 2, 6, 0, "ASL nn,X", ADDR_MODE_ZEROPAGE_INDEXED_X);
+    opcodes[0x0E].set("ASL", 3, 6, 0, "ASL nnnn", ADDR_MODE_ABSOLUTE);
+    opcodes[0x1E].set("ASL", 3, 7, 0, "ASL nnnn,X", ADDR_MODE_ABSOLUTE_INDEXED_X);
+    opcodes[0x58].set("CLI", 1, 2, 0, "CLI", ADDR_MODE_NONE);
+    opcodes[0xEA].set("NOP", 1, 2, 0, "NOP", ADDR_MODE_NONE);
+    opcodes[0x4A].set("LSR", 1, 2, 0, "LSR A", ADDR_MODE_ACCUMULATOR);
+    opcodes[0x46].set("LSR", 2, 5, 0, "LSR nn", ADDR_MODE_ZEROPAGE);
+    opcodes[0x56].set("LSR", 2, 6, 0, "LSR nn,X", ADDR_MODE_ZEROPAGE_INDEXED_X);
+    opcodes[0x4E].set("LSR", 3, 6, 0, "LSR nnnn", ADDR_MODE_ABSOLUTE);
+    opcodes[0x5E].set("LSR", 3, 7, 0, "LSR nnnn,X", ADDR_MODE_ABSOLUTE_INDEXED_X);
+    opcodes[0x24].set("BIT", 2, 3, 0, "BIT nn", ADDR_MODE_ZEROPAGE);
+    opcodes[0x2C].set("BIT", 3, 4, 0, "BIT nnnn", ADDR_MODE_ABSOLUTE);
+    opcodes[0x2A].set("ROL", 1, 2, 0, "ROL A", ADDR_MODE_ACCUMULATOR);
+    opcodes[0x26].set("ROL", 2, 5, 0, "ROL nn", ADDR_MODE_ZEROPAGE);
+    opcodes[0x36].set("ROL", 2, 6, 0, "ROL nn,X", ADDR_MODE_ZEROPAGE_INDEXED_X);
+    opcodes[0x2E].set("ROL", 3, 6, 0, "ROL nnnn", ADDR_MODE_ABSOLUTE);
+    opcodes[0x3E].set("ROL", 3, 7, 0, "ROL nnnn,X", ADDR_MODE_ABSOLUTE_INDEXED_X);
+    opcodes[0xA2].set("LDX", 2, 2, 0, "LDX #nn", ADDR_MODE_IMMEDIATE);
+    opcodes[0xA6].set("LDX", 2, 3, 0, "LDX nn", ADDR_MODE_ZEROPAGE);
+    opcodes[0xB6].set("LDX", 2, 4, 0, "LDX nn,Y", ADDR_MODE_ZEROPAGE_INDEXED_Y);
+    opcodes[0xAE].set("LDX", 3, 4, 0, "LDX nnnn", ADDR_MODE_ABSOLUTE);
+    opcodes[0xBE].set("LDX", 3, 4, 1, "LDX nnnn,Y", ADDR_MODE_ABSOLUTE_INDEXED_Y);
+    opcodes[0xE8].set("INX", 1, 2, 0, "INX", ADDR_MODE_NONE);
+    opcodes[0x18].set("CLC", 1, 2, 0, "CLC", ADDR_MODE_NONE);
+    opcodes[0x4C].set("JMP", 3, 3, 0, "JMP nnnn", ADDR_MODE_ABSOLUTE);
+    opcodes[0x6C].set("JMP", 3, 5, 0, "JMP (nnnn)", ADDR_MODE_INDIRECT_ABSOLUTE);
+    opcodes[0x48].set("PHA", 1, 3, 0, "PHA", ADDR_MODE_NONE);
+    opcodes[0x78].set("SEI", 1, 2, 0, "SEI", ADDR_MODE_NONE);
+    opcodes[0x85].set("STA", 2, 3, 0, "STA nn", ADDR_MODE_ZEROPAGE);
+    opcodes[0x95].set("STA", 2, 4, 0, "STA nn,X", ADDR_MODE_ZEROPAGE_INDEXED_X);
+    opcodes[0x8D].set("STA", 3, 4, 0, "STA nnnn", ADDR_MODE_ABSOLUTE);
+    opcodes[0x9D].set("STA", 3, 5, 0, "STA nnnn,X", ADDR_MODE_ABSOLUTE_INDEXED_X);
+    opcodes[0x99].set("STA", 3, 5, 0, "STA nnnn,Y", ADDR_MODE_ABSOLUTE_INDEXED_Y);
+    opcodes[0x81].set("STA", 2, 6, 0, "STA (nn,X)", ADDR_MODE_INDEXED_INDIRECT);
+    opcodes[0x91].set("STA", 2, 6, 0, "STA (nn),Y", ADDR_MODE_INDIRECT_INDEXED);
+    opcodes[0x84].set("STY", 2, 3, 0, "STY nn", ADDR_MODE_ZEROPAGE);
+    opcodes[0x94].set("STY", 2, 4, 0, "STY nn,X", ADDR_MODE_ZEROPAGE_INDEXED_X);
+    opcodes[0x8C].set("STY", 3, 4, 0, "STY nnnn", ADDR_MODE_ABSOLUTE);
+    opcodes[0x9A].set("TXS", 1, 2, 0, "TXS", ADDR_MODE_NONE);
+    opcodes[0x69].set("ADC", 2, 2, 0, "ADC #nn", ADDR_MODE_IMMEDIATE);
+    opcodes[0x65].set("ADC", 2, 3, 0, "ADC nn", ADDR_MODE_ZEROPAGE);
+    opcodes[0x75].set("ADC", 2, 4, 0, "ADC nn,X", ADDR_MODE_ZEROPAGE_INDEXED_X);
+    opcodes[0x6D].set("ADC", 3, 4, 0, "ADC nnnn", ADDR_MODE_ABSOLUTE);
+    opcodes[0x7D].set("ADC", 3, 4, 1, "ADC nnnn,X", ADDR_MODE_ABSOLUTE_INDEXED_X);
+    opcodes[0x79].set("ADC", 3, 4, 1, "ADC nnnn,Y", ADDR_MODE_ABSOLUTE_INDEXED_Y);
+    opcodes[0x61].set("ADC", 2, 6, 0, "ADC (nn,X)", ADDR_MODE_INDEXED_INDIRECT);
+    opcodes[0x71].set("ADC", 2, 5, 1, "ADC (nn),Y", ADDR_MODE_INDIRECT_INDEXED);
+    opcodes[0x00].set("BRK", 1, 7, 0, "BRK", ADDR_MODE_NONE);
+    opcodes[0x50].set("BVC", 2, 2, 1, "BVC disp", ADDR_MODE_RELATIVE);
+    opcodes[0x28].set("PLP", 1, 4, 0, "PLP", ADDR_MODE_NONE);
+    opcodes[0xA8].set("TAY", 1, 2, 0, "TAY", ADDR_MODE_NONE);
+    opcodes[0xE0].set("CPX", 2, 2, 0, "CPX #nn", ADDR_MODE_IMMEDIATE);
+    opcodes[0xE4].set("CPX", 2, 3, 0, "CPX nn", ADDR_MODE_ZEROPAGE);
+    opcodes[0xEC].set("CPX", 3, 4, 0, "CPX nnnn", ADDR_MODE_ABSOLUTE);
+    opcodes[0xA0].set("LDY", 2, 2, 0, "LDY #nn", ADDR_MODE_IMMEDIATE);
+    opcodes[0xA4].set("LDY", 2, 3, 0, "LDY nn", ADDR_MODE_ZEROPAGE);
+    opcodes[0xB4].set("LDY", 2, 4, 0, "LDY nn,X", ADDR_MODE_ZEROPAGE_INDEXED_X);
+    opcodes[0xAC].set("LDY", 3, 4, 0, "LDY nnnn", ADDR_MODE_ABSOLUTE);
+    opcodes[0xBC].set("LDY", 3, 4, 1, "LDY nnnn,X", ADDR_MODE_ABSOLUTE_INDEXED_X);
+    opcodes[0xA9].set("LDA", 2, 2, 0, "LDA #nn", ADDR_MODE_IMMEDIATE);
+    opcodes[0xA5].set("LDA", 2, 3, 0, "LDA nn", ADDR_MODE_ZEROPAGE);
+    opcodes[0xB5].set("LDA", 2, 4, 0, "LDA nn,X", ADDR_MODE_ZEROPAGE_INDEXED_X);
+    opcodes[0xAD].set("LDA", 3, 4, 0, "LDA nnnn", ADDR_MODE_ABSOLUTE);
+    opcodes[0xBD].set("LDA", 3, 4, 1, "LDA nnnn,X", ADDR_MODE_ABSOLUTE_INDEXED_X);
+    opcodes[0xB9].set("LDA", 3, 4, 1, "LDA nnnn,Y", ADDR_MODE_ABSOLUTE_INDEXED_Y);
+    opcodes[0xA1].set("LDA", 2, 6, 0, "LDA (nn,X)", ADDR_MODE_INDEXED_INDIRECT);
+    opcodes[0xB1].set("LDA", 2, 5, 1, "LDA (nn),Y", ADDR_MODE_INDIRECT_INDEXED);
+    opcodes[0x08].set("PHP", 1, 3, 0, "PHP", ADDR_MODE_NONE);
+    opcodes[0x8A].set("TXA", 1, 2, 0, "TXA", ADDR_MODE_NONE);
 
     assignAddressModes();
 
     PrintInfo("All OpCodes Initialized");
 }
 
-void Instructions::prepareAddressModes() {// initialize address mode offsets
+/**
+ * Initialize address-mode opcode offset, cycle count, and output format
+ */
+void Instructions::prepareAddressModes() {
     for (int i = 0; i < 16; i++) {
         addressModes[i].offset = 0;
         addressModes[i].cycles = 0;
@@ -210,8 +209,26 @@ void Instructions::prepareAddressModes() {// initialize address mode offsets
     addressModes[ADDR_MODE_RELATIVE].cycles = +0;
     addressModes[ADDR_MODE_INDEXED_INDIRECT].cycles = +2;
     addressModes[ADDR_MODE_INDIRECT_ABSOLUTE].cycles = +2;
+
+    addressModes[ADDR_MODE_NONE].addressLine = "";
+    addressModes[ADDR_MODE_ABSOLUTE].addressLine = "nnnn";
+    addressModes[ADDR_MODE_IMMEDIATE].addressLine = "#nn";
+    addressModes[ADDR_MODE_ZEROPAGE].addressLine = "nn";
+    addressModes[ADDR_MODE_RELATIVE].addressLine = "disp";
+    addressModes[ADDR_MODE_INDEXED_INDIRECT].addressLine = "(nn,X)";
+    addressModes[ADDR_MODE_INDIRECT_INDEXED].addressLine = "(nn),Y";
+    addressModes[ADDR_MODE_INDIRECT_ABSOLUTE].addressLine = "(nnnn)";
+    addressModes[ADDR_MODE_ABSOLUTE_INDEXED_X].addressLine = "nnnn,X";
+    addressModes[ADDR_MODE_ABSOLUTE_INDEXED_Y].addressLine = "nnnn,Y";
+    addressModes[ADDR_MODE_ZEROPAGE_INDEXED_X].addressLine = "nn,X";
+    addressModes[ADDR_MODE_ZEROPAGE_INDEXED_Y].addressLine = "nn,Y";
+    addressModes[ADDR_MODE_ACCUMULATOR].addressLine = "A";
+    addressModes[ADDR_MODE_IMMEDIATE_TO_XY].addressLine = "???";
 }
 
+/**
+ * Instruction opcode-variance generator utilizing template specialization and template unrolling
+ */
 template<InstructionMnemonic opcode, enum AddressMode mode>
 struct UnrollInstructions {
     static void unroll(Opcode *opcodes, AddressModeProperties *props) {
@@ -225,22 +242,27 @@ struct UnrollInstructions {
             opcodeVariant = opcode + uint8_t(0x10); // 0xBE
         }
 
-        PrintInfo("  opcode=%i variant=%i offset=%i") % opcode % (int)opcodeVariant % (int)props[mode].offset;
+        //PrintInfo("  opcode=%i variant=%i offset=%i") % opcode % (int)opcodeVariant % (int)props[mode].offset;
 
-        opcodes[opcodeVariant].execute = InstructionImplementation<opcode, mode>::instructionImplementation;
+        opcodes[opcodeVariant].execute = InstructionImplementation<opcode, mode>::execute;
 
         UnrollInstructions<opcode, static_cast<AddressMode>(mode - 1)>::unroll(opcodes, props);
     }
 };
 
-// terminating condition for specialized template unroll
+/**
+ * Terminating condition for template unroll - reached the last address mode
+ */
 template<InstructionMnemonic opcode>
 struct UnrollInstructions<opcode, ADDR_MODE_NONE> {
     static void unroll(Opcode *opcodes, AddressModeProperties *props) {
-        PrintInfo("Unroll completed for opcode=%i") % opcode;
+        PrintInfo("Unrolled all memory mode variants for opcode = 0x%02X") % opcode;
     }
 };
 
+/**
+ * Calculate address-mode mask and kick-off instruction-variance generator via template unroll
+ */
 template<InstructionMnemonic opcode>
 struct tAddressModeMask {
     static void Create(Opcode *opcodes, AddressModeProperties *props, int Mask1 = 0, int Mask2 = 0, int Mask3 = 0, int Mask4 = 0, int Mask5 = 0, int Mask6 = 0, int Mask7 = 0, int Mask8 = 0) {
@@ -248,7 +270,7 @@ struct tAddressModeMask {
                 + AddressModeMask[Mask3] + AddressModeMask[Mask4] + AddressModeMask[Mask5]
                 + AddressModeMask[Mask6] + AddressModeMask[Mask7] + AddressModeMask[Mask8];
 
-        PrintInfo("assigning mask=%d") % std::bitset<8>(mask).to_string('0', '1');
+        //PrintInfo("  assigning mask=%d") % std::bitset<8>(mask).to_string('0', '1');
 
         opcodes[opcode].AddressModeMask = mask;
 
@@ -256,6 +278,9 @@ struct tAddressModeMask {
     }
 };
 
+/**
+ * For each cpu instruction, generate its opcode variants given supported memory address modes
+ */
 void
 Instructions::assignAddressModes() {
 
@@ -319,61 +344,6 @@ Instructions::assignAddressModes() {
     tAddressModeMask<TYA>::Create(opcodes, addressModes, ADDR_MODE_NONE);
 }
 
-void
-Instructions::applyAddressModes(int opcode, int Mask1, int Mask2, int Mask3, int Mask4, int Mask5, int Mask6, int Mask7, int Mask8) {
-    unsigned short mask = AddressModeMask[Mask1] + AddressModeMask[Mask2]
-            + AddressModeMask[Mask3] + AddressModeMask[Mask4] + AddressModeMask[Mask5]
-            + AddressModeMask[Mask6] + AddressModeMask[Mask7] + AddressModeMask[Mask8];
-
-    opcodes[opcode].AddressModeMask = mask;
-
-    applyAddressModeMask(opcode, mask);
-
-}
-
-
-void
-Instructions::applyAddressModeMask(uint16_t opcode, uint16_t mask) {
-    for (int i = 0; i < ADDRESS_MODE_SIZE; i++) {
-        if (mask & AddressModeMask[i]) {
-            // opcode supports this address mode
-            unsigned short opcodeVariant = opcode + addressModes[opcode].offset;
-
-            // exceptions:
-            // LDX with absolute indexed Y register address mode uses +0x10 offset instead of +0xC
-
-            if (opcode == LDX && i == ADDR_MODE_ABSOLUTE_INDEXED_Y) {
-                opcodeVariant = opcode + uint16_t(0x10); // 0xBE
-            }
-
-            //opcodes[opcodeVariant].execute = tInstructionLookup<opcode>::Instruction<i>::Execute;
-
-            // register opcode execution
-            // it will be responsible for updating cpu registers and flags
-
-//            opcodes[opcodeVariant].execute =
-//
-//            CPU_Instructions::Singleton()->AddInstruction( OpCodeVariant, tInstructionLookup< Mnemonic >::Instruction<AddressMode>::Execute );
-//
-//            int VariantCycles = CPU_Instructions::Singleton()->OpcodeData[Mnemonic].Cycles + CPU_Instructions::Singleton()->m_addressModes[AddressMode];
-//            // accumulator instructions are always 2 cycles long
-//            if( AddressMode == ADDR_MODE_ACCUMULATOR )
-//                VariantCycles = 2;
-//
-//            int OldCycles = CPU_Instructions::Singleton()->OpcodeData[OpCodeVariant].Cycles;
-        }
-
-//        if( Mask )
-//        {
-//            tUnrollOpCodeModes<Mnemonic>::Helper<(eAddressMode) (AddressMode-1)>::Unroll();
-//        } else
-//        {	// no address modes supported
-//            CPU_Instructions::Singleton()->AddInstruction( Mnemonic, tInstructionLookup< Mnemonic >::Instruction<ADDR_MODE_NONE>::Execute );
-//        }
-    }
-}
-
-
 auto Instruction_SEI = [](AddressMode mode, InstructionContext *ctx) {
     //ctx->registers->P.I = 1;
 };
@@ -384,8 +354,8 @@ auto Instruction_JMP = [](AddressMode mode, InstructionContext *ctx) {
 
 template<enum AddressMode mode>
 struct InstructionImplementation<SEI, mode> {
-    static void instructionImplementation(InstructionContext *ctx) {
-
+    static void execute(InstructionContext *ctx) {
+        PrintInfo("SEI!");
     }
 };
 
