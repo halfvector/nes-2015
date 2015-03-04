@@ -4,7 +4,7 @@
 
 class CartridgeLoader {
 public:
-    Cartridge loadCartridge(char const *string);
+    Cartridge loadCartridge(char const *filePath);
 
 protected:
     void readHeader(std::fstream &, Cartridge &);

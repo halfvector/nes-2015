@@ -1,7 +1,7 @@
 #include "manu343726/bandit/bandit.h"
-#include "Cartridge.h"
-#include "CartridgeLoader.h"
-#include "Instructions.h"
+#include "../Cartridge.h"
+#include "../CartridgeLoader.h"
+#include "../Instructions.h"
 
 using namespace bandit;
 
@@ -14,25 +14,27 @@ go_bandit([]() {
     });
 
     describe("opcodes - partial specialization", []() {
-
-        // bootstrap nes cpu instructions
+        // Configure NES CPU instructions
         Opcode opcodes[0x100];
         Instructions* instructions = new Instructions(opcodes);
         instructions->initialize();
 
+        // Test context
         InstructionContext* ctx = new InstructionContext();
 
         it("SEI is implemented", [&]() {
             instructions->execute(SEI, ctx);
         });
 
-        it("ORA is not implemented", [&]() {
+        it("ORA is implemented", [&]() {
             instructions->execute(ORA, ctx);
         });
     });
 });
 
-// run all tests
+/**
+ * Run tests
+ */
 int main(int argc, char *argv[]) {
     return bandit::run(argc, argv);
 }

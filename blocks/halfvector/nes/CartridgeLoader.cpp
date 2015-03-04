@@ -5,20 +5,19 @@
 #include "Logging.h"
 
 /**
-* Load ROM from filepath
-*/
+ * Load ROM from file path
+ */
 Cartridge
-CartridgeLoader::loadCartridge(char const *string) {
+CartridgeLoader::loadCartridge(char const *filePath) {
     std::fstream fh;
-    fh.open(string, std::fstream::in | std::fstream::binary);
+    fh.open(filePath, std::fstream::in | std::fstream::binary);
 
     if (!fh.is_open())
-        throw std::runtime_error((boost::format("failed to open rom: %s") % string).str());
+        ThrowException("failed to open rom: %s", filePath);
 
     Cartridge rom;
 
     readHeader(fh, rom);
-    analyzeHeader(rom);
     readData(fh, rom);
 
     fh.close();
@@ -27,8 +26,8 @@ CartridgeLoader::loadCartridge(char const *string) {
 }
 
 /**
-* Load ROM header and validate signature
-*/
+ * read header and validate signature
+ */
 void
 CartridgeLoader::readHeader(std::fstream &fh, Cartridge &rom) {
     fh.read((char *) &rom.header, sizeof(rom.header));
@@ -46,11 +45,13 @@ CartridgeLoader::readHeader(std::fstream &fh, Cartridge &rom) {
     if (!headerIsClean) {
         PrintWarning("header is using reserved bits");
     }
+
+    analyzeHeader(rom);
 }
 
 /**
-* Parse meaning info out of header
-*/
+ * Parse and test header
+ */
 void
 CartridgeLoader::analyzeHeader(Cartridge &rom) {
     char CB1 = rom.header.CB1;
@@ -73,10 +74,11 @@ CartridgeLoader::analyzeHeader(Cartridge &rom) {
     int MapperId = ((rom.header.CB1 & 0xF0) >> 4) + ((rom.header.CB2 & 0xF0) >> 4);
     PrintInfo("ROM requires Memory Mapper #%d") % MapperId;
 
-    if (rom.info.trainerPresent) {    // read the 512 bytes trainer
-        PrintInfo("512 Byte Trainer Found");
-    } else
-        PrintInfo("No 512 Byte Trainer Present");
+    if (rom.info.trainerPresent) {
+        PrintInfo("512 Byte Trainer Present");
+    } else {
+        PrintInfo("No Trainer Present");
+    }
 }
 
 /**
@@ -110,6 +112,6 @@ CartridgeLoader::readData(std::fstream &fh, Cartridge &rom) {
 
     // assert no content left unread in rom file
     if (totalRead != fileLength) {
-        throw std::runtime_error((boost::format("rom file contains unread data")).str());
+        ThrowException("ROM contains unprocessed data");
     }
 }

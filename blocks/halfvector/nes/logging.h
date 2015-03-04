@@ -15,15 +15,15 @@ static std::string boostFormatWrapper(boost::format &f) {
     return boost::str(f);
 }
 
-template<class T, class... Args>
-static std::string boostFormatWrapper(boost::format &f, T &&t, Args &&... args) {
-    return boostFormatWrapper(f % std::forward<T>(t), std::forward<Args>(args)...);
+template<class T, class... Ts>
+static std::string boostFormatWrapper(boost::format &f, T &&t, Ts &&... args) {
+    return boostFormatWrapper(f % std::forward<T>(t), std::forward<Ts>(args)...);
 }
 
-template<typename... Arguments>
-static void ThrowException(std::string const &fmt, Arguments &&... args) {
+template<typename... Ts>
+static void ThrowException(std::string const &fmt, Ts &&... args) {
     boost::format f(fmt);
-    auto result = boostFormatWrapper(f, std::forward<Arguments>(args)...);
+    auto result = boostFormatWrapper(f, std::forward<Ts>(args)...);
     throw new std::runtime_error(result);
 }
 

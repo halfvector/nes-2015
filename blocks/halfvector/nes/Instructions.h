@@ -4,36 +4,6 @@
 #include "Logging.h"
 #include "Registers.h"
 
-struct InstructionContext {
-    Memory *mem;
-    Registers *registers;
-};
-
-struct Opcode {
-    unsigned char Bytes;
-    unsigned char Cycles;
-    bool PageBoundaryCondition;    // add another cycle on page boundary cross
-    const char *Description;
-    const char *Mnemonic;
-    enum AddressMode AddressMode;
-    bool Invalid;
-    unsigned short AddressModeMask = 0;
-
-    typedef void (*opcodeImplementation)(InstructionContext*);
-    opcodeImplementation execute;
-
-    void set(const char *M, unsigned char B, unsigned char C, bool PBC,
-            const char *D, enum AddressMode A, bool I = false) {
-        Mnemonic = M;
-        Bytes = B;
-        Cycles = C;
-        Description = D;
-        PageBoundaryCondition = PBC;
-        AddressMode = A;
-        Invalid = I;
-    }
-};
-
 struct AddressModeProperties {
     int8_t offset;
     int8_t cycles;
@@ -49,6 +19,11 @@ enum InstructionMnemonic {
     PHA = 0x48, PHP = 0x08, PLA = 0x68, PLP = 0x28, ROL = 0x2E, ROR = 0x6E, RTI = 0x40,
     RTS = 0x60, SBC = 0xED, SEC = 0x38, SED = 0xF8, SEI = 0x78, STA = 0x8D, STX = 0x8E,
     STY = 0x8C, TAX = 0xAA, TAY = 0xA8, TSX = 0xBA, TXA = 0x8A, TXS = 0x9A, TYA = 0x98
+};
+
+struct InstructionContext {
+    Memory *mem;
+    Registers *registers;
 };
 
 struct tInstructionBase {
@@ -72,6 +47,34 @@ struct InstructionImplementation {
     }
 };
 
+struct Opcode {
+    unsigned char Bytes;
+    unsigned char Cycles;
+    bool PageBoundaryCondition;    // add another cycle on page boundary cross
+    const char *Description;
+    const char *Mnemonic;
+    enum AddressMode AddressMode;
+    bool Invalid;
+    unsigned short AddressModeMask = 0;
+
+    uint8_t opcode;
+
+//    typedef void (tInstructionBase::*methodPtr)(InstructionContext*);
+    typedef void (*methodPtr)(InstructionContext*);
+    methodPtr execute;
+
+    void set(const char *M, unsigned char B, unsigned char C, bool PBC,
+            const char *D, enum AddressMode A, bool I = false) {
+        Mnemonic = M;
+        Bytes = B;
+        Cycles = C;
+        Description = D;
+        PageBoundaryCondition = PBC;
+        AddressMode = A;
+        Invalid = I;
+    }
+};
+
 #define DEFINE_INSTRUCTION(opcode) \
     template<enum AddressMode mode> void \
     InstructionImplementation<opcode, mode>::execute(InstructionContext *ctx) \
@@ -85,8 +88,8 @@ public:
 
     void prepareAddressModes();
 
-    void assignAddressModes();
-
+    void generateOpcodeVariants();
+    
     void execute(int opcode, InstructionContext* ctx);
 
 protected:
