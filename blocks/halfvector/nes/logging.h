@@ -1,9 +1,10 @@
 #pragma once
 
+#include <boost/format.hpp>
+#include <boost/filesystem.hpp>
 #include "halfvector/easylogging/easylogging++.h"
-#include "boost/format.hpp"
 
-extern el::Logger *log;
+extern el::Logger *logger;
 
 #define PrintDbg        LOG(DEBUG) << boost::format
 #define PrintInfo       LOG(INFO) << boost::format

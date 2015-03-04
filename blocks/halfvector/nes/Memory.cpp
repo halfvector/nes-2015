@@ -3,8 +3,8 @@
 #include "Memory.h"
 
 /**
-* Calculate real memory address, accounting for memory mirroring.
-*/
+ * Calculate real memory address, accounting for memory mirroring.
+ */
 tCPU::word
 Memory::getRealMemoryAddress(tCPU::word address) {
     // mirrors
@@ -26,8 +26,8 @@ Memory::getRealMemoryAddress(tCPU::word address) {
 }
 
 /**
-* Read a byte from memory
-*/
+ * Read a byte from memory
+ */
 tCPU::byte
 Memory::readByte(tCPU::word originalAddress) {
     tCPU::word address = getRealMemoryAddress(originalAddress);
@@ -49,8 +49,8 @@ Memory::readByte(tCPU::word originalAddress) {
 }
 
 /**
-* Read a byte from memory without attempting to resolve address
-*/
+ * Read a byte from memory without attempting to resolve address
+ */
 tCPU::byte
 Memory::readByteDirectly(tCPU::word address) {
     PrintMemory("Reading from memory address: 0x%08X without address resolution") % address;
@@ -70,7 +70,6 @@ Memory::readByteDirectly(tCPU::word address) {
     }
 }
 
-
 tCPU::word
 Memory::readWord(tCPU::word absoluteAddress) {
     tCPU::word value = (readByte(absoluteAddress + 1) << 8) | readByte(absoluteAddress);
@@ -82,13 +81,4 @@ tCPU::byte
 Memory::readFromIOPort(tCPU::word Index) {
     // TODO: implement i/o handlers
     return 0;
-
-//    IO_Port_Reader Reader = tIOPorts::Singleton()->GetPortRead( Index );
-//
-//    if( ! Reader ) {
-//        PrintErr( "-> tMemoryAccessor::ReadFromIOPort(); No Handler for I/O Port 0x%04X", Index );
-//        return 0;
-//    }
-//
-//    return Reader();
 }

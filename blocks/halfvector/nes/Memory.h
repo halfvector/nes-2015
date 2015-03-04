@@ -23,9 +23,9 @@ static uint16_t AddressModeMask[] = {
 };
 
 /**
-* Wraps memory reads and writes
-* handles Memory Mapped I/O
-*/
+ * Wraps memory reads and writes
+ * handles Memory Mapped I/O
+ */
 class Memory {
 public:
 
@@ -34,17 +34,12 @@ public:
     }
 
     tCPU::word getRealMemoryAddress(tCPU::word address);
-
     tCPU::byte readByte(tCPU::word address);
-
     tCPU::word readWord(tCPU::word absoluteAddress);
-
     tCPU::byte readFromIOPort(tCPU::word address);
-
     tCPU::byte readByteDirectly(tCPU::word address);
 
 protected:
-
     tCPU::byte *memory;
 };
 

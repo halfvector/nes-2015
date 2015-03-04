@@ -13,7 +13,6 @@ public:
     CPU();
 
     void load(Cartridge);
-
     void run();
 
 protected:
@@ -23,12 +22,9 @@ protected:
 
     Memory *cpuMemoryAccessor;
     Registers registers;
+    bool cpuAlive = true;
 
     void writePrgPage(int i, uint8_t buffer[]);
-
     void writeChrPage(uint8_t buffer[]);
-
     void reset();
-
-    bool cpuAlive = true;
 };

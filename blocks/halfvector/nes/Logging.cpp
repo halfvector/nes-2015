@@ -1,4 +1,4 @@
 #include "Logging.h"
 
 INITIALIZE_EASYLOGGINGPP;
-el::Logger *log = el::Loggers::getLogger("default");
+el::Logger *logger = el::Loggers::getLogger("default");

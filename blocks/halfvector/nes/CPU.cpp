@@ -6,9 +6,9 @@ CPU::CPU() {
 }
 
 /**
-* Load ROM into emulator memory
-* Only supports NROM 32kB ROMs (no memory mappers)
-*/
+ * Load ROM into emulator memory
+ * Only supports NROM 32kB ROMs (no memory mappers)
+ */
 void
 CPU::load(Cartridge rom) {
     // write program pages
@@ -28,8 +28,8 @@ CPU::load(Cartridge rom) {
 }
 
 /**
-* Write 16kB page to CPU memory
-*/
+ * Write 16kB page to CPU memory
+ */
 void CPU::writePrgPage(int pageIdx, uint8_t buffer[]) {
     tCPU::word pageAddress = 0x8000 + 0x4000 * pageIdx;
     PrintInfo("Writing 16k PRG ROM to Page %d (@ 0x%08X)") % pageIdx % pageAddress;
@@ -38,8 +38,8 @@ void CPU::writePrgPage(int pageIdx, uint8_t buffer[]) {
 }
 
 /**
-* Write 8kB page to PPU memory
-*/
+ * Write 8kB page to PPU memory
+ */
 void CPU::writeChrPage(uint8_t buffer[]) {
     memcpy(ppuMemory, buffer, 0x2000);
 }
@@ -51,13 +51,13 @@ void CPU::run() {
         // grab next instruction
         tCPU::byte opCode = cpuMemoryAccessor->readByteDirectly(registers.PC);
 
-
+        // ...
     }
 }
 
 /**
-* Reset program counter
-*/
+ * Reset program counter
+ */
 void CPU::reset() {
     registers.PC = cpuMemoryAccessor->readWord(0xFFFC);
 }

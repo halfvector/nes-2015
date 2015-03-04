@@ -1,13 +1,7 @@
-#include <iostream>
-#include "boost/format.hpp"
-#include "boost/filesystem.hpp"
 #include "Cartridge.h"
 #include "CartridgeLoader.h"
 #include "Logging.h"
 #include "CPU.h"
-
-using namespace boost;
-using namespace boost::filesystem;
 
 int main() {
     TIMED_FUNC(root);

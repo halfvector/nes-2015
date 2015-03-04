@@ -1,26 +1,22 @@
 #include "../Logging.h"
 
-int g_TargetCounter = 0;
+int targetCounter = 0;
+const int NUM_ITERATIONS = 1000;
+typedef std::chrono::high_resolution_clock clock_type;
 
 void resetCounter() {
-    g_TargetCounter = 0;
+    targetCounter = 0;
 }
 
 void targetFunction() {
-    ++g_TargetCounter;
+    ++targetCounter;
 }
-
-const int NUM_ITERATIONS = 1000;
-
-typedef std::chrono::high_resolution_clock clock_type;
 
 void functionPointers() {
     // warm up the timer
-    clock_type::time_point start = clock_type::now();
-    clock_type::time_point stop = clock_type::now();
-
-    start = clock_type::now();
-    stop = clock_type::now();
+    clock_type::time_point start, stop;
+    clock_type::now();
+    clock_type::now();
 
     start = clock_type::now();
     stop = clock_type::now();
@@ -40,7 +36,7 @@ void functionPointers() {
 
     long span = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count();
 
-    long nanosecondsPerCall = span / g_TargetCounter;
+    long nanosecondsPerCall = span / targetCounter;
 
     PrintInfo("Function Pointer: total = %i nanoseconds; overhead = %i ns; per call = %i ns")
             % (span - overhead)
@@ -50,11 +46,9 @@ void functionPointers() {
 
 void functionLambda() {
     // warm up the timer
-    clock_type::time_point start = clock_type::now();
-    clock_type::time_point stop = clock_type::now();
-
-    start = clock_type::now();
-    stop = clock_type::now();
+    clock_type::time_point start, stop;
+    clock_type::now();
+    clock_type::now();
 
     start = clock_type::now();
     stop = clock_type::now();
@@ -62,7 +56,7 @@ void functionLambda() {
     long overhead = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count();
 
     auto ptr = []() {
-        ++g_TargetCounter;
+        ++targetCounter;
     };
 
     resetCounter();
@@ -75,7 +69,7 @@ void functionLambda() {
 
     long span = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count();
 
-    long nanosecondsPerCall = span / g_TargetCounter;
+    long nanosecondsPerCall = span / targetCounter;
 
     PrintInfo("Function Lambda: total = %i nanoseconds; overhead = %i ns; per call = %i ns")
             % (span - overhead)
@@ -83,6 +77,9 @@ void functionLambda() {
             % nanosecondsPerCall;
 }
 
+/**
+ * Test method-ptr vs lambda for callbacks in a tight loop
+ */
 int main() {
     functionPointers();
     functionLambda();

@@ -7,7 +7,7 @@
 struct AddressModeProperties {
     int8_t offset;
     int8_t cycles;
-    const char* addressLine;
+    const char *addressLine;
 };
 
 enum InstructionMnemonic {
@@ -34,19 +34,22 @@ template<enum AddressMode mode>
 struct tUnsupportedOpcode : tInstructionBase {
     bool Execute() {
         PrintError("Unsupported opcode in address mode: %s")
-                % AddressModeTitle[static_cast<uint16_t>(mode)];
+                % AddressModeTitle[static_cast<uint8_t>(mode)];
     }
 };
 
-template<uint16_t opcode, enum AddressMode mode>
+template<uint8_t opcode, enum AddressMode mode>
 struct InstructionImplementation {
     static void execute(InstructionContext *ctx) {
         PrintError("Unhandled opcode = %d in address mode: %s")
                 % opcode
-                % AddressModeTitle[static_cast<uint16_t>(mode)];
+                % AddressModeTitle[static_cast<uint8_t>(mode)];
     }
 };
 
+/**
+ * CPU Instruction and all its dirty details
+ */
 struct Opcode {
     unsigned char Bytes;
     unsigned char Cycles;
@@ -59,8 +62,9 @@ struct Opcode {
 
     uint8_t opcode;
 
-//    typedef void (tInstructionBase::*methodPtr)(InstructionContext*);
-    typedef void (*methodPtr)(InstructionContext*);
+    // typedef void (tInstructionBase::*methodPtr)(InstructionContext*);
+    typedef void (*methodPtr)(InstructionContext *);
+
     methodPtr execute;
 
     void set(const char *M, unsigned char B, unsigned char C, bool PBC,
@@ -79,21 +83,21 @@ struct Opcode {
     template<enum AddressMode mode> void \
     InstructionImplementation<opcode, mode>::execute(InstructionContext *ctx) \
 
+
 class Instructions {
 public:
 
     Instructions(Opcode *opcodes);
 
     void initialize();
-
-    void prepareAddressModes();
-
-    void generateOpcodeVariants();
-    
-    void execute(int opcode, InstructionContext* ctx);
+    void execute(int opcode, InstructionContext *ctx);
 
 protected:
 
     Opcode *opcodes;
-    AddressModeProperties addressModes[16];
+    AddressModeProperties modes[16];
+
+    void configureOpcodes();
+    void configureMemoryAddressModes();
+    void generateOpcodeVariants();
 };
