@@ -10,6 +10,7 @@ int main() {
     defaultConf.setToDefault();
     defaultConf.set(el::Level::Debug, el::ConfigurationType::Format, "%level | %msg");
     defaultConf.set(el::Level::Info, el::ConfigurationType::Format, "%level | %msg");
+    defaultConf.set(el::Level::Error, el::ConfigurationType::Format, "%level | %msg");
     el::Loggers::reconfigureLogger("default", defaultConf);
 
     CartridgeLoader loader;

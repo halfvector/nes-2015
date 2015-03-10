@@ -58,7 +58,7 @@ void CPU::run() {
     PrintDbg("Reset program-counter to 0x%X") % registers.PC;
 
     //while(cpuAlive) {
-    for(int i = 0; i < 100; i ++) {
+    for(int i = 0; i < 10; i ++) {
         // grab next instruction
         tCPU::byte opCode = cpuMemoryAccessor->readByteDirectly(registers.PC);
         executeOpcode(opCode);
@@ -104,4 +104,6 @@ void CPU::executeOpcode(int code) {
     // update program counter
     registers.LastPC = registers.PC;
     registers.PC += opcodeSize;
+
+    instructions->execute(code, ctx);
 }

@@ -236,17 +236,23 @@ void Instructions::configureOpcodes() {
 template<InstructionMnemonic opcode, enum AddressMode mode>
 struct UnrollInstructions {
     static void unroll(Opcode *opcodes, AddressModeProperties *props) {
-        // Calculate opcode variant given a memory address mode
-        uint8_t opcodeVariant = opcode + props[mode].offset;
+        // Validate address-mode is supported by instruction
+        if((opcodes[opcode].AddressModeMask & AddressModeMask[mode]) == AddressModeMask[mode]) {
+            // Calculate opcode variant given a memory address mode
+            uint8_t opcodeVariant = opcode + props[mode].offset;
 
-        // There are some exceptions to the formulaic variant generation:
-        // + LDX with absolute indexed Y register address mode uses +0x10 offset instead of +0xC
-        if (opcode == LDX && mode == ADDR_MODE_ABSOLUTE_INDEXED_Y) {
-            opcodeVariant = uint8_t(opcode + 0x10); // 0xBE
+            // There are some exceptions to the formulaic variant generation:
+            // + LDX with absolute indexed Y register address mode uses +0x10 offset instead of +0xC
+            if (opcode == LDX && mode == ADDR_MODE_ABSOLUTE_INDEXED_Y) {
+                opcodeVariant = uint8_t(opcode + 0x10); // 0xBE
+            }
+
+//            PrintInfo("  opcode=0x%02X variant=0x%02X offset=%d mode=%d mask=%d")
+//                % (int) opcode % (int) opcodeVariant % (int) props[mode].offset
+//                % (int) mode % (int) AddressModeMask[mode];
+            assert(opcodes[opcodeVariant].execute == nullptr);
+            opcodes[opcodeVariant].execute = &InstructionImplementation<opcode, mode>::execute;
         }
-
-//        PrintInfo("  opcode=%i variant=%i offset=%i") % opcode % (int) opcodeVariant % (int) props[mode].offset;
-        opcodes[opcodeVariant].execute = &InstructionImplementation<opcode, mode>::execute;
 
         UnrollInstructions<opcode, static_cast<AddressMode>(mode-1)>::unroll(opcodes, props);
     }
@@ -259,6 +265,7 @@ template<InstructionMnemonic opcode>
 struct UnrollInstructions<opcode, ADDR_MODE_NONE> {
     static void unroll(Opcode *opcodes, AddressModeProperties *props) {
 //        PrintInfo("Unroll completed for opcode=%i") % opcode;
+        opcodes[opcode].execute = &InstructionImplementation<opcode, ADDR_MODE_NONE>::execute;
     }
 };
 
@@ -360,6 +367,14 @@ struct InstructionImplementation<SEI, mode> {
     static void execute(InstructionContext *ctx) {
         PrintInfo("SEI!");
         ctx->registers->P.I = 1;
+    }
+};
+
+
+template<enum AddressMode mode>
+struct InstructionImplementation<CLD, mode> {
+    static void execute(InstructionContext *ctx) {
+        PrintInfo("CLD!");
     }
 };
 

@@ -30,20 +30,12 @@ struct tInstructionBase {
     InstructionMnemonic opcode;
 };
 
-template<enum AddressMode mode>
-struct tUnsupportedOpcode : tInstructionBase {
-    bool Execute() {
-        PrintError("Unsupported opcode in address mode: %s")
-                % AddressModeTitle[static_cast<uint8_t>(mode)];
-    }
-};
-
 template<uint8_t opcode, enum AddressMode mode>
 struct InstructionImplementation {
     static void execute(InstructionContext *ctx) {
-        PrintError("Unhandled opcode = %d in address mode: %s")
-                % opcode
-                % AddressModeTitle[static_cast<uint8_t>(mode)];
+        PrintError("Unimplemented opcode = %02X in address mode = %s")
+                % (int) opcode
+                % AddressModeTitle[static_cast<int>(mode)];
     }
 };
 
@@ -65,7 +57,7 @@ struct Opcode {
     // typedef void (tInstructionBase::*methodPtr)(InstructionContext*);
     typedef void (*methodPtr)(InstructionContext *);
 
-    methodPtr execute;
+    methodPtr execute = nullptr;
 
     void set(const char *M, unsigned char B, unsigned char C, bool PBC,
             const char *D, enum AddressMode A, bool I = false) {
