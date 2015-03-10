@@ -58,7 +58,7 @@ void CPU::run() {
     PrintDbg("Reset program-counter to 0x%X") % registers.PC;
 
     //while(cpuAlive) {
-    for(int i = 0; i < 10; i ++) {
+    for(int i = 0; i < 100; i ++) {
         // grab next instruction
         tCPU::byte opCode = cpuMemoryAccessor->readByteDirectly(registers.PC);
         executeOpcode(opCode);
@@ -93,12 +93,12 @@ void CPU::executeOpcode(int code) {
                 % code % (int) data1
                 % mnemonic % (int) data1;
     } else if(opcodeSize == 3) {
-        unsigned char data1 = cpuMemoryAccessor->readByte(registers.PC+1);
-        unsigned char data2 = cpuMemoryAccessor->readByte(registers.PC+2);
+        unsigned char lowByte = cpuMemoryAccessor->readByte(registers.PC+1);
+        unsigned char highByte = cpuMemoryAccessor->readByte(registers.PC+2);
         PrintInfo("%08X: %02X %02X %02X\t%s " + modes[mode].addressLine)
                 % (int) registers.PC
-                % code % (int) data1 % (int) data2
-                % mnemonic % (int) data1 % (int) data2;
+                % code % (int) lowByte % (int) highByte
+                % mnemonic % (int) highByte % (int) lowByte;
     }
 
     // update program counter
