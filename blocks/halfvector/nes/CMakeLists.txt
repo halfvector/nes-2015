@@ -19,4 +19,4 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -pedantic")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-function -Wno-unused-variable")
 
 # enable optimizations
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O1")
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O1")

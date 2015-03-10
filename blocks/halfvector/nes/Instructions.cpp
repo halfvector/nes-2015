@@ -1,8 +1,9 @@
 #include <stdint.h>
 #include "Instructions.h"
 
-Instructions::Instructions(Opcode *opcodes) {
+Instructions::Instructions(Opcode *opcodes, AddressModeProperties* modes) {
     this->opcodes = opcodes;
+    this->modes = modes;
 }
 
 void
@@ -52,17 +53,17 @@ void Instructions::configureMemoryAddressModes() {
     modes[ADDR_MODE_INDIRECT_ABSOLUTE].cycles = +2;
 
     modes[ADDR_MODE_NONE].addressLine = "";
-    modes[ADDR_MODE_ABSOLUTE].addressLine = "nnnn";
-    modes[ADDR_MODE_IMMEDIATE].addressLine = "#nn";
-    modes[ADDR_MODE_ZEROPAGE].addressLine = "nn";
-    modes[ADDR_MODE_RELATIVE].addressLine = "disp";
-    modes[ADDR_MODE_INDEXED_INDIRECT].addressLine = "(nn,X)";
-    modes[ADDR_MODE_INDIRECT_INDEXED].addressLine = "(nn),Y";
-    modes[ADDR_MODE_INDIRECT_ABSOLUTE].addressLine = "(nnnn)";
-    modes[ADDR_MODE_ABSOLUTE_INDEXED_X].addressLine = "nnnn,X";
-    modes[ADDR_MODE_ABSOLUTE_INDEXED_Y].addressLine = "nnnn,Y";
-    modes[ADDR_MODE_ZEROPAGE_INDEXED_X].addressLine = "nn,X";
-    modes[ADDR_MODE_ZEROPAGE_INDEXED_Y].addressLine = "nn,Y";
+    modes[ADDR_MODE_ABSOLUTE].addressLine = "$%02X%02X"; // "nnnn";
+    modes[ADDR_MODE_IMMEDIATE].addressLine = "#$%02X"; // "#nn";
+    modes[ADDR_MODE_ZEROPAGE].addressLine = "$%02X"; // "nn";
+    modes[ADDR_MODE_RELATIVE].addressLine = "$%08X"; // "disp";
+    modes[ADDR_MODE_INDEXED_INDIRECT].addressLine = "($%02X,X)"; // "(nn,X)";
+    modes[ADDR_MODE_INDIRECT_INDEXED].addressLine = "($%02X),Y"; // "(nn),Y";
+    modes[ADDR_MODE_INDIRECT_ABSOLUTE].addressLine = "($%02X%02X)"; // "(nnnn)";
+    modes[ADDR_MODE_ABSOLUTE_INDEXED_X].addressLine = "$%02X%02X,X"; // "nnnn,X";
+    modes[ADDR_MODE_ABSOLUTE_INDEXED_Y].addressLine = "$%02X%02X,Y"; // "nnnn,Y";
+    modes[ADDR_MODE_ZEROPAGE_INDEXED_X].addressLine = "$%02X,X"; // "nn,X";
+    modes[ADDR_MODE_ZEROPAGE_INDEXED_Y].addressLine = "$%02X,Y"; // "nn,Y";
     modes[ADDR_MODE_ACCUMULATOR].addressLine = "A";
     modes[ADDR_MODE_IMMEDIATE_TO_XY].addressLine = "???";
 }
@@ -244,7 +245,7 @@ struct UnrollInstructions {
             opcodeVariant = uint8_t(opcode + 0x10); // 0xBE
         }
 
-        PrintInfo("  opcode=%i variant=%i offset=%i") % opcode % (int) opcodeVariant % (int) props[mode].offset;
+//        PrintInfo("  opcode=%i variant=%i offset=%i") % opcode % (int) opcodeVariant % (int) props[mode].offset;
         opcodes[opcodeVariant].execute = &InstructionImplementation<opcode, mode>::execute;
 
         UnrollInstructions<opcode, static_cast<AddressMode>(mode-1)>::unroll(opcodes, props);
@@ -257,7 +258,7 @@ struct UnrollInstructions {
 template<InstructionMnemonic opcode>
 struct UnrollInstructions<opcode, ADDR_MODE_NONE> {
     static void unroll(Opcode *opcodes, AddressModeProperties *props) {
-        PrintInfo("Unroll completed for opcode=%i") % opcode;
+//        PrintInfo("Unroll completed for opcode=%i") % opcode;
     }
 };
 
@@ -271,7 +272,7 @@ struct Unroll {
                 + AddressModeMask[mask3] + AddressModeMask[mask4] + AddressModeMask[mask5]
                 + AddressModeMask[mask6] + AddressModeMask[mask7] + AddressModeMask[mask8];
 
-        PrintInfo("assigning mask=%d") % std::bitset<8>(mask).to_string('0', '1');
+//        PrintInfo("assigning mask=%d") % std::bitset<8>(mask).to_string('0', '1');
 
         opcodes[opcode].AddressModeMask = mask;
 

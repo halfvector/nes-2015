@@ -7,7 +7,7 @@
 struct AddressModeProperties {
     int8_t offset;
     int8_t cycles;
-    const char *addressLine;
+    std::string addressLine;
 };
 
 enum InstructionMnemonic {
@@ -87,7 +87,7 @@ struct Opcode {
 class Instructions {
 public:
 
-    Instructions(Opcode *opcodes);
+    Instructions(Opcode *opcodes, AddressModeProperties* modes);
 
     void initialize();
     void execute(int opcode, InstructionContext *ctx);
@@ -95,7 +95,7 @@ public:
 protected:
 
     Opcode *opcodes;
-    AddressModeProperties modes[16];
+    AddressModeProperties* modes;
 
     void configureOpcodes();
     void configureMemoryAddressModes();

@@ -31,21 +31,8 @@ Memory::getRealMemoryAddress(tCPU::word address) {
 tCPU::byte
 Memory::readByte(tCPU::word originalAddress) {
     tCPU::word address = getRealMemoryAddress(originalAddress);
-    PrintMemory("Reading from memory address: 0x%08X (resolved to 0x%08X)") % originalAddress % address;
 
-    if ((address >= 0x2000 && address <= 0x2007) || (address >= 0x4000 && address <= 0x401F)) {
-        // i/o registers
-        PrintMemory("Address 0x%08X is a Memory Mapped I/O Port") % address;
-        return readFromIOPort(address);
-    } else {
-        // fun fact: stack memory
-        if (address >= 0x0100 && address <= 0x01FF) {
-            PrintMemory("Address 0x%08X is the Stack") % address;
-        }
-
-        // regular memory
-        return memory[address];
-    }
+    return readByteDirectly(address);
 }
 
 /**
@@ -53,7 +40,7 @@ Memory::readByte(tCPU::word originalAddress) {
  */
 tCPU::byte
 Memory::readByteDirectly(tCPU::word address) {
-    PrintMemory("Reading from memory address: 0x%08X without address resolution") % address;
+    //PrintMemory("Reading from memory address: 0x%08X without address resolution") % address;
 
     if ((address >= 0x2000 && address <= 0x2007) || (address >= 0x4000 && address <= 0x401F)) {
         // i/o registers
@@ -72,8 +59,10 @@ Memory::readByteDirectly(tCPU::word address) {
 
 tCPU::word
 Memory::readWord(tCPU::word absoluteAddress) {
-    tCPU::word value = (readByte(absoluteAddress + 1) << 8) | readByte(absoluteAddress);
-    PrintDbg("Read word=0x%04X from 0x%X") % value % absoluteAddress;
+    tCPU::dword lowByte = readByte(absoluteAddress);
+    tCPU::dword highByte = tCPU::dword(readByte(absoluteAddress + 1)) << 8;
+    tCPU::dword value = highByte + lowByte ;
+    PrintDbg("Read word=0x%08X (0x%08X + 0x%08X) from 0x%X") % value % (int) highByte % (int) lowByte % absoluteAddress;
     return value;
 }
 

@@ -2,7 +2,15 @@
 #include "Logging.h"
 
 CPU::CPU() {
+    memset(cpuMemory, 0, 0x100000);
     cpuMemoryAccessor = new Memory(cpuMemory);
+
+    instructions = new Instructions(opcodes, modes);
+    instructions->initialize();
+
+    ctx = new InstructionContext();
+    ctx->mem = cpuMemoryAccessor;
+    ctx->registers = &registers;
 }
 
 /**
@@ -13,7 +21,8 @@ void
 CPU::load(Cartridge rom) {
     // write program pages
     if (rom.header.numPrgPages == 1) {
-        // special case: just one program data page, duplicate it
+        // special case: we have just one program data page (16kB ROM)
+        // duplicate page so reset address will work from page 2
         writePrgPage(0, rom.programDataPages[0].buffer);
         writePrgPage(1, rom.programDataPages[0].buffer);
     } else {
@@ -31,8 +40,8 @@ CPU::load(Cartridge rom) {
  * Write 16kB page to CPU memory
  */
 void CPU::writePrgPage(int pageIdx, uint8_t buffer[]) {
-    tCPU::word pageAddress = 0x8000 + 0x4000 * pageIdx;
-    PrintInfo("Writing 16k PRG ROM to Page %d (@ 0x%08X)") % pageIdx % pageAddress;
+    tCPU::dword pageAddress = 0x8000 + 0x4000 * pageIdx;
+    PrintInfo("Writing 16k PRG ROM to Page %d (@ 0x%08X)") % pageIdx % (int) pageAddress;
 
     memcpy(cpuMemory + pageAddress, buffer, 0x4000);
 }
@@ -46,10 +55,14 @@ void CPU::writeChrPage(uint8_t buffer[]) {
 
 void CPU::run() {
     reset();
+    PrintDbg("Reset program-counter to 0x%X") % registers.PC;
 
-    while(cpuAlive) {
+    //while(cpuAlive) {
+    for(int i = 0; i < 10; i ++) {
         // grab next instruction
         tCPU::byte opCode = cpuMemoryAccessor->readByteDirectly(registers.PC);
+        executeOpcode(opCode);
+
 
         // ...
     }
@@ -59,5 +72,36 @@ void CPU::run() {
  * Reset program counter
  */
 void CPU::reset() {
-    registers.PC = cpuMemoryAccessor->readWord(0xFFFC);
+    registers.PC = cpuMemoryAccessor->readWord(RESET_VECTOR_ADDR);
+}
+
+void CPU::executeOpcode(int code) {
+    unsigned char opcodeSize = opcodes[code].Bytes;
+    AddressMode mode = opcodes[code].AddressMode;
+    const char* mnemonic = opcodes[code].Mnemonic;
+    const char* title = AddressModeTitle[static_cast<uint8_t>(mode)];
+
+    if(opcodeSize == 1) {
+        PrintInfo("%08X: %02X\t\t%s " + modes[mode].addressLine)
+                % (int) registers.PC
+                % code
+                % mnemonic;
+    } else if(opcodeSize == 2) {
+        unsigned char data1 = cpuMemoryAccessor->readByte(registers.PC+1);
+        PrintInfo("%08X: %02X %02X\t\t%s " + modes[mode].addressLine)
+                % (int) registers.PC
+                % code % (int) data1
+                % mnemonic % (int) data1;
+    } else if(opcodeSize == 3) {
+        unsigned char data1 = cpuMemoryAccessor->readByte(registers.PC+1);
+        unsigned char data2 = cpuMemoryAccessor->readByte(registers.PC+2);
+        PrintInfo("%08X: %02X %02X %02X\t%s " + modes[mode].addressLine)
+                % (int) registers.PC
+                % code % (int) data1 % (int) data2
+                % mnemonic % (int) data1 % (int) data2;
+    }
+
+    // update program counter
+    registers.LastPC = registers.PC;
+    registers.PC += opcodeSize;
 }

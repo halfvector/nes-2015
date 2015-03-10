@@ -2,11 +2,11 @@
 
 #include <stdint.h>
 
-const unsigned int PRG_ROM_PAGE_SIZE = 16384;
-const unsigned int CHR_ROM_PAGE_SIZE = 8192;
+const unsigned int PRG_ROM_PAGE_SIZE = 0x4000;
+const unsigned int CHR_ROM_PAGE_SIZE = 0x2000;
 
 struct RomHeader {
-    int8_t signature[4];
+    uint8_t signature[4];
     uint8_t numPrgPages;
     uint8_t numChrPages;
     int8_t CB1;
@@ -26,11 +26,11 @@ struct RomInfo {
 };
 
 struct PrgRomPage {
-    uint8_t buffer[16384];
+    uint8_t buffer[PRG_ROM_PAGE_SIZE];
 };
 
 struct ChrRomPage {
-    uint8_t buffer[8192];
+    uint8_t buffer[CHR_ROM_PAGE_SIZE];
 };
 
 struct Cartridge {

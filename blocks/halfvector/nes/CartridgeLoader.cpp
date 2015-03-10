@@ -30,8 +30,8 @@ CartridgeLoader::readHeader(std::fstream &fh, Cartridge &rom) {
     fh.read((char *) &rom.header, sizeof(rom.header));
 
     PrintInfo("signature: %d") % rom.header.signature;
-    PrintInfo("programData: %d") % (uint16_t) rom.header.numPrgPages;
-    PrintInfo("characterData: %d") % (uint16_t) rom.header.numChrPages;
+    PrintInfo("programData: %d") % (int) rom.header.numPrgPages;
+    PrintInfo("characterData: %d") % (int) rom.header.numChrPages;
 
     bool headerIsClean = true;
     for (unsigned int i = 0; i < 8; i++) {

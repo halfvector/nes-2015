@@ -16,7 +16,9 @@ go_bandit([]() {
     describe("opcodes - partial specialization", []() {
         // Configure NES CPU instructions
         Opcode opcodes[0x100];
-        Instructions* instructions = new Instructions(opcodes);
+        AddressModeProperties modes[16];
+
+        Instructions* instructions = new Instructions(opcodes, modes);
         instructions->initialize();
 
         // Test context
