@@ -3,6 +3,7 @@
 #include "Memory.h"
 #include "Logging.h"
 #include "Registers.h"
+#include "MemoryLookup.h"
 
 struct AddressModeProperties {
     int8_t offset;
@@ -21,21 +22,33 @@ enum InstructionMnemonic {
     STY = 0x8C, TAX = 0xAA, TAY = 0xA8, TSX = 0xBA, TXA = 0x8A, TXS = 0x9A, TYA = 0x98
 };
 
-struct InstructionContext {
-    Memory *mem;
-    Registers *registers;
-};
-
 struct tInstructionBase {
     InstructionMnemonic opcode;
 };
 
 template<uint8_t opcode, enum AddressMode mode>
-struct InstructionImplementation {
+struct InstructionImplementationA {
     static void execute(InstructionContext *ctx) {
         PrintError("Unimplemented opcode = %02X in address mode = %s")
                 % (int) opcode
                 % AddressModeTitle[static_cast<int>(mode)];
+    }
+};
+
+typedef tCPU::word (*MemoryResolver)(InstructionContext* ctx);
+
+template<uint8_t opcode>
+struct InstructionImplementationX {
+    static void execute(InstructionContext *ctx, MemoryResolver resolver) {
+        PrintError("Unimplemented opcode = %02X")
+                % (int) opcode;
+    }
+};
+
+template<uint8_t opcode, enum AddressMode mode>
+struct InstructionImplementation {
+    static void execute(InstructionContext *ctx) {
+        InstructionImplementationX<opcode>::execute(ctx, &tMemoryAddressLookup<mode>::GetEffectiveAddress);
     }
 };
 

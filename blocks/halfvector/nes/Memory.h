@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Platform.h"
+#include "Logging.h"
 
 enum AddressMode {
     ADDR_MODE_NONE = 0, ADDR_MODE_ABSOLUTE, ADDR_MODE_IMMEDIATE, ADDR_MODE_ZEROPAGE,

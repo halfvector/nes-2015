@@ -351,17 +351,40 @@ Instructions::generateOpcodeVariants() {
 }
 
 /**
- * What lambda implementation of instructions would look like:
+ * CPU instruction implementations
  */
+
+#define DEFINE_OPCODE(opcode) \
+template<> \
+void InstructionImplementationX<opcode>::execute(InstructionContext *ctx, MemoryResolver resolver)
+
+DEFINE_OPCODE(SEI) {
+    PrintInfo("SEI!");
+    ctx->registers->P.I = 1;
+}
+
+DEFINE_OPCODE(CLD) {
+    PrintInfo("CLD!");
+    ctx->registers->P.D = 0;
+}
+
+DEFINE_OPCODE(LDA) {
+    PrintInfo("LDA!");
+}
+
+DEFINE_OPCODE(STA) {
+    PrintInfo("STA!");
+}
+
+/*
+// various ways of implementing an opcode
+// first is using lambda:
 
 auto Instruction_SEI = [](AddressMode mode, InstructionContext *ctx) {
     ctx->registers->P.I = 1;
 };
 
-auto Instruction_JMP = [](AddressMode mode, InstructionContext *ctx) {
-//    ctx->registers->PC = tMemoryAddressLookup<AddressMode>::GetEffectiveAddress();
-};
-
+// second is a partially specialized class definition
 template<enum AddressMode mode>
 struct InstructionImplementation<SEI, mode> {
     static void execute(InstructionContext *ctx) {
@@ -370,64 +393,9 @@ struct InstructionImplementation<SEI, mode> {
     }
 };
 
-
-template<enum AddressMode mode>
-struct InstructionImplementation<CLD, mode> {
-    static void execute(InstructionContext *ctx) {
-        PrintInfo("CLD!");
-    }
-};
-
-//template<enum AddressMode mode>
-//struct InstructionImplementation<PLA, mode> {
-//    void execute(InstructionContext *ctx);
-//};
-//
-//template<enum AddressMode mode>
-//void InstructionImplementation<PLA, mode>::execute(InstructionContext *ctx) {
-//    PrintInfo("PLA");
-//}
-//
-//
-//#define INSTRUCTION(opcode, method_impl) \
-//    template<enum AddressMode mode> \
-//    struct InstructionImplementation<opcode, mode> { \
-//        static void execute(InstructionContext *ctx); \
-//    }; \
-//    \
-//    template<enum AddressMode mode> \
-//    void InstructionImplementation<opcode, mode>::execute(InstructionContext *ctx) \
-//        method_impl \
-//
-//INSTRUCTION(CLI, {
-//    PrintInfo("yey1");
-//})
-//
-//INSTRUCTION(ORA, {
-//    PrintInfo("yey2");
-//})
-
-//DEFINE_INSTRUCTION(SEI) {
-//    PrintInfo("Executing SEI!");
-//}
-
-//
-//// shortcut macro:
-//#define DECLARE_INSTRUCTION(opcode) \
-//    template<enum AddressMode mode> void Instruction<mode, SEI>::execute(InstructionContext* ctx)
-//
-//// partial specialization macro usage:
-//DECLARE_INSTRUCTION(SEI) {
-//    ctx->registers->P.I = 1;
-//}
-//
-//// execute partial specialized method:
-//void testInstructions() {
-//    Instruction<ADDR_MODE_ABSOLUTE, SEI>::execute(nullptr);
-//}
-//
-//struct Instruction<SEI> {
-//    static void Execute(Memory* mem, Registers* reg) {
-//        reg->P.I = 1;
-//    }
-//};
+// third is a partially speialized class method
+template<>
+void InstructionImplementationX<LDA>::execute(InstructionContext *ctx, MemoryResolver resolver) {
+    PrintInfo("LDA!");
+}
+*/
