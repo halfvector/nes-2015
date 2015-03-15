@@ -101,3 +101,7 @@ Memory::writeToIOPort(tCPU::word Index, tCPU::byte value) {
     // TODO: implement i/o handlers
     return 0;
 }
+
+void
+Memory::writeStack(tCPU::byte value) {
+}

@@ -42,6 +42,7 @@ public:
     bool writeByte(tCPU::word address, tCPU::byte value);
     bool writeToIOPort(tCPU::word address, tCPU::byte value);
     bool writeByteDirectly(tCPU::word address, tCPU::byte value);
+    void writeStack(tCPU::byte value);
 
 protected:
     tCPU::byte *memory;

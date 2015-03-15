@@ -410,7 +410,21 @@ DEFINE_OPCODE(LDY) {
 DEFINE_OPCODE(STA) {
     PrintDbg("STA mode=%d") % (int) mode;
     tMemoryOperation<mode>::WriteByte(ctx, ctx->registers->A);
-//    ctx->mem->writeByte(resolver(ctx), ctx->registers->A);
+}
+
+void writeStack(InstructionContext* ctx, tCPU::byte value) {
+    auto address = 0x1FF - ctx->registers->S;
+    ctx->mem->writeByte(address, value);
+}
+
+tCPU::byte readStack(InstructionContext* ctx) {
+    auto address = 0x1FF - ctx->registers->S;
+    return ctx->mem->readByte(address);
+}
+
+DEFINE_OPCODE(TXS) {
+    PrintDbg("TXS mode=%d") % (int) mode;
+    writeStack(ctx, ctx->registers->X);
 }
 
 /*
