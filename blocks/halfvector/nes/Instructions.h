@@ -29,7 +29,7 @@ struct tInstructionBase {
 template<uint8_t opcode, enum AddressMode mode>
 struct InstructionImplementationA {
     static void execute(InstructionContext *ctx) {
-        PrintError("Unimplemented opcode = %02X in address mode = %s")
+        PrintError("InstructionImplementationA::execute(); Unimplemented opcode = %02X in address mode = %s")
                 % (int) opcode
                 % AddressModeTitle[static_cast<int>(mode)];
     }
@@ -37,7 +37,7 @@ struct InstructionImplementationA {
 
 typedef tCPU::word (*MemoryResolver)(InstructionContext* ctx);
 
-template<uint8_t opcode>
+template<uint8_t opcode, AddressMode mode>
 struct InstructionImplementationX {
     static void execute(InstructionContext *ctx, MemoryResolver resolver) {
         PrintError("Unimplemented opcode = %02X")
@@ -48,7 +48,7 @@ struct InstructionImplementationX {
 template<uint8_t opcode, enum AddressMode mode>
 struct InstructionImplementation {
     static void execute(InstructionContext *ctx) {
-        InstructionImplementationX<opcode>::execute(ctx, &tMemoryAddressLookup<mode>::GetEffectiveAddress);
+        InstructionImplementationX<opcode, mode>::execute(ctx, &tMemoryAddressLookup<mode>::GetEffectiveAddress);
     }
 };
 

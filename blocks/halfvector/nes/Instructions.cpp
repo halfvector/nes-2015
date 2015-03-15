@@ -247,7 +247,7 @@ struct UnrollInstructions {
                 opcodeVariant = uint8_t(opcode + 0x10); // 0xBE
             }
 
-//            PrintInfo("  opcode=0x%02X variant=0x%02X offset=%d mode=%d mask=%d")
+//            PrintInfo("  + opcode=0x%02X variant=0x%02X offset=%d mode=%d mask=%d")
 //                % (int) opcode % (int) opcodeVariant % (int) props[mode].offset
 //                % (int) mode % (int) AddressModeMask[mode];
             assert(opcodes[opcodeVariant].execute == nullptr);
@@ -264,8 +264,24 @@ struct UnrollInstructions {
 template<InstructionMnemonic opcode>
 struct UnrollInstructions<opcode, ADDR_MODE_NONE> {
     static void unroll(Opcode *opcodes, AddressModeProperties *props) {
-//        PrintInfo("Unroll completed for opcode=%i") % opcode;
-        opcodes[opcode].execute = &InstructionImplementation<opcode, ADDR_MODE_NONE>::execute;
+
+        // Validate address-mode is supported by instruction
+        if(opcodes[opcode].AddressModeMask == AddressModeMask[ADDR_MODE_NONE]) {
+            // Calculate opcode variant given a memory address mode
+            uint8_t opcodeVariant = opcode + props[ADDR_MODE_NONE].offset;
+
+//            PrintInfo("  + opcode=0x%02X variant=0x%02X offset=%d mode=%d mask=%d")
+//                    % (int) opcode % (int) opcodeVariant % (int) props[ADDR_MODE_NONE].offset
+//                    % (int) ADDR_MODE_NONE % (int) AddressModeMask[ADDR_MODE_NONE];
+            assert(opcodes[opcodeVariant].execute == nullptr);
+            opcodes[opcodeVariant].execute = &InstructionImplementation<opcode, ADDR_MODE_NONE>::execute;
+        }
+
+//        PrintInfo("  -> Unroll completed for opcode=0x%02X") % (int)opcode;
+
+        // is this right?
+        // it overwrites immediate mode (AddressMode=1) variant
+//        opcodes[opcode].execute = &InstructionImplementation<opcode, ADDR_MODE_NONE>::execute;
     }
 };
 
@@ -354,26 +370,47 @@ Instructions::generateOpcodeVariants() {
  * CPU instruction implementations
  */
 
+
 #define DEFINE_OPCODE(opcode) \
-template<> \
-void InstructionImplementationX<opcode>::execute(InstructionContext *ctx, MemoryResolver resolver)
+template<AddressMode mode> struct InstructionImplementationX<opcode, mode> { \
+    static void execute(InstructionContext *ctx, MemoryResolver resolver); \
+}; \
+template<AddressMode mode> \
+void InstructionImplementationX<opcode, mode>::execute(InstructionContext *ctx, MemoryResolver resolver)
 
 DEFINE_OPCODE(SEI) {
-    PrintInfo("SEI!");
     ctx->registers->P.I = 1;
 }
 
 DEFINE_OPCODE(CLD) {
-    PrintInfo("CLD!");
     ctx->registers->P.D = 0;
 }
 
 DEFINE_OPCODE(LDA) {
-    PrintInfo("LDA!");
+    PrintDbg("LDA mode=%d") % (int) mode;
+    ctx->registers->A = tMemoryOperation<mode>::GetByte(ctx);
+    ctx->registers->setZeroBit(ctx->registers->A);
+    ctx->registers->setSignBit(ctx->registers->A);
+}
+
+DEFINE_OPCODE(LDX) {
+    ctx->registers->X = tMemoryOperation<mode>::GetByte(ctx);
+    ctx->registers->setZeroBit(ctx->registers->X);
+    ctx->registers->setSignBit(ctx->registers->X);
+
+}
+
+DEFINE_OPCODE(LDY) {
+    ctx->registers->Y = tMemoryOperation<mode>::GetByte(ctx);
+    ctx->registers->setZeroBit(ctx->registers->Y);
+    ctx->registers->setSignBit(ctx->registers->Y);
+
 }
 
 DEFINE_OPCODE(STA) {
-    PrintInfo("STA!");
+    PrintDbg("STA mode=%d") % (int) mode;
+    tMemoryOperation<mode>::WriteByte(ctx, ctx->registers->A);
+//    ctx->mem->writeByte(resolver(ctx), ctx->registers->A);
 }
 
 /*

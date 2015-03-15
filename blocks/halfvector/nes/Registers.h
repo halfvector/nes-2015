@@ -100,15 +100,22 @@ struct Registers {
     }
 
     // accumulator, index register x, index register y, stack pointer, and processor status register
-    unsigned char A, X, Y, S;
+    tCPU::byte A, X, Y, S;
 
     ProcessorStatusRegister P;
 
     // "program counter" - next instruction to be executed
-    unsigned short PC;
+    tCPU::word PC;
 
     // current instruction being executed
-    unsigned short LastPC;
+    tCPU::word LastPC;
+
+    void setSignBit( tCPU::byte value ) {
+        P.N = (value & 0x80) ? 1 : 0;
+    }
+    void setZeroBit( tCPU::byte Value ) {
+        P.Z = ! Value;
+    }
 };
 
 enum Register {

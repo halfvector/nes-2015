@@ -39,6 +39,9 @@ public:
     tCPU::word readWord(tCPU::word absoluteAddress);
     tCPU::byte readFromIOPort(tCPU::word address);
     tCPU::byte readByteDirectly(tCPU::word address);
+    bool writeByte(tCPU::word address, tCPU::byte value);
+    bool writeToIOPort(tCPU::word address, tCPU::byte value);
+    bool writeByteDirectly(tCPU::word address, tCPU::byte value);
 
 protected:
     tCPU::byte *memory;

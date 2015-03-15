@@ -19,7 +19,8 @@ struct tMemoryAddressLookupBase
 template< int MemoryMode >
 struct tMemoryAddressLookup : tMemoryAddressLookupBase {
     static tCPU::word GetEffectiveAddress(InstructionContext* ctx) {
-        PrintWarning("Unimplemented Memory Mode: %s") % AddressModeTitle[MemoryMode];
+        PrintWarning("tMemoryAddressLookup<?>::GetEffectiveAddress(); Unimplemented Memory Mode: %s")
+                % AddressModeTitle[MemoryMode];
         PageBoundaryCrossed = false;
         return 0;
     }
@@ -30,7 +31,8 @@ struct tMemoryAddressLookup< ADDR_MODE_NONE > : tMemoryAddressLookupBase {
     static int NumOfCalls;
 
     static tCPU::word GetEffectiveAddress(InstructionContext* ctx) {
-        PrintWarning("Unimplemented Memory Mode: %s") % AddressModeTitle[ADDR_MODE_NONE];
+        PrintWarning("tMemoryAddressLookup<ADDR_MODE_NONE>::GetEffectiveAddress(); Unimplemented Memory Mode: %s")
+                % AddressModeTitle[ADDR_MODE_NONE];
         PageBoundaryCrossed = false;
 
         NumOfCalls++;
@@ -73,8 +75,7 @@ struct tMemoryAddressLookup< ADDR_MODE_ABSOLUTE > : tMemoryAddressLookupBase
     static int NumOfCalls;
 
     static inline tCPU::word GetEffectiveAddress(InstructionContext* ctx) {
-        //g_Memory.QuickGetWordAfterPC();
-        tCPU::word EffectiveAddress = ctx->mem->readWord(ctx->registers->LastPC);
+        tCPU::word EffectiveAddress = ctx->mem->readWord(ctx->registers->LastPC+1);
         PageBoundaryCrossed = false;
 
         NumOfCalls++;
@@ -177,3 +178,86 @@ struct tMemoryAddressLookup< ADDR_MODE_INDIRECT_ABSOLUTE > : tMemoryAddressLooku
         return EffectiveAddress;
     }
 };
+
+
+
+/**
+ * perform basic memory ops on effective memory address
+ */
+template<int MemoryMode>
+struct tMemoryOperation : tMemoryAddressLookup<MemoryMode> {
+    static tCPU::byte GetByte(InstructionContext *ctx) {
+        return ctx->mem->readByte(tMemoryAddressLookup<MemoryMode>::GetEffectiveAddress(ctx));
+    }
+
+    static tCPU::word GetWord(InstructionContext *ctx) {
+        return ctx->mem->readWord(tMemoryAddressLookup<MemoryMode>::GetEffectiveAddress(ctx));
+    }
+
+    static bool WriteByte(InstructionContext *ctx, tCPU::byte Value) {
+        return ctx->mem->writeByte(tMemoryAddressLookup<MemoryMode>::GetEffectiveAddress(ctx), Value);
+    }
+
+    static bool WriteWord(InstructionContext *ctx, tCPU::word Value) {
+        return ctx->mem->writeByte(tMemoryAddressLookup<MemoryMode>::GetEffectiveAddress(ctx), Value);
+    }
+};
+
+// derives from tMemoryOperation< ADDR_MODE_NONE > in order to have an error printing
+// GetEffectiveAddress call, since it is an error to use that call for these specific memory modes
+
+// no writing to immediate operands :D
+template<>
+struct tMemoryOperation<ADDR_MODE_IMMEDIATE> : tMemoryOperation<ADDR_MODE_NONE> {
+    static void WriteByte(InstructionContext *ctx, tCPU::byte Value) {
+        PrintError("tMemoryOperation<ADDR_MODE_IMMEDIATE>::WriteByte(); Impossible Action in Immediate Mode");
+    }
+
+    static void WriteWord(InstructionContext *ctx, tCPU::word Value) {
+        PrintError("tMemoryOperation<ADDR_MODE_IMMEDIATE>::WriteWord(); Impossible Action in Immediate Mode");
+    }
+
+    static tCPU::byte GetByte(InstructionContext *ctx) {
+        tCPU::byte value = ctx->mem->readByte(ctx->registers->LastPC + 1);
+        PrintDbg("tMemoryOperation<ADDR_MODE_IMMEDIATE>::GetByte(); Value = 0x%X") % (int)value;
+        return value;
+    }
+
+    // this is not the same as absolute address
+    // this CAN be a 16bit address, which is absolute, but the value is not a memory location of data
+    // its an address to work on ITSELF.. eg jump to there
+    static tCPU::word GetWord(InstructionContext *ctx) {
+        tCPU::word value = ctx->mem->readWord(ctx->registers->LastPC + 1);
+        PrintDbg("tMemoryOperation<ADDR_MODE_IMMEDIATE>::GetWord(); Value = 0x%X") % (int)value;
+        return value;
+    }
+};
+
+// working on the accumulator register -- not really memory :D
+template<>
+struct tMemoryOperation<ADDR_MODE_ACCUMULATOR> : tMemoryOperation<ADDR_MODE_NONE> {
+    static void WriteByte(InstructionContext *ctx, tCPU::byte value) {
+        ctx->registers->A = value;
+        PrintDbg("tMemoryOperation<ACCUMULATOR>::WriteByte(); Value = 0x%X") % value;
+    }
+
+    static void WriteWord(tCPU::word Value) {
+        PrintError("tMemoryOperation::WriteByte(); Impossible Action in Accumulator Mode");
+    }
+
+    static tCPU::byte GetByte(InstructionContext *ctx) {
+        tCPU::byte value = ctx->registers->A;
+        PrintDbg("tMemoryOperation<ACCUMULATOR>::GetByte(); Value = 0x%X") % value;
+        return value;
+    }
+
+    static tCPU::word GetWord(InstructionContext *ctx) {
+        PrintError("tMemoryOperation::GetWord(); Impossible Action in Accumulator Mode");
+        return 0;
+    }
+};
+
+
+// this is the same as normal immediate, except its to registers x/y (instead of accumulator?)
+// and so the opcode generated is diff, +4h instead of -4h or something like that
+template<> struct tMemoryOperation<ADDR_MODE_IMMEDIATE_TO_XY> : tMemoryOperation< ADDR_MODE_IMMEDIATE > { };
