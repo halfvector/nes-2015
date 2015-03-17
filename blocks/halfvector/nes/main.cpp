@@ -25,7 +25,6 @@ int main() {
     defaultConf.set(el::Level::Warning, el::ConfigurationType::Format,
             "\033[0;31m%level\033[1;30m |\033[0;31m %msg \033[1;30m @ %fbase:%line");
 
-
     el::Loggers::reconfigureLogger("default", defaultConf);
 
     TIMED_FUNC(root);

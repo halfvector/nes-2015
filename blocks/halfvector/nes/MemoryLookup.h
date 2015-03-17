@@ -261,3 +261,15 @@ struct tMemoryOperation<ADDR_MODE_ACCUMULATOR> : tMemoryOperation<ADDR_MODE_NONE
 // this is the same as normal immediate, except its to registers x/y (instead of accumulator?)
 // and so the opcode generated is diff, +4h instead of -4h or something like that
 template<> struct tMemoryOperation<ADDR_MODE_IMMEDIATE_TO_XY> : tMemoryOperation< ADDR_MODE_IMMEDIATE > { };
+
+/**
+ * Templetized registers lookup
+ */
+
+template<ProcessorStatusFlags T>
+struct ProcessorStatusFlag {
+    static bool getState(InstructionContext *ctx) {
+        PrintError("Unknown ProcessorStatusFlag Requested");
+        return false;
+    }
+};

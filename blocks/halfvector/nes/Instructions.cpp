@@ -427,6 +427,75 @@ DEFINE_OPCODE(TXS) {
     writeStack(ctx, ctx->registers->X);
 }
 
+/**
+ * Generic branch instruction
+ * provides implementation for various branch-on-cpu-status-flag
+ */
+template<ProcessorStatusFlags Register>
+struct BranchIf {
+    static void is(InstructionContext *ctx, bool expectedState) {
+        signed char relativeOffset = ctx->mem->readByte(ctx->registers->LastPC + 1);// g_Memory.GetByteAfterPC();
+        unsigned short jmpAddress = ctx->registers->PC + relativeOffset;
+        bool flagState = ProcessorStatusFlag<Register>::getState(ctx);
+
+        PrintDbg("-> Status Register (%d) %s: %d; Relative offset: $%X; Absolute jump address = $%08X")
+                % (int) Register % ProcessorStatusFlagNames[Register]
+                % (int) flagState % (int) relativeOffset % (int) jmpAddress;
+
+        if (flagState == expectedState) {
+            PrintDbg("-> Branch Taken");
+//            CPU::Singleton()->IncCycles();
+
+            // add another cycle if branch goes to a diff page
+            if ((jmpAddress & 0xF0) != (ctx->registers->PC & 0xF0)) {
+//                CPU::Singleton()->IncCycles();
+            }
+
+            ctx->registers->PC = jmpAddress;
+        }
+    }
+};
+
+DEFINE_OPCODE(BPL) {
+    PrintDbg("BPL");
+    BranchIf<NEGATIVE_BIT>::is(ctx, false);
+}
+
+DEFINE_OPCODE(BMI) {
+    PrintDbg("BMI");
+    BranchIf<NEGATIVE_BIT>::is(ctx, true);
+}
+
+DEFINE_OPCODE(BNE) {
+    PrintDbg("BNE");
+    BranchIf<ZERO_BIT>::is(ctx, false);
+}
+
+DEFINE_OPCODE(BEQ) {
+    PrintDbg("BEQ");
+    BranchIf<ZERO_BIT>::is(ctx, true);
+}
+
+DEFINE_OPCODE(BCS) {
+    PrintDbg("BCS");
+    BranchIf<CARRY_BIT>::is(ctx, true);
+}
+
+DEFINE_OPCODE(BCC) {
+    PrintDbg("BCC");
+    BranchIf<CARRY_BIT>::is(ctx, false);
+}
+
+DEFINE_OPCODE(BVC) {
+    PrintDbg("BVC");
+    BranchIf<OVERFLOW_BIT>::is(ctx, false);
+}
+
+DEFINE_OPCODE(BVS) {
+    PrintDbg("BVS");
+    BranchIf<OVERFLOW_BIT>::is(ctx, true);
+}
+
 /*
 // various ways of implementing an opcode
 // first is using lambda:

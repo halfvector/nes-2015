@@ -47,10 +47,10 @@ struct Bits {
     }
 };
 
-enum eProcessorStatusRegister {
+enum ProcessorStatusFlags {
     CARRY_BIT, ZERO_BIT, IRQ_DISABLE, BCD_MODE, BREAK_FLAG, ALWAYS_1, OVERFLOW_BIT, NEGATIVE_BIT
 };
-static const char *strProcessorStatusRegister[] = {
+static const char *ProcessorStatusFlagNames[] = {
         "CARRY_BIT", "ZERO_BIT", "IRQ_DISABLE", "BREAK_FLAG", "BCD MODE", "BREAK FLAG", "ALWAYS 1", "OVERFLOW_BIT", "NEGATIVE_BIT"
 };
 
