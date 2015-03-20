@@ -87,19 +87,19 @@ Memory::writeByteDirectly(tCPU::word address, tCPU::byte value) {
         // regular memory
         PrintMemory("Writing %02X to 0x%08X") % (int) value % (int) address;
         memory[address] = value;
+        return true;
     }
 }
 
 tCPU::byte
-Memory::readFromIOPort(tCPU::word Index) {
-    // TODO: implement i/o handlers
-    return 0;
+Memory::readFromIOPort(const tCPU::word address) {
+    return MMIO->read(address);
 }
 
 bool
-Memory::writeToIOPort(tCPU::word Index, tCPU::byte value) {
-    // TODO: implement i/o handlers
-    return 0;
+Memory::writeToIOPort(const tCPU::word address, tCPU::byte value) {
+    //return MemoryIO<static_cast<int>(address)>::write(value);
+    return MMIO->write(address, value);
 }
 
 void

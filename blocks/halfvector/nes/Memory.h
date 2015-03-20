@@ -2,6 +2,7 @@
 
 #include "Platform.h"
 #include "Logging.h"
+#include "MemoryIO.h"
 
 enum AddressMode {
     ADDR_MODE_NONE = 0, ADDR_MODE_ABSOLUTE, ADDR_MODE_IMMEDIATE, ADDR_MODE_ZEROPAGE,
@@ -32,19 +33,21 @@ public:
 
     Memory(tCPU::byte *memory) {
         this->memory = memory;
+        this->MMIO = new MemoryIO();
     }
 
     tCPU::word getRealMemoryAddress(tCPU::word address);
     tCPU::byte readByte(tCPU::word address);
     tCPU::word readWord(tCPU::word absoluteAddress);
-    tCPU::byte readFromIOPort(tCPU::word address);
+    tCPU::byte readFromIOPort(const tCPU::word address);
     tCPU::byte readByteDirectly(tCPU::word address);
     bool writeByte(tCPU::word address, tCPU::byte value);
-    bool writeToIOPort(tCPU::word address, tCPU::byte value);
+    bool writeToIOPort(const tCPU::word address, tCPU::byte value);
     bool writeByteDirectly(tCPU::word address, tCPU::byte value);
     void writeStack(tCPU::byte value);
 
 protected:
+    MemoryIO* MMIO;
     tCPU::byte *memory;
 };
 
