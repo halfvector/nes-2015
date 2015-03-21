@@ -1,15 +1,12 @@
 #include "CPU.h"
 #include "Logging.h"
 
-CPU::CPU() {
-    memset(cpuMemory, 0, 0x100000);
-    cpuMemoryAccessor = new Memory(cpuMemory);
-
+CPU::CPU(Memory* memory) : memory(memory) {
     instructions = new Instructions(opcodes, modes);
     instructions->initialize();
 
     ctx = new InstructionContext();
-    ctx->mem = cpuMemoryAccessor;
+    ctx->mem = memory;
     ctx->registers = &registers;
 }
 
@@ -43,14 +40,14 @@ void CPU::writePrgPage(int pageIdx, uint8_t buffer[]) {
     tCPU::dword pageAddress = 0x8000 + 0x4000 * pageIdx;
     PrintInfo("Writing 16k PRG ROM to Page %d (@ 0x%08X)") % pageIdx % (int) pageAddress;
 
-    memcpy(cpuMemory + pageAddress, buffer, 0x4000);
+    memcpy(memory->getByteArray() + pageAddress, buffer, 0x4000);
 }
 
 /**
  * Write 8kB page to PPU memory
  */
 void CPU::writeChrPage(uint8_t buffer[]) {
-    memcpy(ppuMemory, buffer, 0x2000);
+    memcpy(memory->getByteArray(), buffer, 0x2000);
 }
 
 void CPU::run() {
@@ -60,7 +57,7 @@ void CPU::run() {
     //while(cpuAlive) {
     for(int i = 0; i < 30; i ++) {
         // grab next instruction
-        tCPU::byte opCode = cpuMemoryAccessor->readByteDirectly(registers.PC);
+        tCPU::byte opCode = memory->readByteDirectly(registers.PC);
         executeOpcode(opCode);
 
 
@@ -72,7 +69,7 @@ void CPU::run() {
  * Reset program counter
  */
 void CPU::reset() {
-    registers.PC = cpuMemoryAccessor->readWord(RESET_VECTOR_ADDR);
+    registers.PC = memory->readWord(RESET_VECTOR_ADDR);
 }
 
 void CPU::executeOpcode(int code) {
@@ -87,14 +84,14 @@ void CPU::executeOpcode(int code) {
                 % code
                 % mnemonic;
     } else if(opcodeSize == 2) {
-        unsigned char data1 = cpuMemoryAccessor->readByte(registers.PC+1);
+        unsigned char data1 = memory->readByte(registers.PC+1);
         PrintInfo("%08X: %02X %02X\t\t%s " + modes[mode].addressLine)
                 % (int) registers.PC
                 % code % (int) data1
                 % mnemonic % (int) data1;
     } else if(opcodeSize == 3) {
-        unsigned char lowByte = cpuMemoryAccessor->readByte(registers.PC+1);
-        unsigned char highByte = cpuMemoryAccessor->readByte(registers.PC+2);
+        unsigned char lowByte = memory->readByte(registers.PC+1);
+        unsigned char highByte = memory->readByte(registers.PC+2);
         PrintInfo("%08X: %02X %02X %02X\t%s " + modes[mode].addressLine)
                 % (int) registers.PC
                 % code % (int) lowByte % (int) highByte

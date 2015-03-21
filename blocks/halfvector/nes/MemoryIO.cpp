@@ -1,29 +1,20 @@
 #include "MemoryIO.h"
+#include <functional>
 
 template<>
 struct MemoryIOHandler<0x2002> {
-    static tCPU::byte Read() {
-        PrintDbg("IO_Handler<0x%04X>::Read(); Reading from I/O Port at $%04X")
-                % 0x2002 % 0x2002;
-
-        // FIXME: implement PPU get status register
-        //return PPU::Singleton()->GetStatusRegister();
-        return 0;
+    static tCPU::byte Read(PPU* ppu) {
+        PrintDbg("IO_Handler<0x%04X>::Read(); Reading I/O port") % 0x2002;
+        return ppu->getStatusRegister();
     }
-
-    enum {
-        Hooked = 1
-    };
-    enum {
-        AccessMode = IOAccessMode::READ_ONLY
-    };
 };
 
-MemoryIO::MemoryIO() {
+MemoryIO::MemoryIO(PPU* ppu) : ppu(ppu) {
     ioPortWriters.clear();
     ioPortReaders.clear();
 
-    registerHandler(2002, MemoryIOHandler<0x2002>::Read);
+    // bind parameters to methods
+    registerHandler(0x2002, std::bind(MemoryIOHandler<0x2002>::Read, ppu));
 }
 
 bool
@@ -33,5 +24,9 @@ MemoryIO::write(tCPU::word address, tCPU::byte value) {
 
 tCPU::byte
 MemoryIO::read(tCPU::word address) {
+    auto reader = ioPortReaders.find(address);
+    if(reader != ioPortReaders.end()) {
+        return reader->second();
+    }
     return 0;
 }

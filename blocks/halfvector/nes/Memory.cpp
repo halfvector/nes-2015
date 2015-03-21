@@ -105,3 +105,8 @@ Memory::writeToIOPort(const tCPU::word address, tCPU::byte value) {
 void
 Memory::writeStack(tCPU::byte value) {
 }
+
+tCPU::byte*
+Memory::getByteArray() {
+    return memory;
+}

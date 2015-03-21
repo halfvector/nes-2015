@@ -2,6 +2,7 @@
 #include "CartridgeLoader.h"
 #include "Logging.h"
 #include "CPU.h"
+#include "PPU.h"
 
 int main() {
     el::Configurations defaultConf;
@@ -32,7 +33,18 @@ int main() {
     CartridgeLoader loader;
     Cartridge rom = loader.loadCartridge("../roms/supermariobros.nes");
 
-    CPU cpu;
+    // ppu
+    PPU ppu;
+
+    // i/o port mapper
+    MemoryIO* mmio = new MemoryIO(&ppu);
+    // cpu memory
+    Memory* cpuMemoryAccessor = new Memory(mmio);
+    // ppu memory
+    tCPU::byte ppuMemory[0x4000];
+
+    // cpu
+    CPU cpu(cpuMemoryAccessor);
     cpu.load(rom);
 
     cpu.run();

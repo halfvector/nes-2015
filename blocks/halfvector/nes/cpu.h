@@ -10,21 +10,19 @@
 
 class CPU {
 public:
-    CPU();
+    CPU(Memory*);
 
     void load(Cartridge);
     void run();
 
 protected:
-    tCPU::byte cpuMemory[0x100000]; // 1MiB of memory
-    tCPU::byte ppuMemory[0x4000];
+    Memory* memory;
     Opcode opcodes[0x100];
     AddressModeProperties modes[16];
 
     Instructions* instructions;
     InstructionContext* ctx;
 
-    Memory *cpuMemoryAccessor;
     Registers registers;
     bool cpuAlive = true;
 

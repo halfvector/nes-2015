@@ -31,9 +31,9 @@ static uint16_t AddressModeMask[] = {
 class Memory {
 public:
 
-    Memory(tCPU::byte *memory) {
-        this->memory = memory;
-        this->MMIO = new MemoryIO();
+    Memory(MemoryIO* mmio) {
+        memset(this->memory, 0, 0x100000);
+        this->MMIO = mmio;
     }
 
     tCPU::word getRealMemoryAddress(tCPU::word address);
@@ -46,8 +46,10 @@ public:
     bool writeByteDirectly(tCPU::word address, tCPU::byte value);
     void writeStack(tCPU::byte value);
 
+    tCPU::byte* getByteArray();
+
 protected:
     MemoryIO* MMIO;
-    tCPU::byte *memory;
+    tCPU::byte memory[0x100000]; // 1MiB of memory
 };
 

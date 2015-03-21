@@ -2,7 +2,7 @@
 
 #include "Logging.h"
 #include "Platform.h"
-
+#include "PPU.h"
 
 typedef void (*WriteIO)(tCPU::byte);
 typedef tCPU::byte (*ReadIO)(void);
@@ -27,19 +27,21 @@ struct MemoryIOHandler {
 * each memory address will have an appropriate read/write handler
 */
 struct MemoryIO {
-    MemoryIO();
+    MemoryIO(PPU* ppu);
 
     void registerHandler(tCPU::word ioPort, WriteIO writer) {
         ioPortWriters[ioPort] = writer;
     }
 
-    void registerHandler(tCPU::word ioPort, ReadIO reader) {
+    void registerHandler(tCPU::word ioPort, std::function<tCPU::byte()> reader) {
         ioPortReaders[ioPort] = reader;
     }
     bool write(tCPU::word address, tCPU::byte value);
 
     tCPU::byte read(tCPU::word address);
 
+protected:
+    PPU* ppu;
     std::map<tCPU::word, WriteIO> ioPortWriters;
-    std::map<tCPU::word, ReadIO> ioPortReaders;
+    std::map<tCPU::word, std::function<tCPU::byte()>> ioPortReaders;
 };
