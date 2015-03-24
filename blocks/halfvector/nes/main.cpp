@@ -53,11 +53,17 @@ int main() {
 
     PrintDbg("Reset program-counter to 0x%X") % registers.PC;
 
-    for(int i = 0; i < 30; i ++) {
+    for(int i = 0; i < 19500; i ++) {
         // grab next instruction
         tCPU::byte opCode = memory->readByteDirectly(registers.PC);
-        cpu.executeOpcode(opCode);
-        ppu.execute(5);
+
+        // step cpu
+        int cpuCycles = cpu.executeOpcode(opCode);
+
+        // step ppu in sync with cpu
+        ppu.execute(cpuCycles * 3);
     }
+
+    PrintDbg("Ran for %d cycles") % (int) cpu.getCycleRuntime();
 }
 

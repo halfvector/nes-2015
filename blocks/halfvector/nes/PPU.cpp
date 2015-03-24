@@ -1,16 +1,16 @@
 #include "PPU.h"
 #include "Logging.h"
-#include <bitset>
 
 PPU::PPU() {
     firstWriteToSFF = true;
 
-    tCPU::byte vblankFlag = 1 << 7;
-    tCPU::byte hitFlag = 1 << 6;
-    statusRegister = vblankFlag | hitFlag;
+    // Status register is 0 on boot
+    statusRegister = 0;
 }
 
-// everynes.txt has details
+/**
+ * Read Status register ($2002)
+ */
 tCPU::byte
 PPU::getStatusRegister() {
     tCPU::byte returnValue = statusRegister;
@@ -19,11 +19,10 @@ PPU::getStatusRegister() {
     PrintDbg("PPU; -> Scanline: %d, HBlank: %d, Pixel: %d") % currentScanline
             % inHBlank % scanlinePixel;
 
-    // reset vblank and hit flags to zero
+    // reset vblank on register read
     statusRegister &= ~(1 << 7);
-    //statusRegister &= ~(1 << 6);
 
-    // reset 2005 and 2006 write modes
+    // reset $2005 and $2006 write modes
     firstWriteToSFF = true;
 
     return returnValue;
@@ -31,26 +30,33 @@ PPU::getStatusRegister() {
 
 void
 PPU::execute(int numCycles) {
-    for(int i = 0; i < numCycles; i ++) {
-        if(currentScanline < 240) {
+
+    /**
+     *   0-239 = rendering scanlines
+     *     240 = idle scanline
+     * 241-260 = vertical blanking
+     */
+
+    for (int i = 0; i < numCycles; i++) {
+        if (currentScanline < 240) {
             // process scanline
-            processScanline();
-        } else
-        if( currentScanline < 243) {
-            // process hblank until we reset to the start of the next scanline
-            if( ++scanlinePixel == 341 ) {
-                currentScanline ++;
-                scanlinePixel = 0;
+            advanceRenderableScanline();
+        } else if (currentScanline < 243) {
+            advanceBlankScanline();
+        } else if (currentScanline < 262) {
+            if(currentScanline == 243 && scanlinePixel == 0) {
+                setVerticalBlank();
             }
-        } else
-        if(currentScanline == 243 && scanlinePixel == 0) {
-            statusRegister |= 1 << 7;
-        } else
-        if(currentScanline >= 262) {
+            advanceBlankScanline();
+        } else {
+            // end of vblank
             currentScanline = 0;
             scanlinePixel = 0;
             inHBlank = false;
             inVBlank = false;
+
+            // reset sprite-0 hit
+            statusRegister &= ~(1 << 6);
 
             // reset vblank and overflow flags
             statusRegister &= ~(1 << 7);
@@ -60,23 +66,45 @@ PPU::execute(int numCycles) {
 }
 
 void
-PPU::processScanline() {
-    if( scanlinePixel < 255 ) {
+PPU::setVerticalBlank() {
+    statusRegister |= 1 << 7;
+}
+
+/**
+ * Advance VBlank/HBlank scanline
+ */
+void
+PPU::advanceBlankScanline() {
+    // process hblank until we reset to the start of the next scanline
+    if (++scanlinePixel == 341) {
+        currentScanline++;
+        scanlinePixel = 0;
+    }
+}
+
+/**
+ * Advance renderable scanline
+ * a pixel at a time on the scanline of life
+ */
+void
+PPU::advanceRenderableScanline() {
+    if (scanlinePixel < 255) {
         // drawing pixels
         inHBlank = false;
     }
-    else if( scanlinePixel == 255 ) {
-        // last pixel of the scanline, right before hblank
-//        EnterHBlank();
+    else if (scanlinePixel == 255) {
+        // last pixel of the scanline. enter hblank.
+        // TODO: perform sprite-0 hit detection
         inHBlank = true;
     }
-    else if( scanlinePixel < 340 ) {
+    else if (scanlinePixel < 340) {
+        // in hblank
         inHBlank = true;
     }
-    else
-    {	// finished hblank; leaving hblank and increment scanline
+    else {
+        // leave hblank and increment scanline
         inHBlank = false;
-        currentScanline ++;
+        currentScanline++;
         scanlinePixel = -1;
 
 //        if( Settings.BackgroundVisible.Value && Settings.SpriteVisible.Value )
@@ -89,5 +117,5 @@ PPU::processScanline() {
         //PrintNotice( "Start of Scanline; m_14bitVRAMAddress = 0x%X / m_TempVRAMAddress = %s", m_14bitVRAMAddress, Word::AsBinary( m_TempVRAMAddress ).c_str() );
     }
 
-    scanlinePixel ++;
+    scanlinePixel++;
 }

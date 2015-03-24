@@ -37,7 +37,8 @@ CPU::load(Cartridge rom) {
 /**
  * Write 16kB page to CPU memory
  */
-void CPU::writePrgPage(int pageIdx, uint8_t buffer[]) {
+void
+CPU::writePrgPage(int pageIdx, uint8_t buffer[]) {
     tCPU::dword pageAddress = 0x8000 + 0x4000 * pageIdx;
     PrintInfo("Writing 16k PRG ROM to Page %d (@ 0x%08X)") % pageIdx % (int) pageAddress;
 
@@ -47,11 +48,13 @@ void CPU::writePrgPage(int pageIdx, uint8_t buffer[]) {
 /**
  * Write 8kB page to PPU memory
  */
-void CPU::writeChrPage(uint8_t buffer[]) {
+void
+CPU::writeChrPage(uint8_t buffer[]) {
     memcpy(memory->getByteArray(), buffer, 0x2000);
 }
 
-void CPU::run() {
+void
+CPU::run() {
     reset();
     PrintDbg("Reset program-counter to 0x%X") % registers->PC;
 
@@ -69,11 +72,13 @@ void CPU::run() {
 /**
  * Reset program counter
  */
-void CPU::reset() {
+void
+CPU::reset() {
     registers->PC = memory->readWord(RESET_VECTOR_ADDR);
 }
 
-void CPU::executeOpcode(int code) {
+int
+CPU::executeOpcode(int code) {
     unsigned char opcodeSize = opcodes[code].Bytes;
     AddressMode mode = opcodes[code].AddressMode;
     const char* mnemonic = opcodes[code].Mnemonic;
@@ -104,4 +109,18 @@ void CPU::executeOpcode(int code) {
     registers->PC += opcodeSize;
 
     instructions->execute(code, ctx);
+
+    // opcode cycle count + any page boundary penalty
+    uint8_t cycles = opcodes[code].Cycles;
+    if(opcodes[code].PageBoundaryCondition && tMemoryAddressLookupBase::PageBoundaryCrossed) {
+        cycles ++;
+    }
+    numCycles += cycles;
+
+    return cycles;
+}
+
+uint64_t
+CPU::getCycleRuntime() {
+    return numCycles;
 }

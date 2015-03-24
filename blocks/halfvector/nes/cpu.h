@@ -16,12 +16,14 @@ public:
     void run();
 
     void reset();
-    void executeOpcode(int code);
+    int executeOpcode(int code);
 
+    uint64_t getCycleRuntime();
 protected:
     Memory* memory;
     Registers* registers;
     Opcode opcodes[0x100];
+    uint64_t numCycles = 0;
 
     AddressModeProperties modes[16];
     Instructions* instructions;
