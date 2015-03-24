@@ -10,26 +10,27 @@
 
 class CPU {
 public:
-    CPU(Memory*);
+    CPU(Registers*, Memory*);
 
     void load(Cartridge);
     void run();
 
-protected:
-    Memory* memory;
-    Opcode opcodes[0x100];
-    AddressModeProperties modes[16];
-
-    Instructions* instructions;
-    InstructionContext* ctx;
-
-    Registers registers;
-    bool cpuAlive = true;
-
-    void writePrgPage(int i, uint8_t buffer[]);
-    void writeChrPage(uint8_t buffer[]);
     void reset();
     void executeOpcode(int code);
+
+protected:
+    Memory* memory;
+    Registers* registers;
+    Opcode opcodes[0x100];
+
+    AddressModeProperties modes[16];
+    Instructions* instructions;
+
+    InstructionContext* ctx;
+
+    bool cpuAlive = true;
+    void writePrgPage(int i, uint8_t buffer[]);
+    void writeChrPage(uint8_t buffer[]);
 };
 
 static const int RESET_VECTOR_ADDR = 0xFFFC;

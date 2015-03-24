@@ -39,14 +39,25 @@ int main() {
     // i/o port mapper
     MemoryIO* mmio = new MemoryIO(&ppu);
     // cpu memory
-    Memory* cpuMemoryAccessor = new Memory(mmio);
+    Memory* memory = new Memory(mmio);
     // ppu memory
     tCPU::byte ppuMemory[0x4000];
 
-    // cpu
-    CPU cpu(cpuMemoryAccessor);
-    cpu.load(rom);
+    Registers registers;
 
+    // cpu
+    CPU cpu(&registers, memory);
+    cpu.load(rom);
     cpu.run();
+    cpu.reset();
+
+    PrintDbg("Reset program-counter to 0x%X") % registers.PC;
+
+    for(int i = 0; i < 30; i ++) {
+        // grab next instruction
+        tCPU::byte opCode = memory->readByteDirectly(registers.PC);
+        cpu.executeOpcode(opCode);
+        ppu.execute(5);
+    }
 }
 

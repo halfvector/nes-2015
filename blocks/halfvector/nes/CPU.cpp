@@ -1,13 +1,14 @@
 #include "CPU.h"
 #include "Logging.h"
 
-CPU::CPU(Memory* memory) : memory(memory) {
+CPU::CPU(Registers* registers, Memory* memory)
+        : memory(memory), registers(registers) {
     instructions = new Instructions(opcodes, modes);
     instructions->initialize();
 
     ctx = new InstructionContext();
     ctx->mem = memory;
-    ctx->registers = &registers;
+    ctx->registers = registers;
 }
 
 /**
@@ -52,12 +53,12 @@ void CPU::writeChrPage(uint8_t buffer[]) {
 
 void CPU::run() {
     reset();
-    PrintDbg("Reset program-counter to 0x%X") % registers.PC;
+    PrintDbg("Reset program-counter to 0x%X") % registers->PC;
 
     //while(cpuAlive) {
     for(int i = 0; i < 30; i ++) {
         // grab next instruction
-        tCPU::byte opCode = memory->readByteDirectly(registers.PC);
+        tCPU::byte opCode = memory->readByteDirectly(registers->PC);
         executeOpcode(opCode);
 
 
@@ -69,7 +70,7 @@ void CPU::run() {
  * Reset program counter
  */
 void CPU::reset() {
-    registers.PC = memory->readWord(RESET_VECTOR_ADDR);
+    registers->PC = memory->readWord(RESET_VECTOR_ADDR);
 }
 
 void CPU::executeOpcode(int code) {
@@ -80,27 +81,27 @@ void CPU::executeOpcode(int code) {
 
     if(opcodeSize == 1) {
         PrintInfo("%08X: %02X\t\t%s " + modes[mode].addressLine)
-                % (int) registers.PC
+                % (int) registers->PC
                 % code
                 % mnemonic;
     } else if(opcodeSize == 2) {
-        unsigned char data1 = memory->readByte(registers.PC+1);
+        unsigned char data1 = memory->readByte(registers->PC+1);
         PrintInfo("%08X: %02X %02X\t\t%s " + modes[mode].addressLine)
-                % (int) registers.PC
+                % (int) registers->PC
                 % code % (int) data1
                 % mnemonic % (int) data1;
     } else if(opcodeSize == 3) {
-        unsigned char lowByte = memory->readByte(registers.PC+1);
-        unsigned char highByte = memory->readByte(registers.PC+2);
+        unsigned char lowByte = memory->readByte(registers->PC+1);
+        unsigned char highByte = memory->readByte(registers->PC+2);
         PrintInfo("%08X: %02X %02X %02X\t%s " + modes[mode].addressLine)
-                % (int) registers.PC
+                % (int) registers->PC
                 % code % (int) lowByte % (int) highByte
                 % mnemonic % (int) highByte % (int) lowByte;
     }
 
     // update program counter
-    registers.LastPC = registers.PC;
-    registers.PC += opcodeSize;
+    registers->LastPC = registers->PC;
+    registers->PC += opcodeSize;
 
     instructions->execute(code, ctx);
 }

@@ -4,8 +4,10 @@
 template<>
 struct MemoryIOHandler<0x2002> {
     static tCPU::byte Read(PPU* ppu) {
-        PrintDbg("IO_Handler<0x%04X>::Read(); Reading I/O port") % 0x2002;
-        return ppu->getStatusRegister();
+        tCPU::byte value = ppu->getStatusRegister();
+        PrintDbg("MemoryIOHandler<0x%04X>::Read(); status register = %d")
+                % 0x2002 % (int) value;
+        return value;
     }
 };
 

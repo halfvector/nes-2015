@@ -8,6 +8,8 @@ public:
     void execute(int numCycles);
     tCPU::byte getStatusRegister();
 
+    void processScanline();
+
 protected:
     tCPU::byte statusRegister;
     tCPU::word cycles;
