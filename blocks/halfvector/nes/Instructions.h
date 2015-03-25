@@ -40,15 +40,15 @@ typedef tCPU::word (*MemoryResolver)(InstructionContext* ctx);
 template<uint8_t opcode, AddressMode mode>
 struct InstructionImplementationX {
     static void execute(InstructionContext *ctx, MemoryResolver resolver) {
-        PrintError("Unimplemented opcode = %02X")
-                % (int) opcode;
+        PrintError("Unimplemented opcode = %02X") % (int) opcode;
+        throw new std::runtime_error("Unimplemented opcode");
     }
 };
 
 template<uint8_t opcode, enum AddressMode mode>
 struct InstructionImplementation {
     static void execute(InstructionContext *ctx) {
-        InstructionImplementationX<opcode, mode>::execute(ctx, &tMemoryAddressLookup<mode>::GetEffectiveAddress);
+        InstructionImplementationX<opcode, mode>::execute(ctx, &MemoryAddressResolve<mode>::GetEffectiveAddress);
     }
 };
 

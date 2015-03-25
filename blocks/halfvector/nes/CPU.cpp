@@ -112,7 +112,7 @@ CPU::executeOpcode(int code) {
 
     // opcode cycle count + any page boundary penalty
     uint8_t cycles = opcodes[code].Cycles;
-    if(opcodes[code].PageBoundaryCondition && tMemoryAddressLookupBase::PageBoundaryCrossed) {
+    if(opcodes[code].PageBoundaryCondition && MemoryAddressResolveBase::PageBoundaryCrossed) {
         cycles ++;
     }
     numCycles += cycles;

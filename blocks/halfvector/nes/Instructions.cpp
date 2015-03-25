@@ -1,5 +1,7 @@
 #include <stdint.h>
 #include "Instructions.h"
+#include "MemoryOperation.h"
+#include "RegisterOperation.h"
 
 Instructions::Instructions(Opcode *opcodes, AddressModeProperties* modes) {
     this->opcodes = opcodes;
@@ -386,31 +388,37 @@ DEFINE_OPCODE(CLD) {
     ctx->registers->P.D = 0;
 }
 
+/**
+ * Load and Store into registers
+ */
+
 DEFINE_OPCODE(LDA) {
-    PrintDbg("LDA mode=%d") % (int) mode;
-    ctx->registers->A = tMemoryOperation<mode>::GetByte(ctx);
+    ctx->registers->A = MemoryOperation<mode>::readByte(ctx);
     ctx->registers->setZeroBit(ctx->registers->A);
     ctx->registers->setSignBit(ctx->registers->A);
 }
 
 DEFINE_OPCODE(LDX) {
-    ctx->registers->X = tMemoryOperation<mode>::GetByte(ctx);
+    ctx->registers->X = MemoryOperation<mode>::readByte(ctx);
     ctx->registers->setZeroBit(ctx->registers->X);
     ctx->registers->setSignBit(ctx->registers->X);
 
 }
 
 DEFINE_OPCODE(LDY) {
-    ctx->registers->Y = tMemoryOperation<mode>::GetByte(ctx);
+    ctx->registers->Y = MemoryOperation<mode>::readByte(ctx);
     ctx->registers->setZeroBit(ctx->registers->Y);
     ctx->registers->setSignBit(ctx->registers->Y);
 
 }
 
 DEFINE_OPCODE(STA) {
-    PrintDbg("STA mode=%d") % (int) mode;
-    tMemoryOperation<mode>::WriteByte(ctx, ctx->registers->A);
+    MemoryOperation<mode>::writeByte(ctx, ctx->registers->A);
 }
+
+/**
+ * Stack manipulation
+ */
 
 void writeStack(InstructionContext* ctx, tCPU::byte value) {
     auto address = 0x1FF - ctx->registers->S;
@@ -423,7 +431,6 @@ tCPU::byte readStack(InstructionContext* ctx) {
 }
 
 DEFINE_OPCODE(TXS) {
-    PrintDbg("TXS mode=%d") % (int) mode;
     writeStack(ctx, ctx->registers->X);
 }
 
@@ -431,10 +438,11 @@ DEFINE_OPCODE(TXS) {
  * Generic branch instruction
  * provides implementation for various branch-on-cpu-status-flag
  */
+
 template<ProcessorStatusFlags Register>
 struct BranchIf {
     static void is(InstructionContext *ctx, bool expectedState) {
-        signed char relativeOffset = ctx->mem->readByte(ctx->registers->LastPC + 1);// g_Memory.GetByteAfterPC();
+        signed char relativeOffset = ctx->mem->readByte(ctx->registers->LastPC + 1);// g_Memory.readByteAfterPC();
         unsigned short jmpAddress = ctx->registers->PC + relativeOffset;
         bool flagState = ProcessorStatusFlag<Register>::getState(ctx);
 
@@ -456,66 +464,109 @@ struct BranchIf {
     }
 };
 
+/**
+ * Branching
+ */
+
 DEFINE_OPCODE(BPL) {
-    PrintDbg("BPL");
     BranchIf<NEGATIVE_BIT>::is(ctx, false);
 }
 
 DEFINE_OPCODE(BMI) {
-    PrintDbg("BMI");
     BranchIf<NEGATIVE_BIT>::is(ctx, true);
 }
 
 DEFINE_OPCODE(BNE) {
-    PrintDbg("BNE");
     BranchIf<ZERO_BIT>::is(ctx, false);
 }
 
 DEFINE_OPCODE(BEQ) {
-    PrintDbg("BEQ");
     BranchIf<ZERO_BIT>::is(ctx, true);
 }
 
 DEFINE_OPCODE(BCS) {
-    PrintDbg("BCS");
     BranchIf<CARRY_BIT>::is(ctx, true);
 }
 
 DEFINE_OPCODE(BCC) {
-    PrintDbg("BCC");
     BranchIf<CARRY_BIT>::is(ctx, false);
 }
 
 DEFINE_OPCODE(BVC) {
-    PrintDbg("BVC");
     BranchIf<OVERFLOW_BIT>::is(ctx, false);
 }
 
 DEFINE_OPCODE(BVS) {
-    PrintDbg("BVS");
     BranchIf<OVERFLOW_BIT>::is(ctx, true);
 }
 
-/*
-// various ways of implementing an opcode
-// first is using lambda:
 
-auto Instruction_SEI = [](AddressMode mode, InstructionContext *ctx) {
-    ctx->registers->P.I = 1;
-};
+/**
+ * Generic compare instruction
+ */
 
-// second is a partially specialized class definition
-template<enum AddressMode mode>
-struct InstructionImplementation<SEI, mode> {
-    static void execute(InstructionContext *ctx) {
-        PrintInfo("SEI!");
-        ctx->registers->P.I = 1;
+template<Register R, AddressMode M>
+struct GenericComparator {
+    static void execute(InstructionContext* ctx) {
+        tCPU::word mem = MemoryOperation<M>::readByte(ctx);
+        tCPU::word reg = RegisterOperation<R>::read(ctx);
+        tCPU::word value = reg - mem;
+
+        ctx->registers->P.N = uint8_t((value & 0x80) == 0x80);
+        ctx->registers->P.Z = uint8_t(reg == mem);
+        ctx->registers->P.C = uint8_t(reg >= mem);
     }
 };
 
-// third is a partially speialized class method
-template<>
-void InstructionImplementationX<LDA>::execute(InstructionContext *ctx, MemoryResolver resolver) {
-    PrintInfo("LDA!");
+/**
+ * Comparisons
+ */
+
+DEFINE_OPCODE(CPX) {
+    GenericComparator<ACCUMULATOR, mode>::execute(ctx);
 }
-*/
+
+DEFINE_OPCODE(CPY) {
+    GenericComparator<ACCUMULATOR, mode>::execute(ctx);
+}
+
+DEFINE_OPCODE(CMP) {
+    GenericComparator<ACCUMULATOR, mode>::execute(ctx);
+}
+
+/*
+ * Increment and Decrement
+ */
+
+DEFINE_OPCODE(DEX) {
+    tCPU::byte value = uint8_t(RegisterOperation<REGISTER_X>::read(ctx) - 1);
+    RegisterOperation<REGISTER_X>::write(ctx, value);
+
+    ctx->registers->P.N = uint8_t((value & 0x80) == 0x80);
+    ctx->registers->P.Z = uint8_t(value == 0);
+}
+
+DEFINE_OPCODE(DEY) {
+    tCPU::byte value = uint8_t(RegisterOperation<REGISTER_Y>::read(ctx) - 1);
+    RegisterOperation<REGISTER_X>::write(ctx, value);
+
+    ctx->registers->P.N = uint8_t((value & 0x80) == 0x80);
+    ctx->registers->P.Z = uint8_t(value == 0);
+}
+
+DEFINE_OPCODE(DEC) {
+    tCPU::byte value = uint8_t(MemoryOperation<mode>::readByte(ctx) - 1);
+    MemoryOperation<mode>::writeByte(ctx, value);
+
+    ctx->registers->P.N = uint8_t((value & 0x80) == 0x80);
+    ctx->registers->P.Z = uint8_t(value == 0);
+}
+
+DEFINE_OPCODE(INC) {
+    tCPU::byte value = uint8_t(MemoryOperation<mode>::readByte(ctx) + 1);
+    MemoryOperation<mode>::writeByte(ctx, value);
+
+    ctx->registers->P.N = uint8_t((value & 0x80) == 0x80);
+    ctx->registers->P.Z = uint8_t(value == 0);
+}
+
