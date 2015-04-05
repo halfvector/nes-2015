@@ -1,5 +1,6 @@
 #include "MemoryIO.h"
 #include <functional>
+#include <AddressBook/AddressBook.h>
 
 template<>
 struct MemoryIOHandler<0x2002> {
@@ -17,6 +18,7 @@ MemoryIO::MemoryIO(PPU* ppu) : ppu(ppu) {
 
     // bind parameters to methods
     registerHandler(0x2002, std::bind(MemoryIOHandler<0x2002>::Read, ppu));
+    //registerHandler(0x2002, MemoryIOHandler<0x2002>::Read);
 }
 
 bool
@@ -26,9 +28,18 @@ MemoryIO::write(tCPU::word address, tCPU::byte value) {
 
 tCPU::byte
 MemoryIO::read(tCPU::word address) {
-    auto reader = ioPortReaders.find(address);
-    if(reader != ioPortReaders.end()) {
-        return reader->second();
+    switch(address) {
+        case 0x2002:
+            return MemoryIOHandler<0x2002>::Read(ppu);
+
+        default:
+            PrintDbg("MemoryIO::Read(); address = 0x%04X not supported") % address;
+            return 0;
     }
-    return 0;
+
+//    auto reader = ioPortReaders.find(address);
+//    if(reader != ioPortReaders.end()) {
+//        return reader->second();
+//    }
+//    return 0;
 }

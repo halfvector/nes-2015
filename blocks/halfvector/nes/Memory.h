@@ -32,7 +32,8 @@ class Memory {
 public:
 
     Memory(MemoryIO* mmio) {
-        memset(this->memory, 0, 0x100000);
+        memory = new tCPU::byte[0x100000]; // 1MiB of memory
+        memset(memory, 0, 0x100000);
         this->MMIO = mmio;
     }
 
@@ -44,12 +45,11 @@ public:
     bool writeByte(tCPU::word address, tCPU::byte value);
     bool writeToIOPort(const tCPU::word address, tCPU::byte value);
     bool writeByteDirectly(tCPU::word address, tCPU::byte value);
-    void writeStack(tCPU::byte value);
 
     tCPU::byte* getByteArray();
 
 protected:
     MemoryIO* MMIO;
-    tCPU::byte memory[0x100000]; // 1MiB of memory
+    tCPU::byte* memory;
 };
 

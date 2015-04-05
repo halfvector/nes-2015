@@ -2,13 +2,8 @@
 #include "Logging.h"
 
 CPU::CPU(Registers* registers, Memory* memory)
-        : memory(memory), registers(registers) {
-    instructions = new Instructions(opcodes, modes);
-    instructions->initialize();
+        : registers(registers), memory(memory) {
 
-    ctx = new InstructionContext();
-    ctx->mem = memory;
-    ctx->registers = registers;
 }
 
 /**
@@ -16,7 +11,15 @@ CPU::CPU(Registers* registers, Memory* memory)
  * Only supports NROM 32kB ROMs (no memory mappers)
  */
 void
-CPU::load(Cartridge rom) {
+CPU::load(Cartridge& rom) {
+
+    instructions = new Instructions(opcodes, modes);
+    instructions->initialize();
+
+    ctx = new InstructionContext();
+    ctx->mem = memory;
+    ctx->registers = registers;
+
     // write program pages
     if (rom.header.numPrgPages == 1) {
         // special case: we have just one program data page (16kB ROM)

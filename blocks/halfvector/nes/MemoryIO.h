@@ -34,6 +34,10 @@ struct MemoryIO {
     }
 
     void registerHandler(tCPU::word ioPort, std::function<tCPU::byte()> reader) {
+        borked[ioPort] = reader;
+    }
+
+    void registerHandler(tCPU::word ioPort, ReadIO reader) {
         ioPortReaders[ioPort] = reader;
     }
     bool write(tCPU::word address, tCPU::byte value);
@@ -43,5 +47,6 @@ struct MemoryIO {
 protected:
     PPU* ppu;
     std::map<tCPU::word, WriteIO> ioPortWriters;
-    std::map<tCPU::word, std::function<tCPU::byte()>> ioPortReaders;
+    std::map<tCPU::word, ReadIO> ioPortReaders;
+    std::map<tCPU::word, std::function<tCPU::byte()>> borked;
 };

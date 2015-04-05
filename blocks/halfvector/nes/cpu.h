@@ -7,12 +7,13 @@
 #include "Platform.h"
 #include "Instructions.h"
 #include "Registers.h"
+#include "DI.h"
 
 class CPU {
 public:
     CPU(Registers*, Memory*);
 
-    void load(Cartridge);
+    void load(Cartridge&);
     void run();
 
     void reset();
@@ -20,8 +21,8 @@ public:
 
     uint64_t getCycleRuntime();
 protected:
-    Memory* memory;
     Registers* registers;
+    Memory* memory;
     Opcode opcodes[0x100];
     uint64_t numCycles = 0;
 

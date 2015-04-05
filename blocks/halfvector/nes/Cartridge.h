@@ -26,17 +26,22 @@ struct RomInfo {
 };
 
 struct PrgRomPage {
-    uint8_t buffer[PRG_ROM_PAGE_SIZE];
+    uint8_t* buffer = new uint8_t[PRG_ROM_PAGE_SIZE];
 };
 
 struct ChrRomPage {
-    uint8_t buffer[CHR_ROM_PAGE_SIZE];
+    uint8_t* buffer = new uint8_t[CHR_ROM_PAGE_SIZE];
 };
 
 struct Cartridge {
+    Cartridge() {
+        programDataPages = new PrgRomPage[20];
+        characterDataPages = new ChrRomPage[10];
+    }
+
     RomHeader header;
     RomInfo info;
 
-    PrgRomPage programDataPages[20];
-    ChrRomPage characterDataPages[10];
+    PrgRomPage* programDataPages;
+    ChrRomPage* characterDataPages;
 };

@@ -570,3 +570,18 @@ DEFINE_OPCODE(INC) {
     ctx->registers->P.Z = uint8_t(value == 0);
 }
 
+DEFINE_OPCODE(JSR) {
+//    ctx->mem->pushStack(--ctx->registers->PC);
+}
+//
+//DECLARE_HANDLER( JSR ) {
+//        static void Execute() {
+//
+//            g_Registers.PC --;
+//            g_Memory.PushOnStack( g_Registers.PC );
+//            tCPU::word Value = tMemoryAddressLookup<AddressMode>::GetEffectiveAddress();
+//
+//            //PrintDbg( "JSR: Saved Old PC 0x%X (-1) to Stack; Setting New PC to 0x%X", g_Registers.PC, Value );
+//            g_Registers.PC = Value;
+//        }
+//};
