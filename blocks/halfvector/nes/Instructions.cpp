@@ -416,6 +416,14 @@ DEFINE_OPCODE(STA) {
     MemoryOperation<mode>::writeByte(ctx, ctx->registers->A);
 }
 
+DEFINE_OPCODE(STX) {
+    MemoryOperation<mode>::writeByte(ctx, ctx->registers->X);
+}
+
+DEFINE_OPCODE(STY) {
+    MemoryOperation<mode>::writeByte(ctx, ctx->registers->Y);
+}
+
 /**
  * Stack manipulation
  */
