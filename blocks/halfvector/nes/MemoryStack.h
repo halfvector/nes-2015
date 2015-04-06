@@ -6,13 +6,13 @@
 class Stack {
 public:
 
-    Stack(shared_ptr <Memory> mem, shared_ptr <Registers> reg)
+    Stack(Memory* mem, Registers* reg)
             : mem(mem), reg(reg) {}
 
     void pushStack(tCPU::word value);
     tCPU::byte popStack();
 
 protected:
-    shared_ptr<Memory> mem;
-    shared_ptr<Registers> reg;
+    Memory* mem;
+    Registers* reg;
 };

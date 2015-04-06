@@ -571,17 +571,42 @@ DEFINE_OPCODE(INC) {
 }
 
 DEFINE_OPCODE(JSR) {
-//    ctx->mem->pushStack(--ctx->registers->PC);
+    ctx->stack->pushStack(--ctx->registers->PC);
+    tCPU::word address = MemoryOperation<mode>::GetEffectiveAddress(ctx);
+
+    PrintDbg("Pushed old PC 0x%X - 1 on stack; Setting new PC to 0x%X")
+            % ctx->registers->PC % address;
+
+    ctx->registers->PC = address;
 }
-//
-//DECLARE_HANDLER( JSR ) {
-//        static void Execute() {
-//
-//            g_Registers.PC --;
-//            g_Memory.PushOnStack( g_Registers.PC );
-//            tCPU::word Value = tMemoryAddressLookup<AddressMode>::GetEffectiveAddress();
-//
-//            //PrintDbg( "JSR: Saved Old PC 0x%X (-1) to Stack; Setting New PC to 0x%X", g_Registers.PC, Value );
-//            g_Registers.PC = Value;
-//        }
-//};
+
+DEFINE_OPCODE(ORA) {
+    tCPU::byte mem = MemoryOperation<mode>::readByte(ctx);
+    tCPU::byte value = RegisterOperation<ACCUMULATOR>::read(ctx);
+
+    value = value | mem;
+
+    ctx->registers->P.N = uint8_t((value & 0x80) == 0x80); // sign bit
+    ctx->registers->P.Z = uint8_t(value == 0); // zero bit
+
+    RegisterOperation<ACCUMULATOR>::write(ctx, value);
+}
+
+DEFINE_OPCODE(BRK) {
+    // go to next instruction
+    ctx->registers->PC ++;
+    ctx->stack->pushStack(ctx->registers->PC);
+    // set break flag
+    ctx->registers->P.B = 1;
+    // push status on stack
+    ctx->stack->pushStack((ctx->registers->P.asByte()));
+    // disable irq
+    ctx->registers->P.I = 1;
+
+    tCPU::word breakAddress = ctx->mem->readWord(0xFFFE);
+
+    PrintDbg("Break Vector; saved next PC=$%0X; setting PC=$%0X")
+            % ctx->registers->PC % breakAddress;
+
+    ctx->registers->PC = breakAddress;
+}

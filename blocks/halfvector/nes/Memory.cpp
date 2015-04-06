@@ -85,7 +85,7 @@ Memory::writeByteDirectly(tCPU::word address, tCPU::byte value) {
         }
 
         // regular memory
-        PrintMemory("Writing %02X to 0x%08X") % (int) value % (int) address;
+        PrintMemory("Writing %04X to 0x%08X") % (int) value % (int) address;
         memory[address] = value;
         return true;
     }

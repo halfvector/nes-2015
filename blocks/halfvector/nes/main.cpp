@@ -4,6 +4,7 @@
 #include "CPU.h"
 #include "DI.h"
 #include "Backtrace.h"
+#include "MemoryStack.h"
 
 #define __USE_GNU
 #define _GNU_SOURCE 1
@@ -92,17 +93,17 @@ int main(int argc, char ** argv) {
     Cartridge rom = loader.loadCartridge("../roms/supermariobros.nes");
 
     // ppu
-    PPU* ppu = new PPU();
+    auto ppu = new PPU();
     // i/o port mapper
-    MemoryIO* mmio = new MemoryIO(ppu);
+    auto mmio = new MemoryIO(ppu);
     // cpu memory
-    Memory* memory = new Memory(mmio);
-
+    auto memory = new Memory(mmio);
     // ppu memory
 //    tCPU::byte* ppuMemory = new tCPU::byte[0x4000];
-
     // cpu registers
-    Registers* registers = new Registers();
+    auto registers = new Registers();
+    // cpu stack
+    auto stack = new Stack(memory, registers);
 
     // setup injectable instances
 //    auto injector = di::make_injector(
@@ -114,9 +115,8 @@ int main(int argc, char ** argv) {
 
     // cpu
 //    CPU cpu = injector.create<CPU>();
-    CPU cpu(registers, memory);
+    CPU cpu(registers, memory, stack);
     cpu.load(rom);
-    cpu.run();
     cpu.reset();
 
     //registers->PC = 0x0000804F;

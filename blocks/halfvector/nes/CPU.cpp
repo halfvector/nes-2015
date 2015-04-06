@@ -1,8 +1,8 @@
 #include "CPU.h"
 #include "Logging.h"
 
-CPU::CPU(Registers* registers, Memory* memory)
-        : registers(registers), memory(memory) {
+CPU::CPU(Registers* registers, Memory* memory, Stack* stack)
+        : registers(registers), memory(memory), stack(stack) {
 
 }
 
@@ -19,6 +19,7 @@ CPU::load(Cartridge& rom) {
     ctx = new InstructionContext();
     ctx->mem = memory;
     ctx->registers = registers;
+    ctx->stack = stack;
 
     // write program pages
     if (rom.header.numPrgPages == 1) {
@@ -44,6 +45,19 @@ void
 CPU::writePrgPage(int pageIdx, uint8_t buffer[]) {
     tCPU::dword pageAddress = 0x8000 + 0x4000 * pageIdx;
     PrintInfo("Writing 16k PRG ROM to Page %d (@ 0x%08X)") % pageIdx % (int) pageAddress;
+
+//    for(int j = 0; j < PRG_ROM_PAGE_SIZE; j+=8) {
+//        PrintDbg("%05X %02X %02X %02X %02X %02X %02X %02X %02X")
+//                % (int) (pageAddress + j)
+//                % (int) buffer[j+0]
+//                % (int) buffer[j+1]
+//                % (int) buffer[j+2]
+//                % (int) buffer[j+3]
+//                % (int) buffer[j+4]
+//                % (int) buffer[j+5]
+//                % (int) buffer[j+6]
+//                % (int) buffer[j+7];
+//    }
 
     memcpy(memory->getByteArray() + pageAddress, buffer, 0x4000);
 }

@@ -4,6 +4,7 @@
 #include "Cartridge.h"
 #include "Logging.h"
 #include "Memory.h"
+#include "MemoryStack.h"
 #include "Platform.h"
 #include "Instructions.h"
 #include "Registers.h"
@@ -11,7 +12,7 @@
 
 class CPU {
 public:
-    CPU(Registers*, Memory*);
+    CPU(Registers*, Memory*, Stack*);
 
     void load(Cartridge&);
     void run();
@@ -23,10 +24,12 @@ public:
 protected:
     Registers* registers;
     Memory* memory;
-    Opcode opcodes[0x100];
+    Stack* stack;
+
+    Opcode* opcodes = new Opcode[0x100];
     uint64_t numCycles = 0;
 
-    AddressModeProperties modes[16];
+    AddressModeProperties* modes = new AddressModeProperties[16];
     Instructions* instructions;
 
     InstructionContext* ctx;

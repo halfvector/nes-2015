@@ -75,11 +75,11 @@ struct ProcessorStatusRegister {
         X = 1; // always 1 :D
     }
 
-    tCPU::byte AsByte() {
+    tCPU::byte asByte() {
         return Bit<7>::Set(N) + Bit<6>::Set(V) + Bit<5>::Set(X) + Bit<4>::Set(B) + Bit<3>::Set(D) + Bit<2>::Set(I) + Bit<1>::Set(Z) + Bit<0>::Set(C);
     }
 
-    void FromByte(tCPU::byte Value) {
+    void fromByte(tCPU::byte Value) {
         N = Bit<7>::IsSet(Value);
         V = Bit<6>::IsSet(Value);
         X = Bit<5>::IsSet(Value);

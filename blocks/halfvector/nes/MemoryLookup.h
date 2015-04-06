@@ -2,10 +2,12 @@
 
 #include "Memory.h"
 #include "Registers.h"
+#include "MemoryStack.h"
 
 struct InstructionContext {
     Memory *mem;
     Registers *registers;
+    Stack* stack;
 };
 
 struct MemoryAddressResolveBase {
@@ -44,26 +46,27 @@ struct MemoryAddressResolve<ADDR_MODE_ZEROPAGE> : MemoryAddressResolveBase {
     static int NumOfCalls;
 
     static tCPU::word GetEffectiveAddress(InstructionContext *ctx) {
-        tCPU::word EffectiveAddress = ctx->mem->getRealMemoryAddress(ctx->registers->PC);//g_Memory.GetByteAfterPC();
+        tCPU::word effectiveAddress = ctx->mem->readByte(ctx->registers->LastPC + 1);
         PageBoundaryCrossed = false;
 
         NumOfCalls++;
-        return EffectiveAddress;
+        return effectiveAddress;
     }
 };
-
 
 template<>
 struct MemoryAddressResolve<ADDR_MODE_ZEROPAGE_INDEXED_X> : MemoryAddressResolveBase {
     static int NumOfCalls;
 
     static tCPU::word GetEffectiveAddress(InstructionContext *ctx) {
-        //g_Memory.GetByteAfterPC() + g_Registers.X;
-        tCPU::word EffectiveAddress = ctx->mem->readByte(ctx->registers->LastPC + 1) + ctx->registers->X;
+        tCPU::word effectiveAddress = ctx->mem->readByte(ctx->registers->LastPC + 1) + ctx->registers->X;
         PageBoundaryCrossed = false;
 
+        // zero-page address is only 1 byte, wrap around after additing value from X register
+        effectiveAddress = (tCPU::word) 0xFF & effectiveAddress;
+
         NumOfCalls++;
-        return EffectiveAddress;
+        return effectiveAddress;
     }
 };
 

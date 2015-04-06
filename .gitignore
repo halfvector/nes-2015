@@ -5,3 +5,4 @@ cmake
 deps
 bii/.hive.db
 roms
+lib
