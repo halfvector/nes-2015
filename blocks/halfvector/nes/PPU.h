@@ -2,9 +2,58 @@
 
 #include "Platform.h"
 
+enum enumSpriteSize { SPRITE_SIZE_8x16 = 1, SPRITE_SIZE_8x8 = 0 };
+
+struct PPU_Settings {
+    /*
+     * control register 1
+     */
+    bool GenerateInterruptOnSprite;
+    bool GenerateInterruptOnVBlank;
+
+    // Port 2007h VRAM Address Increment (1byte = horizontal, 32bytes = vertical)
+    // cause the nametable is 32 bytes wide, so skipping 32 bytes gets u down one row
+    bool DoVerticalWrites;
+
+    // 8x16 or 8x8 sprites
+    enumSpriteSize SpriteSize;
+
+    // base addresses for pattern tables
+    tCPU::word SpritePatternTableAddress;
+    tCPU::word BackgroundPatternTableAddress;
+
+    // because of mirroring there are only two real name tables, but this can have
+    // 4 diff values: 0x2000, 0x2400, 0x2800, 0x2C00
+    tCPU::word NameTableAddress;
+
+    /**
+     * control register 2
+     */
+    bool DisplayTypeMonochrome;
+    // dont show left 8 pixels
+    bool BackgroundClipping;
+    // invisible in left 8 pixel column
+    bool SpriteClipping;
+    bool BackgroundVisible;
+    bool SpriteVisible;
+};
+
+class Raster {
+public:
+    Raster() {
+        screenBuffer = new tCPU::byte[256 * 256 * 4];
+        backgroundMask = new tCPU::byte[256 * 256];
+        spriteMask = new tCPU::byte[256 * 256];
+    }
+
+    tCPU::byte* screenBuffer;
+    tCPU::byte* backgroundMask;
+    tCPU::byte* spriteMask;
+};
+
 class PPU {
 public:
-    PPU();
+    PPU(Raster *);
     void execute(int numCycles);
     tCPU::byte getStatusRegister();
 
@@ -15,19 +64,22 @@ protected:
     tCPU::word tempVRAMAddress;
     tCPU::byte tileXOffset;
     tCPU::byte latchedVRAMByte;
+
     // states
     bool sprite0HitInThisScanline;
-
     bool sprite0HitInThisFrame;
+
     bool inHBlank, inVBlank;
     int currentScanline;
     int scanlinePixel;
 
     // memory
-    tCPU::byte* WRAM = new tCPU::byte[2000];
-    tCPU::byte* VRAM = new tCPU::byte[2000];
-    tCPU::byte* PPU_RAM = new tCPU::byte[0x4000];
-    tCPU::byte* SPR_RAM;
+    tCPU::byte *WRAM = new tCPU::byte[2000];
+    tCPU::byte *VRAM = new tCPU::byte[2000];
+    tCPU::byte *PPU_RAM = new tCPU::byte[0x4000];
+    tCPU::byte *SPR_RAM = new tCPU::byte[0x100];
+
+    Raster *raster;
 
     // shared flipflop by port 2005 and 2006 to maintain first-write bit
     // reset by port 2002 reads
@@ -37,7 +89,12 @@ protected:
     tCPU::byte verticalScrollOrigin;
     tCPU::word reloadBits;
 
+    PPU_Settings settings;
+
     void setVerticalBlank();
     void advanceRenderableScanline();
     void advanceBlankScanline();
+    void onEnterHBlank();
+    void renderScanline(int scanline);
+    tCPU::byte GetColorFromPalette(int PaletteType, int NameTableId, int ColorId);
 };

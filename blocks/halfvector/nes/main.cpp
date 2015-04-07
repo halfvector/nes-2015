@@ -92,48 +92,66 @@ int main(int argc, char ** argv) {
     CartridgeLoader loader;
     Cartridge rom = loader.loadCartridge("../roms/supermariobros.nes");
 
+    // raster output
+    Raster* raster = new Raster();
     // ppu
-    auto ppu = new PPU();
+    PPU* ppu = new PPU(raster);
     // i/o port mapper
-    auto mmio = new MemoryIO(ppu);
+    MemoryIO* mmio = new MemoryIO(ppu);
     // cpu memory
-    auto memory = new Memory(mmio);
-    // ppu memory
-//    tCPU::byte* ppuMemory = new tCPU::byte[0x4000];
+    Memory* memory = new Memory(mmio);
     // cpu registers
-    auto registers = new Registers();
+    Registers* registers = new Registers();
     // cpu stack
-    auto stack = new Stack(memory, registers);
+    Stack* stack = new Stack(memory, registers);
 
     // setup injectable instances
 //    auto injector = di::make_injector(
-//            di::bind<Memory*>.to(memory),
-//            di::bind<MemoryIO*>.to(mmio),
-//            di::bind<Registers*>.to(registers)
+//        di::bind<Stack*>.to(stack),
+//        di::bind<Memory*>.to(memory),
+//        di::bind<MemoryIO*>.to(mmio),
+//        di::bind<Registers*>.to(registers)
 //    );
 
-
     // cpu
-//    CPU cpu = injector.create<CPU>();
-    CPU cpu(registers, memory, stack);
-    cpu.load(rom);
-    cpu.reset();
-
-    //registers->PC = 0x0000804F;
+//    auto cpu = injector.create<std::shared_ptr<CPU>>();
+    CPU* cpu = new CPU(registers, memory, stack);
+    cpu->load(rom);
+    cpu->reset();
 
     PrintDbg("Reset program-counter to 0x%X") % registers->PC;
 
-    for(int i = 0; i < 19500; i ++) {
+    bool vblankNmiWaiting = false;
+
+    auto doVblankNMI = [&]() {
+        stack->pushStack(registers->PC);
+        stack->pushStack(registers->P.asByte());
+
+        // disable irq
+        registers->P.I = 1;
+        tCPU::word address = memory->readWord(0xFFFA);
+
+        registers->PC = address;
+
+        cpu->addCycles(7);
+        vblankNmiWaiting = false;
+    };
+
+    for(int i = 0; i < 90000; i ++) {
         // grab next instruction
         tCPU::byte opCode = memory->readByteDirectly(registers->PC);
 
         // step cpu
-        int cpuCycles = cpu.executeOpcode(opCode);
+        int cpuCycles = cpu->executeOpcode(opCode);
 
         // step ppu in sync with cpu
         ppu->execute(cpuCycles * 3);
+
+        if(vblankNmiWaiting) {
+            doVblankNMI();
+        }
     }
 
-    PrintDbg("Ran for %d cycles") % (int) cpu.getCycleRuntime();
+    PrintDbg("Ran for %d cycles") % (int) cpu->getCycleRuntime();
 }
 

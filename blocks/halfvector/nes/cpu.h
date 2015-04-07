@@ -21,6 +21,10 @@ public:
     int executeOpcode(int code);
 
     uint64_t getCycleRuntime();
+    void addCycles(int cycles) {
+        numCycles += cycles;
+    }
+
 protected:
     Registers* registers;
     Memory* memory;
