@@ -57,8 +57,8 @@ tCPU::byte
 PPU::getStatusRegister() {
     tCPU::byte returnValue = statusRegister;
 
-    PrintDbg("PPU; Status register: %s") % std::bitset<8>(statusRegister).to_string();
-    PrintDbg("PPU; -> Scanline: %d, HBlank: %d, Pixel: %d") % currentScanline
+    PrintPpu("PPU; Status register: %s") % std::bitset<8>(statusRegister).to_string();
+    PrintPpu("PPU; -> Scanline: %d, HBlank: %d, Pixel: %d") % currentScanline
             % inHBlank % scanlinePixel;
 
     // reset vblank on register read
@@ -156,7 +156,7 @@ PPU::advanceRenderableScanline() {
             vramAddress14bit &= 0x7FFF;
         }
 
-        PrintDbg("Start of Scanline; vramAddress14bit = 0x%X / tempVRAMAddress = %s")
+        PrintPpu("Start of Scanline; vramAddress14bit = 0x%X / tempVRAMAddress = %s")
                 % vramAddress14bit % std::bitset<16>(tempVRAMAddress);
     }
 
@@ -420,8 +420,8 @@ void PPU::renderScanline(int Y) {
                 // lower two bits
                 tCPU::byte Color = (PixelBit0 ? 1 : 0) + (PixelBit1 ? 2 : 0);
 
-                //PrintDbg( "(%d & (1 << %d) = %d", PatternBit0, ProperX, (PatternBit0 & (1 << ProperX)));
-                //PrintDbg( "  (%d & (1 << %d) = %d", PatternBit1, ProperX, (PatternBit1 & (1 << ProperX)));
+                //PrintPpu( "(%d & (1 << %d) = %d", PatternBit0, ProperX, (PatternBit0 & (1 << ProperX)));
+                //PrintPpu( "  (%d & (1 << %d) = %d", PatternBit1, ProperX, (PatternBit1 & (1 << ProperX)));
 
                 tCPU::byte PaletteId = GetColorFromPalette( 1, SpritePalette, Color );
                 tCPU::byte Luminance = (PaletteId & 0xF0) >> 4;
@@ -455,11 +455,11 @@ void PPU::renderScanline(int Y) {
 
     if( numSpritesDrawn >= 8 )
     {
-        //PrintDbg("sprite overflow!" );
+        //PrintPpu("sprite overflow!" );
         statusRegister |= Bit<5>::Set( true );
     }
 
-    PrintDbg("Rendered scanline Y=%d") % Y;
+    PrintPpu("Rendered scanline Y=%d") % Y;
 }
 
 // palettetype: 0 = background, 1 = sprites

@@ -10,7 +10,10 @@ extern el::Logger *logger;
 #define PrintInfo       LOG(INFO) << boost::format
 #define PrintWarning    LOG(WARNING) << boost::format
 #define PrintError      LOG(ERROR) << boost::format
+
+#define PrintCpu        LOG(DEBUG) << boost::format
 #define PrintMemory     LOG(DEBUG) << boost::format
+#define PrintPpu        LOG(DEBUG) << boost::format
 
 static std::string boostFormatWrapper(boost::format &f) {
     return boost::str(f);

@@ -44,7 +44,7 @@ CPU::load(Cartridge& rom) {
 void
 CPU::writePrgPage(int pageIdx, uint8_t buffer[]) {
     tCPU::dword pageAddress = 0x8000 + 0x4000 * pageIdx;
-    PrintInfo("Writing 16k PRG ROM to Page %d (@ 0x%08X)") % pageIdx % (int) pageAddress;
+    PrintCpu("Writing 16k PRG ROM to Page %d (@ 0x%08X)") % pageIdx % (int) pageAddress;
 
 //    for(int j = 0; j < PRG_ROM_PAGE_SIZE; j+=8) {
 //        PrintDbg("%05X %02X %02X %02X %02X %02X %02X %02X %02X")
@@ -73,7 +73,7 @@ CPU::writeChrPage(uint8_t buffer[]) {
 void
 CPU::run() {
     reset();
-    PrintDbg("Reset program-counter to 0x%X") % registers->PC;
+    PrintCpu("Reset program-counter to 0x%X") % registers->PC;
 
     //while(cpuAlive) {
     for(int i = 0; i < 30; i ++) {
@@ -102,20 +102,20 @@ CPU::executeOpcode(int code) {
     const char* title = AddressModeTitle[static_cast<uint8_t>(mode)];
 
     if(opcodeSize == 1) {
-        PrintInfo("%08X: %02X\t\t%s " + modes[mode].addressLine)
+        PrintCpu("%08X: %02X\t\t%s " + modes[mode].addressLine)
                 % (int) registers->PC
                 % code
                 % mnemonic;
     } else if(opcodeSize == 2) {
         unsigned char data1 = memory->readByte(registers->PC+1);
-        PrintInfo("%08X: %02X %02X\t\t%s " + modes[mode].addressLine)
+        PrintCpu("%08X: %02X %02X\t\t%s " + modes[mode].addressLine)
                 % (int) registers->PC
                 % code % (int) data1
                 % mnemonic % (int) data1;
     } else if(opcodeSize == 3) {
         unsigned char lowByte = memory->readByte(registers->PC+1);
         unsigned char highByte = memory->readByte(registers->PC+2);
-        PrintInfo("%08X: %02X %02X %02X\t%s " + modes[mode].addressLine)
+        PrintCpu("%08X: %02X %02X %02X\t%s " + modes[mode].addressLine)
                 % (int) registers->PC
                 % code % (int) lowByte % (int) highByte
                 % mnemonic % (int) highByte % (int) lowByte;

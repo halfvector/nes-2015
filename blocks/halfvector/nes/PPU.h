@@ -57,6 +57,10 @@ public:
     void execute(int numCycles);
     tCPU::byte getStatusRegister();
 
+    bool enteredVBlank() {
+        return currentScanline == 243 && scanlinePixel == 0;
+    }
+
 protected:
     tCPU::byte statusRegister;
     tCPU::word cycles;

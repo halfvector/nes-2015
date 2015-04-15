@@ -6,7 +6,7 @@ template<>
 struct MemoryIOHandler<0x2002> {
     static tCPU::byte Read(PPU* ppu) {
         tCPU::byte value = ppu->getStatusRegister();
-        PrintDbg("MemoryIOHandler<0x%04X>::Read(); status register = %d")
+        PrintMemory("MemoryIOHandler<0x%04X>::Read(); status register = %d")
                 % 0x2002 % (int) value;
         return value;
     }
@@ -23,6 +23,8 @@ MemoryIO::MemoryIO(PPU* ppu) : ppu(ppu) {
 
 bool
 MemoryIO::write(tCPU::word address, tCPU::byte value) {
+    PrintMemory("MemoryIO::write(); address = 0x%04X value = 0x%02X")
+        % address % value;
     return 0;
 }
 
@@ -33,7 +35,7 @@ MemoryIO::read(tCPU::word address) {
             return MemoryIOHandler<0x2002>::Read(ppu);
 
         default:
-            PrintDbg("MemoryIO::Read(); address = 0x%04X not supported") % address;
+            PrintMemory("MemoryIO::Read(); address = 0x%04X not supported") % address;
             return 0;
     }
 

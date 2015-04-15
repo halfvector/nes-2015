@@ -454,12 +454,12 @@ struct BranchIf {
         unsigned short jmpAddress = ctx->registers->PC + relativeOffset;
         bool flagState = ProcessorStatusFlag<Register>::getState(ctx);
 
-        PrintDbg("-> Status Register (%d) %s: %d; Relative offset: $%X; Absolute jump address = $%08X")
+        PrintCpu("-> Status Register (%d) %s: %d; Relative offset: $%X; Absolute jump address = $%08X")
                 % (int) Register % ProcessorStatusFlagNames[Register]
                 % (int) flagState % (int) relativeOffset % (int) jmpAddress;
 
         if (flagState == expectedState) {
-            PrintDbg("-> Branch Taken");
+            PrintCpu("-> Branch Taken");
 //            CPU::Singleton()->IncCycles();
 
             // add another cycle if branch goes to a diff page
@@ -531,11 +531,11 @@ struct GenericComparator {
  */
 
 DEFINE_OPCODE(CPX) {
-    GenericComparator<ACCUMULATOR, mode>::execute(ctx);
+    GenericComparator<REGISTER_X, mode>::execute(ctx);
 }
 
 DEFINE_OPCODE(CPY) {
-    GenericComparator<ACCUMULATOR, mode>::execute(ctx);
+    GenericComparator<REGISTER_Y, mode>::execute(ctx);
 }
 
 DEFINE_OPCODE(CMP) {
@@ -556,7 +556,7 @@ DEFINE_OPCODE(DEX) {
 
 DEFINE_OPCODE(DEY) {
     tCPU::byte value = uint8_t(RegisterOperation<REGISTER_Y>::read(ctx) - 1);
-    RegisterOperation<REGISTER_X>::write(ctx, value);
+    RegisterOperation<REGISTER_Y>::write(ctx, value);
 
     ctx->registers->P.N = uint8_t((value & 0x80) == 0x80);
     ctx->registers->P.Z = uint8_t(value == 0);
@@ -582,7 +582,7 @@ DEFINE_OPCODE(JSR) {
     ctx->stack->pushStack(--ctx->registers->PC);
     tCPU::word address = MemoryOperation<mode>::GetEffectiveAddress(ctx);
 
-    PrintDbg("Pushed old PC 0x%X - 1 on stack; Setting new PC to 0x%X")
+    PrintCpu("Pushed old PC 0x%X - 1 on stack; Setting new PC to 0x%X")
             % ctx->registers->PC % address;
 
     ctx->registers->PC = address;
@@ -613,7 +613,7 @@ DEFINE_OPCODE(BRK) {
 
     tCPU::word breakAddress = ctx->mem->readWord(0xFFFE);
 
-    PrintDbg("Break Vector; saved next PC=$%0X; setting PC=$%0X")
+    PrintCpu("Break Vector; saved next PC=$%0X; setting PC=$%0X")
             % ctx->registers->PC % breakAddress;
 
     ctx->registers->PC = breakAddress;

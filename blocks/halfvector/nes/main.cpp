@@ -5,6 +5,7 @@
 #include "DI.h"
 #include "Backtrace.h"
 #include "MemoryStack.h"
+#include "GUI.h"
 
 #define __USE_GNU
 #define _GNU_SOURCE 1
@@ -104,6 +105,8 @@ int main(int argc, char ** argv) {
     Registers* registers = new Registers();
     // cpu stack
     Stack* stack = new Stack(memory, registers);
+    // rendering
+    GUI* gui = new GUI(raster->screenBuffer);
 
     // setup injectable instances
 //    auto injector = di::make_injector(
@@ -137,7 +140,7 @@ int main(int argc, char ** argv) {
         vblankNmiWaiting = false;
     };
 
-    for(int i = 0; i < 90000; i ++) {
+    for(int i = 0; i < 150000; i ++) {
         // grab next instruction
         tCPU::byte opCode = memory->readByteDirectly(registers->PC);
 
@@ -150,8 +153,16 @@ int main(int argc, char ** argv) {
         if(vblankNmiWaiting) {
             doVblankNMI();
         }
+
+        if(ppu->enteredVBlank()) {
+            gui->render();
+        }
     }
 
+    SDL_Delay(2000);
+
     PrintDbg("Ran for %d cycles") % (int) cpu->getCycleRuntime();
+
+    delete gui;
 }
 

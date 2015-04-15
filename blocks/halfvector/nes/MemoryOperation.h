@@ -40,7 +40,7 @@ struct MemoryOperation<ADDR_MODE_IMMEDIATE> : MemoryOperation<ADDR_MODE_NONE> {
 
     static tCPU::byte readByte(InstructionContext *ctx) {
         tCPU::byte value = ctx->mem->readByte(ctx->registers->LastPC + 1);
-        PrintDbg("MemoryOperation<ADDR_MODE_IMMEDIATE>::readByte(); value = 0x%X") % (int)value;
+        PrintMemory("MemoryOperation<ADDR_MODE_IMMEDIATE>::readByte(); value = 0x%X") % (int)value;
         return value;
     }
 
@@ -49,7 +49,7 @@ struct MemoryOperation<ADDR_MODE_IMMEDIATE> : MemoryOperation<ADDR_MODE_NONE> {
     // its an address to work on ITSELF.. eg jump to there
     static tCPU::word readWord(InstructionContext *ctx) {
         tCPU::word value = ctx->mem->readWord(ctx->registers->LastPC + 1);
-        PrintDbg("MemoryOperation<ADDR_MODE_IMMEDIATE>::readWord(); value = 0x%X") % (int)value;
+        PrintMemory("MemoryOperation<ADDR_MODE_IMMEDIATE>::readWord(); value = 0x%X") % (int)value;
         return value;
     }
 };
@@ -59,7 +59,7 @@ template<>
 struct MemoryOperation<ADDR_MODE_ACCUMULATOR> : MemoryOperation<ADDR_MODE_NONE> {
     static void writeByte(InstructionContext *ctx, tCPU::byte value) {
         ctx->registers->A = value;
-        PrintDbg("MemoryOperation<ACCUMULATOR>::writeByte(); value = 0x%X") % value;
+        PrintMemory("MemoryOperation<ACCUMULATOR>::writeByte(); value = 0x%X") % value;
     }
 
     static void writeWord(tCPU::word value) {
@@ -68,7 +68,7 @@ struct MemoryOperation<ADDR_MODE_ACCUMULATOR> : MemoryOperation<ADDR_MODE_NONE> 
 
     static tCPU::byte readByte(InstructionContext *ctx) {
         tCPU::byte value = ctx->registers->A;
-        PrintDbg("MemoryOperation<ACCUMULATOR>::readByte(); value = 0x%X") % value;
+        PrintMemory("MemoryOperation<ACCUMULATOR>::readByte(); value = 0x%X") % value;
         return value;
     }
 

@@ -19,7 +19,7 @@ Memory::getRealMemoryAddress(tCPU::word address) {
     // repeating mirrors of the below i/o registers
     if (address >= 0x2008 && address < 0x3FFF) {
         address = 0x2000 + (address % 8);
-        PrintDbg("Adjusted Repeating I/O Mirror to 0x%04X") % address;
+        PrintMemory("Adjusted Repeating I/O Mirror to 0x%04X") % address;
     }
 
     return address;
@@ -62,7 +62,7 @@ Memory::readWord(tCPU::word absoluteAddress) {
     tCPU::dword lowByte = readByte(absoluteAddress);
     tCPU::dword highByte = readByte(absoluteAddress + 1);
     tCPU::dword value = (highByte << 8) | lowByte;
-    PrintDbg("Memory::readWord(); Read word=0x%08X (0x%04X + 0x%04X) from 0x%X")
+    PrintMemory("Memory::readWord(); Read word=0x%08X (0x%04X + 0x%04X) from 0x%X")
             % value % (int) highByte % (int) lowByte % (int) absoluteAddress;
     return value;
 }
