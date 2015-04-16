@@ -1,4 +1,5 @@
 #include <math.h>
+#include <bitset>
 #include "PPU.h"
 #include "Logging.h"
 #include "Registers.h"
@@ -480,4 +481,24 @@ PPU::GetColorFromPalette( int PaletteType, int NameTableId, int ColorId )
     }
 
     return Color;
+}
+
+void PPU::setControlRegister(tCPU::byte value) {
+    std::bitset<8> bits(value);
+
+    tCPU::byte nameTableIdx = bits.test(0) + bits.test(1);
+    nameTableAddress = 0x2000 + nameTableIdx * 0x400;
+
+    // increment vram address (on port $2007 activity) by 1 (horizontal) or 32 (vertical) bytes
+    doVerticalWrites = bits.test(2);
+    spritePatternTableAddress = bits.test(3) ? 0x1000 : 0x0000;
+    backgroundPatternTableAddress = bits.test(4) ? 0x1000 : 0x0000;
+
+    spriteSize = bits.test(5) ? SpriteSizes::SPRITE_8x16 : SpriteSizes::SPRITE_8x8;
+
+    generateInterruptOnSprite = bits.test(6);
+    generateInterruptOnVBlank = bits.test(7);
+
+    vramAddress14bit &= 0xF3FF;
+    vramAddress14bit |= (value & 0x03) << 10;
 }

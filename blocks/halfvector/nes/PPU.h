@@ -61,6 +61,8 @@ public:
         return currentScanline == 243 && scanlinePixel == 0;
     }
 
+    void setControlRegister(tCPU::byte value);
+
 protected:
     tCPU::byte statusRegister;
     tCPU::word cycles;
@@ -101,4 +103,26 @@ protected:
     void onEnterHBlank();
     void renderScanline(int scanline);
     tCPU::byte GetColorFromPalette(int PaletteType, int NameTableId, int ColorId);
+
+    /*
+     * PPU Settings
+     */
+    tCPU::word nameTableAddress;
+    tCPU::word spritePatternTableAddress;
+    tCPU::word backgroundPatternTableAddress;
+
+    bool displayTypeMonochrome;
+    bool backgroundClipping;
+    bool spriteClipping;
+    bool backgroundVisible;
+    bool spriteVisible;
+
+    // Port 2007h VRAM Address Increment (1byte = horizontal, 32bytes = vertical)
+    // since nametable is 32 bytes wide, skipping 32 bytes gets you down one row
+    bool doVerticalWrites;
+    bool generateInterruptOnSprite;
+    bool generateInterruptOnVBlank;
+
+    enum SpriteSizes { SPRITE_8x16 = 1, SPRITE_8x8 = 0 };
+    SpriteSizes spriteSize;
 };

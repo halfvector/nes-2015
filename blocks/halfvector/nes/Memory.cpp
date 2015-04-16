@@ -57,12 +57,14 @@ Memory::readByteDirectly(tCPU::word address) {
     }
 }
 
+// reads word at absolute address
+// expects word to be stored as [LSB][MSB] at address and address+1
 tCPU::word
 Memory::readWord(tCPU::word absoluteAddress) {
-    tCPU::dword lowByte = readByte(absoluteAddress);
-    tCPU::dword highByte = readByte(absoluteAddress + 1);
-    tCPU::dword value = (highByte << 8) | lowByte;
-    PrintMemory("Memory::readWord(); Read word=0x%08X (0x%04X + 0x%04X) from 0x%X")
+    tCPU::word lowByte = readByte(absoluteAddress);
+    tCPU::word highByte = readByte(absoluteAddress + 1);
+    tCPU::word value = (highByte << 8) | lowByte;
+    PrintMemory("Memory::readWord(); Read 0x%04X (MSB: 0x%04X + LSB: 0x%04X) from address $%04X")
             % value % (int) highByte % (int) lowByte % (int) absoluteAddress;
     return value;
 }
@@ -85,7 +87,7 @@ Memory::writeByteDirectly(tCPU::word address, tCPU::byte value) {
         }
 
         // regular memory
-        PrintMemory("Writing %04X to 0x%08X") % (int) value % (int) address;
+        PrintMemory("Writing 0x%04X to $%04X") % (int) value % (int) address;
         memory[address] = value;
         return true;
     }

@@ -130,21 +130,27 @@ struct MemoryAddressResolve<ADDR_MODE_INDIRECT_INDEXED> : MemoryAddressResolveBa
     static int NumOfCalls;
 
     static tCPU::word GetEffectiveAddress(InstructionContext *ctx) {
-        // zeropage 8bit address of where the real 16bit address is
-        tCPU::word ZeroPageAddress = ctx->mem->readByte(ctx->registers->LastPC + 1); //g_Memory.GetByteAfterPC();
-        // fetch the lsb of the 16bit address from zeropage address
-        tCPU::word IndirectAddress = ctx->mem->readWord(ZeroPageAddress); //g_Memory.GetWordAt( ZeroPageAddress );
-        // add the indexed offset (from register Y) as the msb
+        // read byte after opcode as an address
+        // the zeropage 8bit address contains the full 16bit address
+        tCPU::word ZeroPageAddress = ctx->mem->readByte(ctx->registers->LastPC + 1);
+
+        // fetch the 16bit address from zeropage address stored in the operand
+        tCPU::word IndirectAddress = ctx->mem->readWord(ZeroPageAddress);
+
+        // add the indexed offset (from register Y) to calculate the offset address
         tCPU::word IndexedIndirectAddress = IndirectAddress + ctx->registers->Y;
 
-        if ((IndirectAddress & 0xFF00) != (IndexedIndirectAddress & 0xFF00)) {    // page boundary crossed?
+        if ((IndirectAddress & 0xFF00) != (IndexedIndirectAddress & 0xFF00)) {
+            // page boundary crossed
             PageBoundaryCrossed = true;
             PrintDbg("< ADDR_MODE_INDIRECT_INDEXED > Page Boundary Crossed: $%04X + $%02X -> $%04X")
                     % IndirectAddress % ctx->registers->Y % IndexedIndirectAddress;
-        } else
+        } else {
             PageBoundaryCrossed = false;
+        }
 
-//		PrintDbg( "MemoryAddressResolve< ADDR_MODE_INDIRECT_INDEXED >::GetEffectiveAddress(); ZPA: $%04X, IA: $%04X, IIA: $%04X", ZeroPageAddress, IndirectAddress, IndexedIndirectAddress );
+		PrintDbg("MemoryAddressResolve< ADDR_MODE_INDIRECT_INDEXED >::GetEffectiveAddress(); ZPA: $%04X, IA: $%04X, IIA: $%04X")
+            % ZeroPageAddress % IndirectAddress % IndexedIndirectAddress;
 
         NumOfCalls++;
 

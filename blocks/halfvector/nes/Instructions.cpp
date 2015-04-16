@@ -412,14 +412,17 @@ DEFINE_OPCODE(LDY) {
 
 }
 
+// store accumulator
 DEFINE_OPCODE(STA) {
     MemoryOperation<mode>::writeByte(ctx, ctx->registers->A);
 }
 
+// store register X
 DEFINE_OPCODE(STX) {
     MemoryOperation<mode>::writeByte(ctx, ctx->registers->X);
 }
 
+// store register Y
 DEFINE_OPCODE(STY) {
     MemoryOperation<mode>::writeByte(ctx, ctx->registers->Y);
 }
@@ -442,6 +445,13 @@ DEFINE_OPCODE(TXS) {
     writeStack(ctx, ctx->registers->X);
 }
 
+// pop from stack and increment by 1
+DEFINE_OPCODE(RTS) {
+    tCPU::word address = ctx->stack->popStackWord() + 1;
+    ctx->registers->PC = address;
+    PrintDbg("RTS: Setting new PC = 0x%04X") % address;
+}
+
 /**
  * Generic branch instruction
  * provides implementation for various branch-on-cpu-status-flag
@@ -450,13 +460,14 @@ DEFINE_OPCODE(TXS) {
 template<ProcessorStatusFlags Register>
 struct BranchIf {
     static void is(InstructionContext *ctx, bool expectedState) {
-        signed char relativeOffset = ctx->mem->readByte(ctx->registers->LastPC + 1);// g_Memory.readByteAfterPC();
-        unsigned short jmpAddress = ctx->registers->PC + relativeOffset;
+        // get signed offset value
+        signed char relativeOffset = ctx->mem->readByte(ctx->registers->LastPC + 1);
+        tCPU::word jmpAddress = ctx->registers->PC + relativeOffset;
         bool flagState = ProcessorStatusFlag<Register>::getState(ctx);
 
-        PrintCpu("-> Status Register (%d) %s: %d; Relative offset: $%X; Absolute jump address = $%08X")
-                % (int) Register % ProcessorStatusFlagNames[Register]
-                % (int) flagState % (int) relativeOffset % (int) jmpAddress;
+        PrintCpu("-> Status Register %s: %d; Relative offset: $%X; Calculated jump address = $%04X")
+                % ProcessorStatusFlagNames[Register] % (int) flagState
+                % (signed int) relativeOffset % jmpAddress;
 
         if (flagState == expectedState) {
             PrintCpu("-> Branch Taken");
@@ -469,7 +480,7 @@ struct BranchIf {
 
             ctx->registers->PC = jmpAddress;
         }
-    }
+    };
 };
 
 /**
@@ -578,11 +589,13 @@ DEFINE_OPCODE(INC) {
     ctx->registers->P.Z = uint8_t(value == 0);
 }
 
+// push address-1 of next instruction on stack
+// then set next instruction to address
 DEFINE_OPCODE(JSR) {
-    ctx->stack->pushStack(--ctx->registers->PC);
+    ctx->stack->pushStack(ctx->registers->PC - 1);
     tCPU::word address = MemoryOperation<mode>::GetEffectiveAddress(ctx);
 
-    PrintCpu("Pushed old PC 0x%X - 1 on stack; Setting new PC to 0x%X")
+    PrintCpu("Pushed old PC $%04X - 1 on stack; Setting new PC to $%04X")
             % ctx->registers->PC % address;
 
     ctx->registers->PC = address;

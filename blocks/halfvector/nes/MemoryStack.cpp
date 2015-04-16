@@ -20,3 +20,10 @@ Stack::pushStack(unsigned short value) {
 unsigned char Stack::popStack() {
     throw new std::runtime_error("popStack() not implemented");
 }
+
+tCPU::word Stack::popStackWord() {
+    assert(reg->S >= 2 && "Stack underflow");
+    reg->S -= 2;
+
+    return mem->readWord(0x1FF - reg->S - 1);
+}

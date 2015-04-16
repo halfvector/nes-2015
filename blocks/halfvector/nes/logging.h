@@ -6,14 +6,18 @@
 
 extern el::Logger *logger;
 
-#define PrintDbg        LOG(DEBUG) << boost::format
-#define PrintInfo       LOG(INFO) << boost::format
-#define PrintWarning    LOG(WARNING) << boost::format
-#define PrintError      LOG(ERROR) << boost::format
+std::string simplifyFunctionName(std::string prettyFunction);
 
-#define PrintCpu        LOG(DEBUG) << boost::format
-#define PrintMemory     LOG(DEBUG) << boost::format
-#define PrintPpu        LOG(DEBUG) << boost::format
+#define __METHOD_NAME__ simplifyFunctionName(__PRETTY_FUNCTION__)
+
+#define PrintDbg        LOG(DEBUG) << __METHOD_NAME__ << boost::format
+#define PrintInfo       LOG(INFO) << __METHOD_NAME__ << boost::format
+#define PrintWarning    LOG(WARNING) << __METHOD_NAME__ << boost::format
+#define PrintError      LOG(ERROR) << __METHOD_NAME__ << boost::format
+
+#define PrintCpu        LOG(DEBUG) << __METHOD_NAME__ << boost::format
+#define PrintMemory     LOG(DEBUG) << __METHOD_NAME__ << boost::format
+#define PrintPpu        LOG(DEBUG) << __METHOD_NAME__ << boost::format
 
 static std::string boostFormatWrapper(boost::format &f) {
     return boost::str(f);

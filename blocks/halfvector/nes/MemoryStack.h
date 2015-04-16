@@ -11,6 +11,7 @@ public:
 
     void pushStack(tCPU::word value);
     tCPU::byte popStack();
+    tCPU::word popStackWord();
 
 protected:
     Memory* mem;

@@ -140,7 +140,7 @@ int main(int argc, char ** argv) {
         vblankNmiWaiting = false;
     };
 
-    for(int i = 0; i < 150000; i ++) {
+    for(int i = 0; i < 60000; i ++) {
         // grab next instruction
         tCPU::byte opCode = memory->readByteDirectly(registers->PC);
 
@@ -155,7 +155,7 @@ int main(int argc, char ** argv) {
         }
 
         if(ppu->enteredVBlank()) {
-            gui->render();
+//            gui->render();
         }
     }
 
