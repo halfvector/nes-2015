@@ -445,12 +445,6 @@ DEFINE_OPCODE(TXS) {
     writeStack(ctx, ctx->registers->X);
 }
 
-// pop from stack and increment by 1
-DEFINE_OPCODE(RTS) {
-    tCPU::word address = ctx->stack->popStackWord() + 1;
-    ctx->registers->PC = address;
-    PrintDbg("RTS: Setting new PC = 0x%04X") % address;
-}
 
 /**
  * Generic branch instruction
@@ -589,6 +583,7 @@ DEFINE_OPCODE(INC) {
     ctx->registers->P.Z = uint8_t(value == 0);
 }
 
+// call subroutine
 // push address-1 of next instruction on stack
 // then set next instruction to address
 DEFINE_OPCODE(JSR) {
@@ -599,6 +594,14 @@ DEFINE_OPCODE(JSR) {
             % ctx->registers->PC % address;
 
     ctx->registers->PC = address;
+}
+
+// return from subroutine
+// pop from stack and increment by 1
+DEFINE_OPCODE(RTS) {
+    tCPU::word address = ctx->stack->popStackWord() + 1;
+    ctx->registers->PC = address;
+    PrintDbg("RTS: Setting new PC = 0x%04X") % address;
 }
 
 DEFINE_OPCODE(ORA) {

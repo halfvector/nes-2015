@@ -43,6 +43,7 @@ public:
     tCPU::byte readFromIOPort(const tCPU::word address);
     tCPU::byte readByteDirectly(tCPU::word address);
     bool writeByte(tCPU::word address, tCPU::byte value);
+    void writeWord(tCPU::word address, tCPU::word value);
     bool writeToIOPort(const tCPU::word address, tCPU::byte value);
     bool writeByteDirectly(tCPU::word address, tCPU::byte value);
 

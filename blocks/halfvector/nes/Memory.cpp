@@ -44,16 +44,18 @@ Memory::readByteDirectly(tCPU::word address) {
 
     if ((address >= 0x2000 && address <= 0x2007) || (address >= 0x4000 && address <= 0x401F)) {
         // i/o registers
-        PrintMemory("Address 0x%08X is a Memory Mapped I/O Port") % address;
+        PrintMemory("* Reading from Memory Mapped I/O Port (0x%04X)") % address;
         return readFromIOPort(address);
     } else {
         // fun fact: stack memory
         if (address >= 0x0100 && address <= 0x01FF) {
-            PrintMemory("Address 0x%08X is the Stack") % address;
+            PrintMemory("* Reading from Stack (0x%04X)") % address;
         }
 
         // regular memory
-        return memory[address];
+        tCPU::byte value = memory[address];
+        PrintMemory("Read 0x%02X from $%04X") % (int) value % (int) address;
+        return value;
     }
 }
 
@@ -64,33 +66,60 @@ Memory::readWord(tCPU::word absoluteAddress) {
     tCPU::word lowByte = readByte(absoluteAddress);
     tCPU::word highByte = readByte(absoluteAddress + 1);
     tCPU::word value = (highByte << 8) | lowByte;
-    PrintMemory("Memory::readWord(); Read 0x%04X (MSB: 0x%04X + LSB: 0x%04X) from address $%04X")
-            % value % (int) highByte % (int) lowByte % (int) absoluteAddress;
+    PrintMemory("Read 0x%04X from address $%04X")
+            % value % (int) absoluteAddress;
     return value;
 }
 
+/**
+ * Resolves memory address through mirroring
+ * Determines if memory address is an I/O port, stack access, or heap write
+ */
 bool
 Memory::writeByte(tCPU::word originalAddress, tCPU::byte value) {
-    return writeByteDirectly(getRealMemoryAddress(originalAddress), value);
-}
+    tCPU::word address = getRealMemoryAddress(originalAddress);
 
-bool
-Memory::writeByteDirectly(tCPU::word address, tCPU::byte value) {
     if ((address >= 0x2000 && address <= 0x2007) || (address >= 0x4000 && address <= 0x401F)) {
         // i/o registers
-        PrintMemory("Address 0x%08X is a Memory Mapped I/O Port") % address;
+        PrintMemory("* Writing to Memory Mapped I/O Port (0x%04X)") % address;
         return writeToIOPort(address, value);
     } else {
         // fun fact: stack memory
         if (address >= 0x0100 && address <= 0x01FF) {
-            PrintMemory("Address 0x%08X is the Stack") % address;
+            PrintMemory("* Writing to Stack (0x%04X)") % address;
         }
 
         // regular memory
-        PrintMemory("Writing 0x%04X to $%04X") % (int) value % (int) address;
+        PrintMemory("Wrote 0x%02X to $%04X") % (int) value % (int) address;
         memory[address] = value;
         return true;
     }
+}
+
+// c++11 suffix operator to create short int literals (how is this still not a language feature?)
+//inline uint16_t operator "" _us(unsigned long long int value) {
+//    return static_cast<uint16_t>(value);
+//}
+
+void
+Memory::writeWord(tCPU::word address, tCPU::word value) {
+    // break word down into bytes
+    tCPU::byte lowByte = value & 0xFF;
+    tCPU::byte highByte = (value >> 8) & 0xFF;
+
+    // write bytes
+    writeByte(address, lowByte);
+    writeByte(address+1, highByte);
+
+    PrintMemory("Wrote 0x%04X to $%04X") % (int) value % (int) address;
+}
+
+/**
+ * Writes a byte to the specified address. Does not perform address transformation.
+ */
+bool
+Memory::writeByteDirectly(tCPU::word address, tCPU::byte value) {
+
 }
 
 tCPU::byte
@@ -98,15 +127,14 @@ Memory::readFromIOPort(const tCPU::word address) {
     return MMIO->read(address);
 }
 
+
 bool
 Memory::writeToIOPort(const tCPU::word address, tCPU::byte value) {
     //return MemoryIO<static_cast<int>(address)>::write(value);
     return MMIO->write(address, value);
 }
 
-
 tCPU::byte*
 Memory::getByteArray() {
     return memory;
 }
-
