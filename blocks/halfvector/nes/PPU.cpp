@@ -108,9 +108,18 @@ PPU::execute(int numCycles) {
     }
 }
 
+/**
+ * Vertical Blanking Interval started
+ */
 void
 PPU::setVerticalBlank() {
     statusRegister |= 1 << 7;
+
+    // generate nmi trigger if we have one pending
+    if(generateInterruptOnVBlank) {
+        vblankNmiAwaiting = true;
+        generateInterruptOnVBlank = false;
+    }
 }
 
 /**
@@ -478,6 +487,7 @@ PPU::GetColorFromPalette( int PaletteType, int NameTableId, int ColorId )
     } else {
         PrintError("PPU::GetColorFromPalette(%d, %d); Invalid Color Id")
                 % NameTableId % ColorId;
+        throw new std::runtime_error("Unexpected error");
     }
 
     return Color;
@@ -501,4 +511,7 @@ void PPU::setControlRegister(tCPU::byte value) {
 
     vramAddress14bit &= 0xF3FF;
     vramAddress14bit |= (value & 0x03) << 10;
+
+    PrintPpu("Generate an NMI at start of vertical blanking interval: %d")
+            % generateInterruptOnVBlank;
 }

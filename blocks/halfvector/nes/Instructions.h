@@ -32,6 +32,7 @@ struct InstructionImplementationA {
         PrintError("InstructionImplementationA::execute(); Unimplemented opcode = %02X in address mode = %s")
                 % (int) opcode
                 % AddressModeTitle[static_cast<int>(mode)];
+        throw new std::runtime_error("Unimplemented opcode");
     }
 };
 

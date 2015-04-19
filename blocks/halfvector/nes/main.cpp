@@ -77,14 +77,19 @@ int main(int argc, char ** argv) {
 //    defaultConf.set(el::Level::Warning, el::ConfigurationType::Format,
 //            "\033[1;30m╭──\033[1;31m %level\033[1;30m / %fbase:%line / %func\n\033[1;30m╰─>\033[1;37m %msg\n");
 
-    defaultConf.set(el::Level::Debug, el::ConfigurationType::Format,
-            "\033[0;33m%level\033[1;30m |\033[1;30m %msg \033[1;30m @ %fbase:%line");
-    defaultConf.set(el::Level::Info, el::ConfigurationType::Format,
-            "\033[0;33m%level\033[1;30m |\033[1;37m %msg \033[1;30m @ %fbase:%line");
-    defaultConf.set(el::Level::Error, el::ConfigurationType::Format,
-            "\033[0;31m%level\033[1;30m |\033[0;31m %msg \033[1;30m @ %fbase:%line");
-    defaultConf.set(el::Level::Warning, el::ConfigurationType::Format,
-            "\033[0;31m%level\033[1;30m |\033[0;31m %msg \033[1;30m @ %fbase:%line");
+//    defaultConf.set(el::Level::Debug, el::ConfigurationType::Format,
+//            "\033[0;33m%level\033[1;30m |\033[1;30m %msg \033[1;30m @ %fbase:%line");
+//    defaultConf.set(el::Level::Info, el::ConfigurationType::Format,
+//            "\033[0;33m%level\033[1;30m |\033[1;37m %msg \033[1;30m @ %fbase:%line");
+//    defaultConf.set(el::Level::Error, el::ConfigurationType::Format,
+//            "\033[0;31m%level\033[1;30m |\033[0;31m %msg \033[1;30m @ %fbase:%line");
+//    defaultConf.set(el::Level::Warning, el::ConfigurationType::Format,
+//            "\033[0;31m%level\033[1;30m |\033[0;31m %msg \033[1;30m @ %fbase:%line");
+
+    defaultConf.set(el::Level::Debug, el::ConfigurationType::Format, "%level | %msg");
+    defaultConf.set(el::Level::Info, el::ConfigurationType::Format, "%level | %msg");
+    defaultConf.set(el::Level::Error, el::ConfigurationType::Format, "%level | %msg");
+    defaultConf.set(el::Level::Warning, el::ConfigurationType::Format, "%level | %msg");
 
     el::Loggers::reconfigureLogger("default", defaultConf);
 
@@ -92,6 +97,10 @@ int main(int argc, char ** argv) {
 
     CartridgeLoader loader;
     Cartridge rom = loader.loadCartridge("../roms/supermariobros.nes");
+
+    auto onVblankNmiSet = []() {
+
+    };
 
     // raster output
     Raster* raster = new Raster();
@@ -124,11 +133,10 @@ int main(int argc, char ** argv) {
 
     PrintDbg("Reset program-counter to 0x%X") % registers->PC;
 
-    bool vblankNmiWaiting = false;
-
     auto doVblankNMI = [&]() {
-        stack->pushStack(registers->PC);
-        stack->pushStack(registers->P.asByte());
+        PrintDbg("Doing VBlank NMI (pushes to stack)");
+        stack->pushStackWord(registers->PC);
+        stack->pushStackWord(registers->P.asByte());
 
         // disable irq
         registers->P.I = 1;
@@ -137,7 +145,6 @@ int main(int argc, char ** argv) {
         registers->PC = address;
 
         cpu->addCycles(7);
-        vblankNmiWaiting = false;
     };
 
     for(int i = 0; i < 60000; i ++) {
@@ -150,12 +157,12 @@ int main(int argc, char ** argv) {
         // step ppu in sync with cpu
         ppu->execute(cpuCycles * 3);
 
-        if(vblankNmiWaiting) {
+        if(ppu->pullNMI()) {
             doVblankNMI();
         }
 
         if(ppu->enteredVBlank()) {
-//            gui->render();
+            gui->render();
         }
     }
 

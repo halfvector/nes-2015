@@ -428,23 +428,49 @@ DEFINE_OPCODE(STY) {
 }
 
 /**
- * Stack manipulation
+ * Transfer Registers
  */
 
-void writeStack(InstructionContext* ctx, tCPU::byte value) {
-    auto address = 0x1FF - ctx->registers->S;
-    ctx->mem->writeByte(address, value);
-}
-
-tCPU::byte readStack(InstructionContext* ctx) {
-    auto address = 0x1FF - ctx->registers->S;
-    return ctx->mem->readByte(address);
-}
-
+// X -> Stack
 DEFINE_OPCODE(TXS) {
-    writeStack(ctx, ctx->registers->X);
+    ctx->stack->pushStackByte(ctx->registers->X);
 }
 
+// X -> Accumulator
+DEFINE_OPCODE(TXA) {
+    tCPU::byte reg = RegisterOperation<REGISTER_X>::read(ctx);
+    RegisterOperation<ACCUMULATOR>::write(ctx, reg);
+
+    ctx->registers->setSignBit(reg);
+    ctx->registers->setZeroBit(reg);
+}
+
+// Y -> Accumulator
+DEFINE_OPCODE(TYA) {
+    tCPU::byte reg = RegisterOperation<REGISTER_Y>::read(ctx);
+    RegisterOperation<ACCUMULATOR>::write(ctx, reg);
+
+    ctx->registers->setSignBit(reg);
+    ctx->registers->setZeroBit(reg);
+}
+
+// Accumulator -> X
+DEFINE_OPCODE(TAX) {
+    tCPU::byte reg = RegisterOperation<ACCUMULATOR>::read(ctx);
+    RegisterOperation<REGISTER_X>::write(ctx, reg);
+
+    ctx->registers->setSignBit(reg);
+    ctx->registers->setZeroBit(reg);
+}
+
+// Accumulator -> Y
+DEFINE_OPCODE(TAY) {
+    tCPU::byte reg = RegisterOperation<ACCUMULATOR>::read(ctx);
+    RegisterOperation<REGISTER_Y>::write(ctx, reg);
+
+    ctx->registers->setSignBit(reg);
+    ctx->registers->setZeroBit(reg);
+}
 
 /**
  * Generic branch instruction
@@ -459,7 +485,7 @@ struct BranchIf {
         tCPU::word jmpAddress = ctx->registers->PC + relativeOffset;
         bool flagState = ProcessorStatusFlag<Register>::getState(ctx);
 
-        PrintCpu("-> Status Register %s: %d; Relative offset: $%X; Calculated jump address = $%04X")
+        PrintCpu("-> Status Register %s: %d; Relative offset: $%02X; Calculated jump address = $%04X")
                 % ProcessorStatusFlagNames[Register] % (int) flagState
                 % (signed int) relativeOffset % jmpAddress;
 
@@ -523,10 +549,10 @@ struct GenericComparator {
     static void execute(InstructionContext* ctx) {
         tCPU::word mem = MemoryOperation<M>::readByte(ctx);
         tCPU::word reg = RegisterOperation<R>::read(ctx);
-        tCPU::word value = reg - mem;
+        tCPU::word result = reg - mem;
 
-        ctx->registers->P.N = uint8_t((value & 0x80) == 0x80);
-        ctx->registers->P.Z = uint8_t(reg == mem);
+        ctx->registers->setSignBit(result);
+        ctx->registers->setZeroBit(result);
         ctx->registers->P.C = uint8_t(reg >= mem);
     }
 };
@@ -555,75 +581,132 @@ DEFINE_OPCODE(DEX) {
     tCPU::byte value = uint8_t(RegisterOperation<REGISTER_X>::read(ctx) - 1);
     RegisterOperation<REGISTER_X>::write(ctx, value);
 
-    ctx->registers->P.N = uint8_t((value & 0x80) == 0x80);
-    ctx->registers->P.Z = uint8_t(value == 0);
+    ctx->registers->setSignBit(value);
+    ctx->registers->setZeroBit(value);
 }
 
 DEFINE_OPCODE(DEY) {
     tCPU::byte value = uint8_t(RegisterOperation<REGISTER_Y>::read(ctx) - 1);
     RegisterOperation<REGISTER_Y>::write(ctx, value);
 
-    ctx->registers->P.N = uint8_t((value & 0x80) == 0x80);
-    ctx->registers->P.Z = uint8_t(value == 0);
+    ctx->registers->setSignBit(value);
+    ctx->registers->setZeroBit(value);
 }
 
 DEFINE_OPCODE(DEC) {
     tCPU::byte value = uint8_t(MemoryOperation<mode>::readByte(ctx) - 1);
     MemoryOperation<mode>::writeByte(ctx, value);
 
-    ctx->registers->P.N = uint8_t((value & 0x80) == 0x80);
-    ctx->registers->P.Z = uint8_t(value == 0);
+    ctx->registers->setSignBit(value);
+    ctx->registers->setZeroBit(value);
 }
 
 DEFINE_OPCODE(INC) {
     tCPU::byte value = uint8_t(MemoryOperation<mode>::readByte(ctx) + 1);
     MemoryOperation<mode>::writeByte(ctx, value);
 
-    ctx->registers->P.N = uint8_t((value & 0x80) == 0x80);
-    ctx->registers->P.Z = uint8_t(value == 0);
+    ctx->registers->setSignBit(value);
+    ctx->registers->setZeroBit(value);
+}
+
+DEFINE_OPCODE(INX) {
+    tCPU::byte value = RegisterOperation<REGISTER_X>::read(ctx);
+    RegisterOperation<REGISTER_X>::write(ctx, ++value);
+
+    ctx->registers->setSignBit(value);
+    ctx->registers->setZeroBit(value);
+}
+DEFINE_OPCODE(INY) {
+    tCPU::byte value = RegisterOperation<REGISTER_Y>::read(ctx);
+    RegisterOperation<REGISTER_Y>::write(ctx, ++value);
+
+    ctx->registers->setSignBit(value);
+    ctx->registers->setZeroBit(value);
 }
 
 // call subroutine
 // push address-1 of next instruction on stack
 // then set next instruction to address
 DEFINE_OPCODE(JSR) {
-    ctx->stack->pushStack(ctx->registers->PC - 1);
+    ctx->stack->pushStackWord(ctx->registers->PC - 1);
     tCPU::word address = MemoryOperation<mode>::GetEffectiveAddress(ctx);
 
-    PrintCpu("Pushed old PC $%04X - 1 on stack; Setting new PC to $%04X")
+    PrintCpu("Pushed old PC $%04X on stack; Setting new PC to $%04X")
             % ctx->registers->PC % address;
 
     ctx->registers->PC = address;
 }
 
+DEFINE_OPCODE(JMP) {
+    tCPU::word address = MemoryOperation<mode>::GetEffectiveAddress(ctx);
+//    PrintCpu("Setting new PC to $%04X") % address;
+    ctx->registers->PC = address;
+}
+
 // return from subroutine
-// pop from stack and increment by 1
 DEFINE_OPCODE(RTS) {
+    // pop return address from stack and increment by 1
     tCPU::word address = ctx->stack->popStackWord() + 1;
     ctx->registers->PC = address;
-    PrintDbg("RTS: Setting new PC = 0x%04X") % address;
+    PrintDbg("Restored old PC from stack: $%04X") % address;
 }
+
+// return from interrupt
+DEFINE_OPCODE(RTI) {
+    // restore processor status from stack
+    tCPU::byte processorStatus = ctx->stack->popStackByte();
+    ctx->registers->P.fromByte(processorStatus);
+
+    // restore program counter from stack
+    ctx->registers->PC = ctx->stack->popStackWord();
+    PrintDbg("Restored old PC from stack: 0x%04X") % ctx->registers->PC;
+}
+
+/*
+ * Bitwise manipulation
+ */
 
 DEFINE_OPCODE(ORA) {
     tCPU::byte mem = MemoryOperation<mode>::readByte(ctx);
-    tCPU::byte value = RegisterOperation<ACCUMULATOR>::read(ctx);
+    tCPU::byte reg = RegisterOperation<ACCUMULATOR>::read(ctx);
 
-    value = value | mem;
+    mem |= reg;
 
-    ctx->registers->P.N = uint8_t((value & 0x80) == 0x80); // sign bit
-    ctx->registers->P.Z = uint8_t(value == 0); // zero bit
+    ctx->registers->setSignBit(mem);
+    ctx->registers->setZeroBit(mem);
 
-    RegisterOperation<ACCUMULATOR>::write(ctx, value);
+    RegisterOperation<ACCUMULATOR>::write(ctx, mem);
+}
+
+DEFINE_OPCODE(AND) {
+    tCPU::byte mem = MemoryOperation<mode>::readByte(ctx);
+    tCPU::byte reg = RegisterOperation<ACCUMULATOR>::read(ctx);
+
+    mem &= reg;
+
+    ctx->registers->setSignBit(mem);
+    ctx->registers->setZeroBit(mem);
+
+    RegisterOperation<ACCUMULATOR>::write(ctx, mem);
+}
+
+DEFINE_OPCODE(BIT) {
+    tCPU::byte mem = MemoryOperation<mode>::readByte(ctx);
+    tCPU::byte reg = RegisterOperation<ACCUMULATOR>::read(ctx);
+
+    ctx->registers->setSignBit(mem);
+    ctx->registers->setOverflowFlag(mem & 0x40); // 6th bit is set
+    ctx->registers->setZeroBit(reg & mem);
 }
 
 DEFINE_OPCODE(BRK) {
     // go to next instruction
     ctx->registers->PC ++;
-    ctx->stack->pushStack(ctx->registers->PC);
+    ctx->stack->pushStackWord(ctx->registers->PC);
     // set break flag
     ctx->registers->P.B = 1;
     // push status on stack
-    ctx->stack->pushStack((ctx->registers->P.asByte()));
+    ctx->stack->pushStackByte((ctx->registers->P.asByte()));
     // disable irq
     ctx->registers->P.I = 1;
 

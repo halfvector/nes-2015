@@ -61,6 +61,15 @@ public:
         return currentScanline == 243 && scanlinePixel == 0;
     }
 
+    /**
+     * CPU pulls NMI line and resets it in the process.
+     */
+    bool pullNMI() {
+        bool nmi = vblankNmiAwaiting;
+        vblankNmiAwaiting = false;
+        return nmi;
+    }
+
     void setControlRegister(tCPU::byte value);
 
 protected:
@@ -122,6 +131,9 @@ protected:
     bool doVerticalWrites;
     bool generateInterruptOnSprite;
     bool generateInterruptOnVBlank;
+
+    // activated when generateInterruptOnVBlank is true and vblank interval entered
+    bool vblankNmiAwaiting = false;
 
     enum SpriteSizes { SPRITE_8x16 = 1, SPRITE_8x8 = 0 };
     SpriteSizes spriteSize;
