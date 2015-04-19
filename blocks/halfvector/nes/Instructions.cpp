@@ -164,6 +164,7 @@ void Instructions::configureOpcodes() {
     opcodes[0x0E].set("ASL", 3, 6, 0, "ASL nnnn", ADDR_MODE_ABSOLUTE);
     opcodes[0x1E].set("ASL", 3, 7, 0, "ASL nnnn,X", ADDR_MODE_ABSOLUTE_INDEXED_X);
     opcodes[0x58].set("CLI", 1, 2, 0, "CLI", ADDR_MODE_NONE);
+    opcodes[0x1A].set("NOP", 1, 2, 0, "NOP", ADDR_MODE_NONE); // unofficial opcode
     opcodes[0xEA].set("NOP", 1, 2, 0, "NOP", ADDR_MODE_NONE);
     opcodes[0x4A].set("LSR", 1, 2, 0, "LSR A", ADDR_MODE_ACCUMULATOR);
     opcodes[0x46].set("LSR", 2, 5, 0, "LSR nn", ADDR_MODE_ZEROPAGE);
@@ -653,15 +654,15 @@ DEFINE_OPCODE(INC) {
 }
 
 DEFINE_OPCODE(INX) {
-    tCPU::byte value = RegisterOperation<REGISTER_X>::read(ctx);
-    RegisterOperation<REGISTER_X>::write(ctx, ++value);
+    tCPU::byte value = RegisterOperation<REGISTER_X>::read(ctx) + 1;
+    RegisterOperation<REGISTER_X>::write(ctx, value);
 
     ctx->registers->setSignBit(value);
     ctx->registers->setZeroBit(value);
 }
 DEFINE_OPCODE(INY) {
-    tCPU::byte value = RegisterOperation<REGISTER_Y>::read(ctx);
-    RegisterOperation<REGISTER_Y>::write(ctx, ++value);
+    tCPU::byte value = RegisterOperation<REGISTER_Y>::read(ctx) + 1;
+    RegisterOperation<REGISTER_Y>::write(ctx, value);
 
     ctx->registers->setSignBit(value);
     ctx->registers->setZeroBit(value);
@@ -814,19 +815,20 @@ DEFINE_OPCODE(ROR) {
 }
 
 DEFINE_OPCODE(BRK) {
-    // go to next instruction
+    // PC has already been incremented by 1 (brk = 1 byte opcode)
+    // we want PC+2
     ctx->registers->PC ++;
     ctx->stack->pushStackWord(ctx->registers->PC);
     // set break flag
     ctx->registers->P.B = 1;
     // push status on stack
-    ctx->stack->pushStackByte((ctx->registers->P.asByte()));
+    ctx->stack->pushStackByte(ctx->registers->P.asByte());
     // disable irq
     ctx->registers->P.I = 1;
 
     tCPU::word breakAddress = ctx->mem->readWord(0xFFFE);
 
-    PrintCpu("Break Vector; saved next PC=$%0X; setting PC=$%0X")
+    PrintCpu("Break Vector; saved next PC=$%04X in stack; setting PC=$%04X")
             % ctx->registers->PC % breakAddress;
 
     ctx->registers->PC = breakAddress;
@@ -870,3 +872,7 @@ DEFINE_OPCODE(SBC) {
     RegisterOperation<ACCUMULATOR>::write(ctx, resultAsByte);
 }
 
+// nop
+DEFINE_OPCODE(NOP) {
+
+}

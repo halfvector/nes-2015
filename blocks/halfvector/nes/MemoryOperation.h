@@ -61,7 +61,7 @@ template<>
 struct MemoryOperation<ADDR_MODE_ACCUMULATOR> : MemoryOperation<ADDR_MODE_NONE> {
     static void writeByte(InstructionContext *ctx, tCPU::byte value) {
         ctx->registers->A = value;
-        PrintMemory("MemoryOperation<ACCUMULATOR>::writeByte(); value = 0x%X") % value;
+        PrintMemory("MemoryOperation<ACCUMULATOR>::writeByte(); value = 0x%02X") % (int) value;
     }
 
     static void writeWord(tCPU::word value) {
@@ -71,7 +71,7 @@ struct MemoryOperation<ADDR_MODE_ACCUMULATOR> : MemoryOperation<ADDR_MODE_NONE> 
 
     static tCPU::byte readByte(InstructionContext *ctx) {
         tCPU::byte value = ctx->registers->A;
-        PrintMemory("MemoryOperation<ACCUMULATOR>::readByte(); value = 0x%X") % value;
+        PrintMemory("MemoryOperation<ACCUMULATOR>::readByte(); value = 0x%02X") % (int) value;
         return value;
     }
 

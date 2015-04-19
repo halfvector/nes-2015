@@ -4,6 +4,7 @@
 
 /**
  * Calculate real memory address, accounting for memory mirroring.
+ * 2KB of internal RAM are in $0000-$07FF, there are 3 mirrors.
  */
 tCPU::word
 Memory::getRealMemoryAddress(tCPU::word address) {

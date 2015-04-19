@@ -19,7 +19,7 @@ std::string simplifyFunctionName(std::string prettyFunction);
 #define PrintMemory     LOG(DEBUG) << __METHOD_NAME__ << boost::format
 #define PrintPpu        LOG(DEBUG) << __METHOD_NAME__ << boost::format
 
-#if 1
+#if 0
 #define PrintMemory     boost::format
 #endif
 
