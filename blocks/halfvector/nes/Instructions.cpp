@@ -372,7 +372,6 @@ Instructions::generateOpcodeVariants() {
  * CPU instruction implementations
  */
 
-
 #define DEFINE_OPCODE(opcode) \
 template<AddressMode mode> struct InstructionImplementationX<opcode, mode> { \
     static void execute(InstructionContext *ctx, MemoryResolver resolver); \
@@ -380,12 +379,36 @@ template<AddressMode mode> struct InstructionImplementationX<opcode, mode> { \
 template<AddressMode mode> \
 void InstructionImplementationX<opcode, mode>::execute(InstructionContext *ctx, MemoryResolver resolver)
 
+/*
+ * Flag manipulation
+ */
+
 DEFINE_OPCODE(SEI) {
     ctx->registers->P.I = 1;
 }
 
+DEFINE_OPCODE(SEC) {
+    ctx->registers->P.C = 1;
+}
+
+DEFINE_OPCODE(SED) {
+    ctx->registers->P.D = 1;
+}
+
 DEFINE_OPCODE(CLD) {
     ctx->registers->P.D = 0;
+}
+
+DEFINE_OPCODE(CLC) {
+    ctx->registers->P.C = 0;
+}
+
+DEFINE_OPCODE(CLI) {
+    ctx->registers->P.I = 0;
+}
+
+DEFINE_OPCODE(CLV) {
+    ctx->registers->P.V = 0;
 }
 
 /**
@@ -434,6 +457,26 @@ DEFINE_OPCODE(STY) {
 // X -> Stack
 DEFINE_OPCODE(TXS) {
     ctx->stack->pushStackByte(ctx->registers->X);
+}
+
+// Accumulator -> Stack
+DEFINE_OPCODE(PHA) {
+    ctx->stack->pushStackByte(ctx->registers->A);
+}
+
+// Accumulator <- Stack
+DEFINE_OPCODE(PLA) {
+    RegisterOperation<ACCUMULATOR>::write(ctx, ctx->stack->popStackByte());
+}
+
+// processor status -> Stack
+DEFINE_OPCODE(PHP) {
+    ctx->stack->pushStackByte(ctx->registers->P.asByte());
+}
+
+// processor status <- Stack
+DEFINE_OPCODE(PLP) {
+    ctx->registers->P.fromByte(ctx->stack->popStackByte());
 }
 
 // X -> Accumulator
@@ -666,6 +709,7 @@ DEFINE_OPCODE(RTI) {
  * Bitwise manipulation
  */
 
+// or
 DEFINE_OPCODE(ORA) {
     tCPU::byte mem = MemoryOperation<mode>::readByte(ctx);
     tCPU::byte reg = RegisterOperation<ACCUMULATOR>::read(ctx);
@@ -678,6 +722,20 @@ DEFINE_OPCODE(ORA) {
     RegisterOperation<ACCUMULATOR>::write(ctx, mem);
 }
 
+// xor
+DEFINE_OPCODE(EOR) {
+    tCPU::byte mem = MemoryOperation<mode>::readByte(ctx);
+    tCPU::byte reg = RegisterOperation<ACCUMULATOR>::read(ctx);
+
+    mem ^= reg;
+
+    ctx->registers->setSignBit(mem);
+    ctx->registers->setZeroBit(mem);
+
+    RegisterOperation<ACCUMULATOR>::write(ctx, mem);
+}
+
+// and
 DEFINE_OPCODE(AND) {
     tCPU::byte mem = MemoryOperation<mode>::readByte(ctx);
     tCPU::byte reg = RegisterOperation<ACCUMULATOR>::read(ctx);
@@ -699,6 +757,62 @@ DEFINE_OPCODE(BIT) {
     ctx->registers->setZeroBit(reg & mem);
 }
 
+// shift right one bit
+DEFINE_OPCODE(LSR) {
+    tCPU::byte mem = MemoryOperation<mode>::readByte(ctx);
+
+    ctx->registers->P.C = Bit<0>::IsSet(mem); // pop lowest bit onto the carry bit
+    mem >>= 1;
+
+    ctx->registers->setSignBit(mem);
+    ctx->registers->setZeroBit(mem);
+
+    MemoryOperation<mode>::writeByte(ctx, mem);
+}
+
+// shift left one bit
+DEFINE_OPCODE(ASL) {
+    tCPU::byte mem = MemoryOperation<mode>::readByte(ctx);
+
+    ctx->registers->P.C = Bit<7>::IsSet(mem); // pop highest bit onto the carry bit
+    mem <<= 1;
+
+    ctx->registers->setSignBit(mem);
+    ctx->registers->setZeroBit(mem);
+
+    MemoryOperation<mode>::writeByte(ctx, mem);
+}
+
+// rotate shift left one bit
+DEFINE_OPCODE(ROL) {
+    tCPU::byte mem = MemoryOperation<mode>::readByte(ctx);
+
+    tCPU::byte newCarry = Bit<7>::IsSet(mem); // save highest bit as new carry
+    mem <<= 1; // shift left
+    mem |= Bit<0>::Set(ctx->registers->P.C); // add lowest bit from old carry
+    ctx->registers->P.C = newCarry; // save new carry
+
+    ctx->registers->setSignBit(mem);
+    ctx->registers->setZeroBit(mem);
+
+    MemoryOperation<mode>::writeByte(ctx, mem);
+}
+
+// rotate right one bit
+DEFINE_OPCODE(ROR) {
+    tCPU::byte mem = MemoryOperation<mode>::readByte(ctx);
+
+    tCPU::byte newCarry = Bit<0>::IsSet(mem); // save highest bit as new carry
+    mem >>= 1; // shift right
+    mem |= Bit<7>::Set(ctx->registers->P.C); // add highest bit from old carry
+    ctx->registers->P.C = newCarry; // save new carry
+
+    ctx->registers->setSignBit(mem);
+    ctx->registers->setZeroBit(mem);
+
+    MemoryOperation<mode>::writeByte(ctx, mem);
+}
+
 DEFINE_OPCODE(BRK) {
     // go to next instruction
     ctx->registers->PC ++;
@@ -717,3 +831,42 @@ DEFINE_OPCODE(BRK) {
 
     ctx->registers->PC = breakAddress;
 }
+
+/*
+ * Arithmetic
+ */
+
+// addition
+DEFINE_OPCODE(ADC) {
+    tCPU::byte value = MemoryOperation<mode>::readByte(ctx);
+    tCPU::byte accumulator = RegisterOperation<ACCUMULATOR>::read(ctx);
+
+    tCPU::word result = accumulator + value + (ctx->registers->P.C ? 1 : 0);
+
+    tCPU::byte resultAsByte = static_cast<tCPU::byte>(result);
+
+    ctx->registers->setSignBit(resultAsByte);
+    ctx->registers->setZeroBit(resultAsByte);
+    ctx->registers->setOverflowFlag(~(accumulator ^ value) & (accumulator ^ resultAsByte) & 0x80);
+    ctx->registers->P.C = result > 256;
+
+    RegisterOperation<ACCUMULATOR>::write(ctx, resultAsByte);
+}
+
+// subtraction
+DEFINE_OPCODE(SBC) {
+    tCPU::byte value = MemoryOperation<mode>::readByte(ctx);
+    tCPU::byte accumulator = RegisterOperation<ACCUMULATOR>::read(ctx);
+
+    tCPU::word result = accumulator - value - (ctx->registers->P.C ? 0 : 1);
+
+    tCPU::byte resultAsByte = static_cast<tCPU::byte>(result);
+
+    ctx->registers->setSignBit(resultAsByte);
+    ctx->registers->setZeroBit(resultAsByte);
+    ctx->registers->setOverflowFlag(((accumulator ^ value) & 0x80) && (accumulator ^ resultAsByte) & 0x80);
+    ctx->registers->P.C = result <= 256;
+
+    RegisterOperation<ACCUMULATOR>::write(ctx, resultAsByte);
+}
+
