@@ -1,8 +1,9 @@
+#include "PPU.h"
+#include "Registers.h"
+#include "Logging.h"
+#include "Memory.h"
 #include <math.h>
 #include <bitset>
-#include "PPU.h"
-#include "Logging.h"
-#include "Registers.h"
 
 struct tPaletteEntry {
     union {
@@ -230,7 +231,7 @@ void PPU::renderScanline(int Y) {
     int attributeY = (int) floor( Y / 32.0 );
 
 
-    //int scrollingOffset = (int) floor(m_HorizontalScrollOrigin / 8);
+    //int scrollingOffset = (int) floor(horizontalScrollOrigin / 8);
     //unsigned char* ppuRamTileBasePtr = PPU_RAM + NametableAddress + j * 32 + scrollingOffset;
 
     // decode scanline
@@ -493,7 +494,8 @@ PPU::GetColorFromPalette( int PaletteType, int NameTableId, int ColorId )
     return Color;
 }
 
-void PPU::setControlRegister(tCPU::byte value) {
+void
+PPU::setControlRegister1(tCPU::byte value) {
     std::bitset<8> bits(value);
 
     tCPU::byte nameTableIdx = bits.test(0) + bits.test(1);
@@ -514,4 +516,203 @@ void PPU::setControlRegister(tCPU::byte value) {
 
     PrintPpu("Generate an NMI at start of vertical blanking interval: %d")
             % generateInterruptOnVBlank;
+}
+
+void
+PPU::setControlRegister2(tCPU::byte value) {
+    std::bitset<8> bits(value);
+
+    displayTypeMonochrome = bits.test(0);
+    backgroundClipping = bits.test(1);
+    spriteClipping = bits.test(2);
+    backgroundVisible = bits.test(3);
+    spriteVisible = bits.test(4);
+}
+
+/**
+ * This function gets called twice to fill out a 16-bit address
+ * once for each byte. so we have to track whether we are writing byte 1 or 2.
+ */
+void
+PPU::setVRamAddressRegister2(tCPU::byte value) {
+    if (firstWriteToSFF) {
+        // first write -- high byte
+        latchedVRAMByte = value;
+        tempVRAMAddress &= 0x00FF;
+        tempVRAMAddress |= (value & 0x3F) << 8; // 6 bits to high byte
+
+        PrintPpu("vramAddress14bit first part = 0x%X") % vramAddress14bit;
+    } else {
+        // second write -- low byte
+        vramAddress14bit = ((tCPU::word) latchedVRAMByte) << 8;
+        vramAddress14bit |= value;
+
+        tempVRAMAddress &= 0xFF00; // clear low byte
+        tempVRAMAddress |= value; // set low byte
+        vramAddress14bit = tempVRAMAddress;
+        vramAddress14bit &= 0x7FFF; // clear highest bit
+
+        PrintPpu("vramAddress14bit = 0x%X") % vramAddress14bit;
+    }
+
+    // flip
+    firstWriteToSFF = !firstWriteToSFF;
+}
+
+tCPU::byte
+PPU::readFromVRam() {
+    tCPU::byte value;
+
+    if (vramAddress14bit <= 0x3EFF) {    // latch value, return old
+        value = latchedVRAMByte;
+        latchedVRAMByte = ReadInternalMemoryByte(vramAddress14bit);
+        PrintDbg("New Latch = 0x%02X; Returning Old Latch value 0x%02X")
+                % (int) latchedVRAMByte % (int) value;
+    } else {
+        value = ReadInternalMemoryByte(vramAddress14bit);
+        PrintDbg("Returning Direct (Non-Latched) VRAM value: 0x%02X") % (int) value;
+    }
+
+    AutoIncrementVRAMAddress();
+
+    return value;
+}
+
+void
+PPU::writeToVRam(tCPU::byte value) {
+    WriteInternalMemoryByte(vramAddress14bit, value);
+    AutoIncrementVRAMAddress();
+}
+
+tCPU::word
+PPU::GetEffectiveAddress(tCPU::word address) {
+    if (address >= 0x3000 && address <= 0x3EFF) {
+        // mirror of 2000h-2EFFh
+        PrintDbg("Address in range: (0x3000-0x3EFF); Mirror of $%04X")
+            % (int) (address - 0x1000);
+        address -= 0x1000;
+    }
+    if (address >= 0x3F20 && address <= 0x3FFF) {
+        // 7 mirrors of 3F00h-3F1Fh :(
+        PrintDbg("Hit 7 Mirror Address: 0x%X") % (int) address;
+        address -= ((address - 0x3F20) % 0x1F) * 0x1F;
+        PrintDbg("-> Resolved it to: 0x%X") % (int) address;
+    }
+
+    // mirrors 3F10h,3F14h,3F18h,3F1Ch -> 3F00h,3F04h,3F08h,3F0Ch
+    // FIXME: im not sure if these mirrors are ranges or just single byte entries
+    if (address == 0x3F10 || address == 0x3F14 || address == 0x3F18 || address == 0x3F1C)
+        address -= 0x10;
+
+
+    if (address >= 0x3F00 && address <= 0x3F1F) {
+        //PrintDbg( "PPU::GetEffectiveAddress( $%04X ); BG/Sprite Palette!", Address );
+    }
+
+    if (address >= 0x4000 && address < 0x10000) {
+        PrintDbg("Address in range: (0x4000-0x10000); Mirror of $%04X")
+            % (int) (address % 0x4000);
+        address = address % 0x4000;
+    }
+
+    return address;
+}
+
+tCPU::byte
+PPU::ReadInternalMemoryByte(tCPU::word Address) {
+    tCPU::word EffectiveAddress = GetEffectiveAddress(Address);
+    tCPU::byte Value = PPU_RAM[EffectiveAddress];
+    PrintMemory("Read 0x%02X from PPU RAM @ 0x%04X") % (int) Value % (int) EffectiveAddress;
+    return Value;
+}
+
+bool
+PPU::WriteInternalMemoryByte(tCPU::word Address, tCPU::byte Value) {
+    tCPU::word EffectiveAddress = GetEffectiveAddress(Address);
+    PPU_RAM[EffectiveAddress] = Value;
+    PrintMemory("Wrote 0x%02X to PPU RAM @ 0x%04X") % (int) Value % (int) EffectiveAddress;
+    return true;
+}
+
+void
+PPU::AutoIncrementVRAMAddress() {
+    tCPU::byte incAmount = doVerticalWrites ? 32 : 1;
+    vramAddress14bit += incAmount;
+    PrintDbg("Incremented by %d bytes") % (int) incAmount;
+}
+
+void
+PPU::setVRamAddressRegister1(tCPU::byte value) {
+    if (currentScanline < 240) {
+        if (!inHBlank) {
+            return;
+        }
+    }
+
+    if (firstWriteToSFF) {
+        // first write
+        horizontalScrollOrigin = value;
+
+        tempVRAMAddress &= 0xFFE0;
+        tempVRAMAddress |= (value & 0xF8) >> 3;
+
+        tileXOffset = value & 0x07;
+        PrintPpu("tileXOffset = %d") % tileXOffset;
+    } else {
+        // second write
+        verticalScrollOrigin = value;
+
+        tempVRAMAddress &= 0xFC1F;
+        tempVRAMAddress |= (value & 0xF8) << 2;
+        tempVRAMAddress &= 0x8FFF;
+        tempVRAMAddress |= (value & 0x07) << 12;
+    }
+
+    PrintDbg("tempVRAMAddress = 0x%04X first write = %d")
+            % (int) tempVRAMAddress % (int) firstWriteToSFF;
+    PrintDbg("-> Background/Sprite Visibility: %d/%d")
+            % (int) backgroundVisible % (int) spriteVisible;
+
+    // flip
+    firstWriteToSFF =! firstWriteToSFF;
+}
+
+void
+PPU::setSprRamAddress(tCPU::byte address) {
+    spriteRamAddress = address;
+}
+
+void
+PPU::writeSpriteMemory(tCPU::byte value) {
+    if (spriteRamAddress >= 256) {
+        PrintError("spriteRamAddress is out of range; Expected < 256, Actual = %d")
+            % (int) spriteRamAddress;
+    } else {
+        PrintDbg("Write byte $%02X to Sprite RAM @ $%02X")
+            % (int) value % (int) spriteRamAddress;
+        SPR_RAM[spriteRamAddress] = value;
+    }
+
+    // address incremented after every write
+    spriteRamAddress++;
+}
+
+tCPU::byte PPU::readSpriteMemory() {
+    tCPU::byte value = SPR_RAM[spriteRamAddress];
+    PrintDbg("Read byte $%02X from SPR-RAM @ $%02X")
+            % (int) value % (int) spriteRamAddress;
+    return value;
+}
+
+void
+PPU::StartSpriteXferDMA(Memory *memory, tCPU::byte address) {
+    tCPU::word startAddress = address * 0x100;
+    PrintDbg("DMA Transfer from RAM @ $%04X to SPR-RAM")
+            % (int) startAddress;
+
+    for (tCPU::word i = 0; i < 256; i++) {
+        SPR_RAM[i] = memory->readByte(startAddress + i);
+    }
+
+    vramAddress14bit = 0;
 }

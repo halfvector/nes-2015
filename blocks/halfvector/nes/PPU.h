@@ -2,6 +2,8 @@
 
 #include "Platform.h"
 
+class Memory;
+
 enum enumSpriteSize { SPRITE_SIZE_8x16 = 1, SPRITE_SIZE_8x8 = 0 };
 
 struct PPU_Settings {
@@ -70,7 +72,23 @@ public:
         return nmi;
     }
 
-    void setControlRegister(tCPU::byte value);
+    void setControlRegister1(tCPU::byte value);
+    void setControlRegister2(tCPU::byte value);
+
+    void setVRamAddressRegister2(tCPU::byte value);
+    void writeToVRam(tCPU::byte value);
+    tCPU::byte readFromVRam();
+
+    tCPU::word GetEffectiveAddress(tCPU::word address);
+    tCPU::byte ReadInternalMemoryByte(tCPU::word Address);
+    bool WriteInternalMemoryByte(tCPU::word Address, tCPU::byte Value);
+    void AutoIncrementVRAMAddress();
+
+    void setVRamAddressRegister1(tCPU::byte value);
+    void setSprRamAddress(tCPU::byte address);
+    void writeSpriteMemory(tCPU::byte value);
+    tCPU::byte readSpriteMemory();
+    void StartSpriteXferDMA(Memory* memory, tCPU::byte address);
 
 protected:
     tCPU::byte statusRegister;
@@ -83,7 +101,6 @@ protected:
     // states
     bool sprite0HitInThisScanline;
     bool sprite0HitInThisFrame;
-
     bool inHBlank, inVBlank;
     int currentScanline;
     int scanlinePixel;
@@ -98,43 +115,45 @@ protected:
 
     // shared flipflop by port 2005 and 2006 to maintain first-write bit
     // reset by port 2002 reads
-    bool firstWriteToSFF;
-
+    bool firstWriteToSFF = true;
     tCPU::byte horizontalScrollOrigin;
     tCPU::byte verticalScrollOrigin;
+
     tCPU::word reloadBits;
 
     PPU_Settings settings;
-
     void setVerticalBlank();
     void advanceRenderableScanline();
     void advanceBlankScanline();
     void onEnterHBlank();
     void renderScanline(int scanline);
-    tCPU::byte GetColorFromPalette(int PaletteType, int NameTableId, int ColorId);
 
+    tCPU::byte GetColorFromPalette(int PaletteType, int NameTableId, int ColorId);
     /*
      * PPU Settings
      */
     tCPU::word nameTableAddress;
     tCPU::word spritePatternTableAddress;
-    tCPU::word backgroundPatternTableAddress;
 
+    tCPU::word backgroundPatternTableAddress;
     bool displayTypeMonochrome;
     bool backgroundClipping;
     bool spriteClipping;
     bool backgroundVisible;
-    bool spriteVisible;
 
+    // port $2003, $2004
+    tCPU::word spriteRamAddress = 0;
+
+    bool spriteVisible;
     // Port 2007h VRAM Address Increment (1byte = horizontal, 32bytes = vertical)
     // since nametable is 32 bytes wide, skipping 32 bytes gets you down one row
     bool doVerticalWrites;
     bool generateInterruptOnSprite;
+
     bool generateInterruptOnVBlank;
 
     // activated when generateInterruptOnVBlank is true and vblank interval entered
     bool vblankNmiAwaiting = false;
-
     enum SpriteSizes { SPRITE_8x16 = 1, SPRITE_8x8 = 0 };
     SpriteSizes spriteSize;
 };

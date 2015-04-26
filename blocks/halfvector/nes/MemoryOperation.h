@@ -31,18 +31,18 @@ struct MemoryOperation : MemoryAddressResolve<MemoryMode> {
 template<>
 struct MemoryOperation<ADDR_MODE_IMMEDIATE> : MemoryOperation<ADDR_MODE_NONE> {
     static void writeByte(InstructionContext *ctx, tCPU::byte value) {
-        PrintError("MemoryOperation<ADDR_MODE_IMMEDIATE>::writeByte(); Impossible Action in Immediate Mode");
+        PrintError("Impossible Action in Immediate Mode");
         throw new std::runtime_error("Unexpected error");
     }
 
     static void writeWord(InstructionContext *ctx, tCPU::word value) {
-        PrintError("MemoryOperation<ADDR_MODE_IMMEDIATE>::writeWord(); Impossible Action in Immediate Mode");
+        PrintError("Impossible Action in Immediate Mode");
         throw new std::runtime_error("Unexpected error");
     }
 
     static tCPU::byte readByte(InstructionContext *ctx) {
         tCPU::byte value = ctx->mem->readByte(ctx->registers->LastPC + 1);
-        PrintMemory("MemoryOperation<ADDR_MODE_IMMEDIATE>::readByte(); value = 0x%X") % (int)value;
+        PrintMemory("value = 0x%X") % (int)value;
         return value;
     }
 
@@ -51,7 +51,7 @@ struct MemoryOperation<ADDR_MODE_IMMEDIATE> : MemoryOperation<ADDR_MODE_NONE> {
     // its an address to work on ITSELF.. eg jump to there
     static tCPU::word readWord(InstructionContext *ctx) {
         tCPU::word value = ctx->mem->readWord(ctx->registers->LastPC + 1);
-        PrintMemory("MemoryOperation<ADDR_MODE_IMMEDIATE>::readWord(); value = 0x%X") % (int)value;
+        PrintMemory("value = 0x%X") % (int)value;
         return value;
     }
 };
@@ -61,23 +61,21 @@ template<>
 struct MemoryOperation<ADDR_MODE_ACCUMULATOR> : MemoryOperation<ADDR_MODE_NONE> {
     static void writeByte(InstructionContext *ctx, tCPU::byte value) {
         ctx->registers->A = value;
-        PrintMemory("MemoryOperation<ACCUMULATOR>::writeByte(); value = 0x%02X") % (int) value;
+        PrintMemory("value = 0x%02X") % (int) value;
     }
 
     static void writeWord(tCPU::word value) {
-        PrintError("MemoryOperation::writeByte(); Impossible Action in Accumulator Mode");
-        throw new std::runtime_error("Unexpected error");
+        throw new std::runtime_error("cannot writeWord in Accumulator");
     }
 
     static tCPU::byte readByte(InstructionContext *ctx) {
         tCPU::byte value = ctx->registers->A;
-        PrintMemory("MemoryOperation<ACCUMULATOR>::readByte(); value = 0x%02X") % (int) value;
+        PrintMemory("value = 0x%02X") % (int) value;
         return value;
     }
 
     static tCPU::word readWord(InstructionContext *ctx) {
-        PrintError("MemoryOperation::readWord(); Impossible Action in Accumulator Mode");
-        throw new std::runtime_error("Unexpected error");
+        throw new std::runtime_error("cannot readWord in Accumulator");
         return 0;
     }
 };

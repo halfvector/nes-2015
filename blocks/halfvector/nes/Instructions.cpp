@@ -417,20 +417,19 @@ DEFINE_OPCODE(CLV) {
  */
 
 DEFINE_OPCODE(LDA) {
-    ctx->registers->A = MemoryOperation<mode>::readByte(ctx);
+    RegisterOperation<ACCUMULATOR>::write(ctx, MemoryOperation<mode>::readByte(ctx));
     ctx->registers->setZeroBit(ctx->registers->A);
     ctx->registers->setSignBit(ctx->registers->A);
 }
 
 DEFINE_OPCODE(LDX) {
-    ctx->registers->X = MemoryOperation<mode>::readByte(ctx);
+    RegisterOperation<REGISTER_X>::write(ctx, MemoryOperation<mode>::readByte(ctx));
     ctx->registers->setZeroBit(ctx->registers->X);
     ctx->registers->setSignBit(ctx->registers->X);
-
 }
 
 DEFINE_OPCODE(LDY) {
-    ctx->registers->Y = MemoryOperation<mode>::readByte(ctx);
+    RegisterOperation<REGISTER_Y>::write(ctx, MemoryOperation<mode>::readByte(ctx));
     ctx->registers->setZeroBit(ctx->registers->Y);
     ctx->registers->setSignBit(ctx->registers->Y);
 

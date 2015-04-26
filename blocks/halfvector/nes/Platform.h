@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 struct tCPU {
     typedef unsigned char byte;
     typedef unsigned short word;

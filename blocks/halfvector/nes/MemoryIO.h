@@ -46,8 +46,10 @@ struct MemoryIO {
 
     tCPU::byte read(tCPU::word address);
 
+    void setMemory(Memory *memory);
 protected:
     PPU* ppu;
+    Memory* memory;
     std::map<tCPU::word, WriteIO> ioPortWriters;
     std::map<tCPU::word, ReadIO> ioPortReaders;
     std::map<tCPU::word, std::function<tCPU::byte()>> borked;

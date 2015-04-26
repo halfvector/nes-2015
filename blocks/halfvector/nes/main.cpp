@@ -117,6 +117,8 @@ int main(int argc, char ** argv) {
     // rendering
     GUI* gui = new GUI(raster->screenBuffer);
 
+    mmio->setMemory(memory);
+
     // setup injectable instances
 //    auto injector = di::make_injector(
 //        di::bind<Stack*>.to(stack),

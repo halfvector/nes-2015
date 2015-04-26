@@ -1,6 +1,5 @@
 #pragma once
 
-#include <cstdint>
 #include "Cartridge.h"
 #include "Logging.h"
 #include "Memory.h"
