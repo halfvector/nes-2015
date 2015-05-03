@@ -82,8 +82,8 @@ struct ProcessorStatusRegister {
     void fromByte(tCPU::byte Value) {
         N = Bit<7>::IsSet(Value);
         V = Bit<6>::IsSet(Value);
-        X = Bit<5>::IsSet(Value);
-        B = Bit<4>::IsSet(Value);
+        //X = Bit<5>::IsSet(Value);
+        //B = Bit<4>::IsSet(Value);
         D = Bit<3>::IsSet(Value);
         I = Bit<2>::IsSet(Value);
         Z = Bit<1>::IsSet(Value);

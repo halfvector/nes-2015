@@ -14,6 +14,12 @@ struct MemoryIOHandler<0x2002> {
 
 template<>
 struct MemoryIOHandler<0x2000> {
+    static tCPU::byte read(PPU* ppu) {
+        tCPU::byte value = ppu->getControlRegister1();
+        PrintMemory("MemoryIOHandler<0x%04X>::Read(); status register = 0x%02X")
+                % 0x2000 % (int) value;
+        return value;
+    }
     static void write(PPU* ppu, tCPU::byte value) {
         PrintMemory("Writing 0x%02X to port $2000 - PPU Control Register 1")
                    % (int) value;
@@ -172,6 +178,9 @@ MemoryIO::write(tCPU::word address, tCPU::byte value) {
 tCPU::byte
 MemoryIO::read(tCPU::word address) {
     switch(address) {
+        case 0x2000:
+            return MemoryIOHandler<0x2000>::read(ppu);
+            
         case 0x2002:
             return MemoryIOHandler<0x2002>::read(ppu);
 

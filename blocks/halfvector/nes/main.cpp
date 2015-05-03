@@ -86,10 +86,10 @@ int main(int argc, char ** argv) {
 //    defaultConf.set(el::Level::Warning, el::ConfigurationType::Format,
 //            "\033[0;31m%level\033[1;30m |\033[0;31m %msg \033[1;30m @ %fbase:%line");
 
-    defaultConf.set(el::Level::Debug, el::ConfigurationType::Format, "%level | %msg");
-    defaultConf.set(el::Level::Info, el::ConfigurationType::Format, "%level | %msg");
-    defaultConf.set(el::Level::Error, el::ConfigurationType::Format, "%level | %msg");
-    defaultConf.set(el::Level::Warning, el::ConfigurationType::Format, "%level | %msg");
+    defaultConf.set(el::Level::Debug, el::ConfigurationType::Format, "%datetime{%h:%m:%s.%g %F} | %level | %msg");
+    defaultConf.set(el::Level::Info, el::ConfigurationType::Format, "%datetime{%h:%m:%s.%g %F} | %level | %msg");
+    defaultConf.set(el::Level::Error, el::ConfigurationType::Format, "%datetime{%h:%m:%s.%g %F} | %level | %msg");
+    defaultConf.set(el::Level::Warning, el::ConfigurationType::Format, "%datetime{%h:%m:%s.%g %F} | %level | %msg");
 
     el::Loggers::reconfigureLogger("default", defaultConf);
 
@@ -149,7 +149,12 @@ int main(int argc, char ** argv) {
         cpu->addCycles(7);
     };
 
-    for(int i = 0; i < 60000; i ++) {
+//    registers->PC = 0xC000; // needed for nestest.nes
+    registers->P.X = 1;
+    registers->P.I = 1;
+    registers->S = 0xFD;
+
+    for(int i = 0; i < 150000; i ++) {
         // grab next instruction
         tCPU::byte opCode = memory->readByteDirectly(registers->PC);
 

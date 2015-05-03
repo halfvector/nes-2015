@@ -494,9 +494,15 @@ PPU::GetColorFromPalette( int PaletteType, int NameTableId, int ColorId )
     return Color;
 }
 
+tCPU::byte
+PPU::getControlRegister1() {
+    return controlRegister1;
+}
+
 void
 PPU::setControlRegister1(tCPU::byte value) {
     std::bitset<8> bits(value);
+    controlRegister1 = value;
 
     tCPU::byte nameTableIdx = bits.test(0) + bits.test(1);
     nameTableAddress = 0x2000 + nameTableIdx * 0x400;

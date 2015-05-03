@@ -71,7 +71,7 @@ Memory::readWord(tCPU::word absoluteAddress) {
     tCPU::word highByte = readByte(absoluteAddress + 1);
     tCPU::word value = ((highByte << 8) & 0xFF00) | lowByte;
     PrintMemory("Read 0x%04X from address $%04X")
-            % value % (int) absoluteAddress;
+            % (int) value % (int) absoluteAddress;
     return value;
 }
 
@@ -123,7 +123,7 @@ Memory::writeWord(tCPU::word address, tCPU::word value) {
  */
 bool
 Memory::writeByteDirectly(tCPU::word address, tCPU::byte value) {
-
+    return 0;
 }
 
 tCPU::byte

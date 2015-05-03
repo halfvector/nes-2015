@@ -451,13 +451,8 @@ DEFINE_OPCODE(STY) {
 }
 
 /**
- * Transfer Registers
+ * Push/Pop on stack
  */
-
-// X -> Stack
-DEFINE_OPCODE(TXS) {
-    ctx->stack->pushStackByte(ctx->registers->X);
-}
 
 // Accumulator -> Stack
 DEFINE_OPCODE(PHA) {
@@ -466,7 +461,11 @@ DEFINE_OPCODE(PHA) {
 
 // Accumulator <- Stack
 DEFINE_OPCODE(PLA) {
-    RegisterOperation<ACCUMULATOR>::write(ctx, ctx->stack->popStackByte());
+    tCPU::byte value = ctx->stack->popStackByte();
+    RegisterOperation<ACCUMULATOR>::write(ctx, value);
+
+    ctx->registers->setSignBit(value);
+    ctx->registers->setZeroBit(value);
 }
 
 // processor status -> Stack
@@ -477,6 +476,24 @@ DEFINE_OPCODE(PHP) {
 // processor status <- Stack
 DEFINE_OPCODE(PLP) {
     ctx->registers->P.fromByte(ctx->stack->popStackByte());
+}
+
+/**
+ * Transfer registers
+ */
+
+// stack pointer -> X
+DEFINE_OPCODE(TSX) {
+    tCPU::byte sp = ctx->registers->S;
+    RegisterOperation<REGISTER_X>::write(ctx, sp);
+
+    ctx->registers->setSignBit(sp);
+    ctx->registers->setZeroBit(sp);
+}
+
+// X -> stack pointer
+DEFINE_OPCODE(TXS) {
+    ctx->registers->S = RegisterOperation<REGISTER_X>::read(ctx);
 }
 
 // X -> Accumulator
@@ -590,7 +607,7 @@ DEFINE_OPCODE(BVS) {
 template<Register R, AddressMode M>
 struct GenericComparator {
     static void execute(InstructionContext* ctx) {
-        tCPU::word mem = MemoryOperation<M>::readByte(ctx);
+        tCPU::word mem = MemoryOperation<M>::readWord(ctx);
         tCPU::word reg = RegisterOperation<R>::read(ctx);
         tCPU::word result = reg - mem;
 
@@ -671,7 +688,7 @@ DEFINE_OPCODE(INY) {
 // push address-1 of next instruction on stack
 // then set next instruction to address
 DEFINE_OPCODE(JSR) {
-    ctx->stack->pushStackWord(ctx->registers->PC - 1);
+    ctx->stack->pushStackWord(--ctx->registers->PC);
     tCPU::word address = MemoryOperation<mode>::GetEffectiveAddress(ctx);
 
     PrintCpu("Pushed old PC $%04X on stack; Setting new PC to $%04X")

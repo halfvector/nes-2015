@@ -50,6 +50,9 @@ struct MemoryAddressResolve<ADDR_MODE_ZEROPAGE> : MemoryAddressResolveBase {
     static tCPU::word GetEffectiveAddress(InstructionContext *ctx) {
         tCPU::word effectiveAddress = ctx->mem->readByte(ctx->registers->LastPC + 1);
         PageBoundaryCrossed = false;
+        
+        // zero-page address is only 1 byte, wrap around after additing value from X register
+        effectiveAddress = (tCPU::word) 0xFF & effectiveAddress;
 
         NumOfCalls++;
         return effectiveAddress;
@@ -96,7 +99,7 @@ struct MemoryAddressResolve<ADDR_MODE_ABSOLUTE_INDEXED_X> : MemoryAddressResolve
 
         if ((AbsoluteAddress & 0xFF00) != (EffectiveAddress & 0xFF00)) {    // page boundary crossed?
             PageBoundaryCrossed = true;
-            PrintDbg("< ADDR_MODE_ABSOLUTE_INDEXED_X > Page Boundary Crossed: $%04X + $%02X -> $%04X")
+            PrintDbg("ADDR_MODE_ABSOLUTE_INDEXED_X; Page Boundary Crossed: $%04X + $%02X -> $%04X")
                     % AbsoluteAddress % ctx->registers->X % EffectiveAddress;
         } else
             PageBoundaryCrossed = false;
@@ -117,7 +120,7 @@ struct MemoryAddressResolve<ADDR_MODE_ABSOLUTE_INDEXED_Y> : MemoryAddressResolve
 
         if ((AbsoluteAddress & 0xFF00) != (EffectiveAddress & 0xFF00)) {    // page boundary crossed?
             PageBoundaryCrossed = true;
-//			PrintNotice( "< ADDR_MODE_ABSOLUTE_INDEXED_Y > Page Boundary Crossed: $%04X + $%02X -> $%04X", AbsoluteAddress, g_Registers.X, EffectiveAddress );
+//			PrintNotice( "ADDR_MODE_ABSOLUTE_INDEXED_Y; Page Boundary Crossed: $%04X + $%02X -> $%04X", AbsoluteAddress, g_Registers.X, EffectiveAddress );
         } else
             PageBoundaryCrossed = false;
 
@@ -145,13 +148,13 @@ struct MemoryAddressResolve<ADDR_MODE_INDIRECT_INDEXED> : MemoryAddressResolveBa
         if ((IndirectAddress & 0xFF00) != (IndexedIndirectAddress & 0xFF00)) {
             // page boundary crossed
             PageBoundaryCrossed = true;
-            PrintDbg("< ADDR_MODE_INDIRECT_INDEXED > Page Boundary Crossed: $%04X + $%02X -> $%04X")
+            PrintDbg("ADDR_MODE_INDIRECT_INDEXED; Page Boundary Crossed: $%04X + $%02X -> $%04X")
                     % IndirectAddress % ctx->registers->Y % IndexedIndirectAddress;
         } else {
             PageBoundaryCrossed = false;
         }
 
-		PrintDbg("MemoryAddressResolve< ADDR_MODE_INDIRECT_INDEXED >::GetEffectiveAddress(); ZPA: $%04X, IA: $%04X, IIA: $%04X")
+		PrintDbg("ADDR_MODE_INDIRECT_INDEXED; ZPA: $%04X, IA: $%04X, IIA: $%04X")
             % ZeroPageAddress % IndirectAddress % IndexedIndirectAddress;
 
         NumOfCalls++;
@@ -168,15 +171,52 @@ struct MemoryAddressResolve<ADDR_MODE_INDIRECT_ABSOLUTE> : MemoryAddressResolveB
 
     static tCPU::word GetEffectiveAddress(InstructionContext *ctx) {
         // address of where the real address is stored
-        tCPU::word IndirectAddress = ctx->mem->readByte(ctx->registers->LastPC + 1);
+        tCPU::word IndirectAddress = ctx->mem->readWord(ctx->registers->LastPC + 1);
         // the real address
         tCPU::word EffectiveAddress = ctx->mem->readWord(IndirectAddress);
+
+        PrintDbg("ADDR_MODE_INDIRECT_ABSOLUTE; indirect address = $%04X -> effective address = $%04X")
+            % (int) IndirectAddress % (int) EffectiveAddress;
 
         PageBoundaryCrossed = false;
 
         NumOfCalls++;
 
         return EffectiveAddress;
+    }
+};
+
+template<>
+struct MemoryAddressResolve<ADDR_MODE_INDEXED_INDIRECT> : MemoryAddressResolveBase {
+    static int NumOfCalls;
+
+    static tCPU::word GetEffectiveAddress(InstructionContext *ctx) {
+        // read byte after opcode as an address
+        tCPU::word ZeroPageAddress = ctx->mem->readByte(ctx->registers->LastPC + 1);
+
+        // add the indexed offset (from register X) to calculate
+        // the zeropage 8bit address that contains the full 16bit address
+        tCPU::word IndexedIndirectAddress = ZeroPageAddress + ctx->registers->X;
+
+        // fetch the 16bit address from zeropage address stored in the operand
+        tCPU::word IndirectAddress = ctx->mem->readWord(IndexedIndirectAddress);
+
+        if ((IndirectAddress & 0xFF00) != (IndexedIndirectAddress & 0xFF00)) {
+            // page boundary crossed
+            PageBoundaryCrossed = true;
+            PrintDbg("ADDR_MODE_INDIRECT_INDEXED; Page Boundary Crossed: $%04X + $%02X -> $%04X")
+                    % IndirectAddress % ctx->registers->Y % IndexedIndirectAddress;
+        } else {
+            PageBoundaryCrossed = false;
+        }
+
+        PrintDbg("ADDR_MODE_INDIRECT_INDEXED; ZPA: $%04X, IA: $%04X, IIA: $%04X")
+                % ZeroPageAddress % IndirectAddress % IndexedIndirectAddress;
+
+        NumOfCalls++;
+
+        // whew :D
+        return IndexedIndirectAddress;
     }
 };
 

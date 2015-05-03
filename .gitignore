@@ -6,3 +6,4 @@ deps
 bii/.hive.db
 roms
 lib
+.DS_Store

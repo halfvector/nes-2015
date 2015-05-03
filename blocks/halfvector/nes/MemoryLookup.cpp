@@ -10,6 +10,7 @@ int MemoryAddressResolve<ADDR_MODE_ABSOLUTE_INDEXED_X>::NumOfCalls = 0;
 int MemoryAddressResolve<ADDR_MODE_ABSOLUTE_INDEXED_Y>::NumOfCalls = 0;
 int MemoryAddressResolve<ADDR_MODE_INDIRECT_INDEXED>::NumOfCalls = 0;
 int MemoryAddressResolve<ADDR_MODE_INDIRECT_ABSOLUTE>::NumOfCalls = 0;
+int MemoryAddressResolve<ADDR_MODE_INDEXED_INDIRECT>::NumOfCalls = 0;
 
 template<>
 bool ProcessorStatusFlag<CARRY_BIT>::getState(InstructionContext *ctx) {

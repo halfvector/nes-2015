@@ -74,6 +74,8 @@ public:
 
     void setControlRegister1(tCPU::byte value);
     void setControlRegister2(tCPU::byte value);
+    
+    tCPU::byte getControlRegister1();
 
     void setVRamAddressRegister2(tCPU::byte value);
     void writeToVRam(tCPU::byte value);
@@ -92,6 +94,7 @@ public:
 
 protected:
     tCPU::byte statusRegister;
+    tCPU::byte controlRegister1;
     tCPU::word cycles;
     tCPU::word vramAddress14bit;
     tCPU::word tempVRAMAddress;
