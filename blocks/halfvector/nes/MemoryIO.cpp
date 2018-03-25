@@ -6,7 +6,7 @@ template<>
 struct MemoryIOHandler<0x2002> {
     static tCPU::byte read(PPU* ppu) {
         tCPU::byte value = ppu->getStatusRegister();
-        PrintMemory("MemoryIOHandler<0x%04X>::Read(); status register = %d")
+        PrintMemoryIO("MemoryIOHandler<0x%04X>::Read(); status register = %d")
                 % 0x2002 % (int) value;
         return value;
     }
@@ -16,12 +16,12 @@ template<>
 struct MemoryIOHandler<0x2000> {
     static tCPU::byte read(PPU* ppu) {
         tCPU::byte value = ppu->getControlRegister1();
-        PrintMemory("MemoryIOHandler<0x%04X>::Read(); status register = 0x%02X")
+        PrintMemoryIO("MemoryIOHandler<0x%04X>::Read(); status register = 0x%02X")
                 % 0x2000 % (int) value;
         return value;
     }
     static void write(PPU* ppu, tCPU::byte value) {
-        PrintMemory("Writing 0x%02X to port $2000 - PPU Control Register 1")
+        PrintMemoryIO("Writing 0x%02X to port $2000 - PPU Control Register 1")
                    % (int) value;
         ppu->setControlRegister1(value);
     }
@@ -30,7 +30,7 @@ struct MemoryIOHandler<0x2000> {
 template<>
 struct MemoryIOHandler<0x2001> {
     static void write(PPU* ppu, tCPU::byte value) {
-        PrintMemory("Writing 0x%02X to port $2001 - PPU Control Register 2")
+        PrintMemoryIO("Writing 0x%02X to port $2001 - PPU Control Register 2")
                    % (int) value;
         ppu->setControlRegister2(value);
     }
@@ -39,7 +39,7 @@ struct MemoryIOHandler<0x2001> {
 template<>
 struct MemoryIOHandler<0x2003> {
     static void write(PPU* ppu, tCPU::byte value) {
-        PrintMemory("Writing 0x%02X to port $2003 - Sprite RAM Address")
+        PrintMemoryIO("Writing 0x%02X to port $2003 - Sprite RAM Address")
                    % (int) value;
         ppu->setSprRamAddress(value);
     }
@@ -49,12 +49,12 @@ template<>
 struct MemoryIOHandler<0x2004> {
     static tCPU::byte read(PPU* ppu) {
         tCPU::byte value = ppu->readSpriteMemory();
-        PrintMemory("Read 0x%02X from port $2004 - Sprite RAM I/O Register")
+        PrintMemoryIO("Read 0x%02X from port $2004 - Sprite RAM I/O Register")
                    % (int) value;
         return value;
     }
     static void write(PPU* ppu, tCPU::byte value) {
-        PrintMemory("Write 0x%02X to port $2004 - Sprite RAM I/O Register")
+        PrintMemoryIO("Write 0x%02X to port $2004 - Sprite RAM I/O Register")
                    % (int) value;
         ppu->writeSpriteMemory(value);
     }
@@ -63,7 +63,7 @@ struct MemoryIOHandler<0x2004> {
 template<>
 struct MemoryIOHandler<0x2005> {
     static void write(PPU* ppu, tCPU::byte value) {
-        PrintMemory("Writing 0x%02X to port $2006 - VRAM Address Register 2")
+        PrintMemoryIO("Writing 0x%02X to port $2006 - VRAM Address Register 2")
                    % (int) value;
         ppu->setVRamAddressRegister1(value);
     }
@@ -72,7 +72,7 @@ struct MemoryIOHandler<0x2005> {
 template<>
 struct MemoryIOHandler<0x2006> {
     static void write(PPU* ppu, tCPU::byte value) {
-        PrintMemory("Writing 0x%02X to port $2006 - VRAM Address Register 2")
+        PrintMemoryIO("Writing 0x%02X to port $2006 - VRAM Address Register 2")
                    % (int) value;
         ppu->setVRamAddressRegister2(value);
     }
@@ -82,12 +82,12 @@ template<>
 struct MemoryIOHandler<0x2007> {
     static tCPU::byte read(PPU* ppu) {
         tCPU::byte value = ppu->readFromVRam();
-        PrintMemory("Read 0x%02X from port $2007 - VRAM I/O Register")
+        PrintMemoryIO("Read 0x%02X from port $2007 - VRAM I/O Register")
                 % (int) value;
         return value;
     }
     static void write(PPU* ppu, tCPU::byte value) {
-        PrintMemory("Writing 0x%02X to port $2007 - VRAM I/O Register")
+        PrintMemoryIO("Writing 0x%02X to port $2007 - VRAM I/O Register")
                    % (int) value;
         ppu->writeToVRam(value);
     }
@@ -96,7 +96,7 @@ struct MemoryIOHandler<0x2007> {
 template<>
 struct MemoryIOHandler<0x4014> {
     static void write(PPU* ppu, Memory* memory, tCPU::byte value) {
-        PrintMemory("Writing 0x%02X to port $2006 - VRAM Address Register 2")
+        PrintMemoryIO("Writing 0x%02X to port $2006 - VRAM Address Register 2")
                    % (int) value;
         ppu->StartSpriteXferDMA(memory, value);
     }

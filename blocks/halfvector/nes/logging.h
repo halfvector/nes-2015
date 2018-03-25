@@ -16,10 +16,11 @@ std::string simplifyFunctionName(std::string prettyFunction);
 #define PrintError      LOG(ERROR) << __METHOD_NAME__ << boost::format
 
 #define PrintCpu        LOG(DEBUG) << __METHOD_NAME__ << boost::format
-#define PrintMemory     LOG(DEBUG) << __METHOD_NAME__ << boost::format
+//#define PrintMemory     LOG(DEBUG) << __METHOD_NAME__ << boost::format
+#define PrintMemoryIO   LOG(DEBUG) << __METHOD_NAME__ << boost::format
 #define PrintPpu        LOG(DEBUG) << __METHOD_NAME__ << boost::format
 
-#if 0
+#if 1
 #define PrintMemory     boost::format
 #endif
 

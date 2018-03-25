@@ -99,8 +99,8 @@ struct MemoryAddressResolve<ADDR_MODE_ABSOLUTE_INDEXED_X> : MemoryAddressResolve
 
         if ((AbsoluteAddress & 0xFF00) != (EffectiveAddress & 0xFF00)) {    // page boundary crossed?
             PageBoundaryCrossed = true;
-            PrintDbg("ADDR_MODE_ABSOLUTE_INDEXED_X; Page Boundary Crossed: $%04X + $%02X -> $%04X")
-                    % AbsoluteAddress % ctx->registers->X % EffectiveAddress;
+//            PrintDbg("ADDR_MODE_ABSOLUTE_INDEXED_X; Page Boundary Crossed: $%04X + $%02X -> $%04X")
+//                    % AbsoluteAddress % ctx->registers->X % EffectiveAddress;
         } else
             PageBoundaryCrossed = false;
 
@@ -148,14 +148,14 @@ struct MemoryAddressResolve<ADDR_MODE_INDIRECT_INDEXED> : MemoryAddressResolveBa
         if ((IndirectAddress & 0xFF00) != (IndexedIndirectAddress & 0xFF00)) {
             // page boundary crossed
             PageBoundaryCrossed = true;
-            PrintDbg("ADDR_MODE_INDIRECT_INDEXED; Page Boundary Crossed: $%04X + $%02X -> $%04X")
-                    % IndirectAddress % ctx->registers->Y % IndexedIndirectAddress;
+//            PrintDbg("ADDR_MODE_INDIRECT_INDEXED; Page Boundary Crossed: $%04X + $%02X -> $%04X")
+//                    % IndirectAddress % ctx->registers->Y % IndexedIndirectAddress;
         } else {
             PageBoundaryCrossed = false;
         }
 
-		PrintDbg("ADDR_MODE_INDIRECT_INDEXED; ZPA: $%04X, IA: $%04X, IIA: $%04X")
-            % ZeroPageAddress % IndirectAddress % IndexedIndirectAddress;
+//		PrintDbg("ADDR_MODE_INDIRECT_INDEXED; ZPA: $%04X, IA: $%04X, IIA: $%04X")
+//            % ZeroPageAddress % IndirectAddress % IndexedIndirectAddress;
 
         NumOfCalls++;
 
@@ -175,8 +175,8 @@ struct MemoryAddressResolve<ADDR_MODE_INDIRECT_ABSOLUTE> : MemoryAddressResolveB
         // the real address
         tCPU::word EffectiveAddress = ctx->mem->readWord(IndirectAddress);
 
-        PrintDbg("ADDR_MODE_INDIRECT_ABSOLUTE; indirect address = $%04X -> effective address = $%04X")
-            % (int) IndirectAddress % (int) EffectiveAddress;
+//        PrintDbg("ADDR_MODE_INDIRECT_ABSOLUTE; indirect address = $%04X -> effective address = $%04X")
+//            % (int) IndirectAddress % (int) EffectiveAddress;
 
         PageBoundaryCrossed = false;
 
@@ -204,14 +204,14 @@ struct MemoryAddressResolve<ADDR_MODE_INDEXED_INDIRECT> : MemoryAddressResolveBa
         if ((IndirectAddress & 0xFF00) != (IndexedIndirectAddress & 0xFF00)) {
             // page boundary crossed
             PageBoundaryCrossed = true;
-            PrintDbg("ADDR_MODE_INDIRECT_INDEXED; Page Boundary Crossed: $%04X + $%02X -> $%04X")
-                    % IndirectAddress % ctx->registers->Y % IndexedIndirectAddress;
+//            PrintDbg("ADDR_MODE_INDIRECT_INDEXED; Page Boundary Crossed: $%04X + $%02X -> $%04X")
+//                    % IndirectAddress % ctx->registers->Y % IndexedIndirectAddress;
         } else {
             PageBoundaryCrossed = false;
         }
 
-        PrintDbg("ADDR_MODE_INDIRECT_INDEXED; ZPA: $%04X, IA: $%04X, IIA: $%04X")
-                % ZeroPageAddress % IndirectAddress % IndexedIndirectAddress;
+//        PrintDbg("ADDR_MODE_INDIRECT_INDEXED; ZPA: $%04X, IA: $%04X, IIA: $%04X")
+//                % ZeroPageAddress % IndirectAddress % IndexedIndirectAddress;
 
         NumOfCalls++;
 

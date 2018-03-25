@@ -545,12 +545,12 @@ struct BranchIf {
         tCPU::word jmpAddress = ctx->registers->PC + relativeOffset;
         bool flagState = ProcessorStatusFlag<Register>::getState(ctx);
 
-        PrintCpu("-> Status Register %s: %d; Relative offset: $%02X; Calculated jump address = $%04X")
-                % ProcessorStatusFlagNames[Register] % (int) flagState
-                % (signed int) relativeOffset % jmpAddress;
+//        PrintCpu("-> Status Register %s: %d; Relative offset: $%02X; Calculated jump address = $%04X")
+//                % ProcessorStatusFlagNames[Register] % (int) flagState
+//                % (signed int) relativeOffset % jmpAddress;
 
         if (flagState == expectedState) {
-            PrintCpu("-> Branch Taken");
+//            PrintCpu("-> Branch Taken");
 //            CPU::Singleton()->IncCycles();
 
             // add another cycle if branch goes to a diff page
@@ -607,9 +607,9 @@ DEFINE_OPCODE(BVS) {
 template<Register R, AddressMode M>
 struct GenericComparator {
     static void execute(InstructionContext* ctx) {
-        tCPU::word mem = MemoryOperation<M>::readWord(ctx);
-        tCPU::word reg = RegisterOperation<R>::read(ctx);
-        tCPU::word result = reg - mem;
+        tCPU::byte mem = MemoryOperation<M>::readByte(ctx);
+        tCPU::byte reg = RegisterOperation<R>::read(ctx);
+        tCPU::byte result = reg - mem;
 
         ctx->registers->setSignBit(result);
         ctx->registers->setZeroBit(result);

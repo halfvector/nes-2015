@@ -167,8 +167,8 @@ PPU::advanceRenderableScanline() {
             vramAddress14bit &= 0x7FFF;
         }
 
-        PrintPpu("Start of Scanline; vramAddress14bit = 0x%X / tempVRAMAddress = %s")
-                % vramAddress14bit % std::bitset<16>(tempVRAMAddress);
+//        PrintPpu("Start of Scanline; vramAddress14bit = 0x%X / tempVRAMAddress = %s")
+//                % vramAddress14bit % std::bitset<16>(tempVRAMAddress);
     }
 
     scanlinePixel++;
@@ -470,7 +470,7 @@ void PPU::renderScanline(int Y) {
         statusRegister |= Bit<5>::Set( true );
     }
 
-    PrintPpu("Rendered scanline Y=%d") % Y;
+//    PrintPpu("Rendered scanline Y=%d") % Y;
 }
 
 // palettetype: 0 = background, 1 = sprites
@@ -628,7 +628,7 @@ tCPU::byte
 PPU::ReadInternalMemoryByte(tCPU::word Address) {
     tCPU::word EffectiveAddress = GetEffectiveAddress(Address);
     tCPU::byte Value = PPU_RAM[EffectiveAddress];
-    PrintMemory("Read 0x%02X from PPU RAM @ 0x%04X") % (int) Value % (int) EffectiveAddress;
+    PrintPpu("Read 0x%02X from PPU RAM @ 0x%04X") % (int) Value % (int) EffectiveAddress;
     return Value;
 }
 
@@ -636,7 +636,7 @@ bool
 PPU::WriteInternalMemoryByte(tCPU::word Address, tCPU::byte Value) {
     tCPU::word EffectiveAddress = GetEffectiveAddress(Address);
     PPU_RAM[EffectiveAddress] = Value;
-    PrintMemory("Wrote 0x%02X to PPU RAM @ 0x%04X") % (int) Value % (int) EffectiveAddress;
+    PrintPpu("Wrote 0x%02X to PPU RAM @ 0x%04X") % (int) Value % (int) EffectiveAddress;
     return true;
 }
 
@@ -644,7 +644,7 @@ void
 PPU::AutoIncrementVRAMAddress() {
     tCPU::byte incAmount = doVerticalWrites ? 32 : 1;
     vramAddress14bit += incAmount;
-    PrintDbg("Incremented by %d bytes") % (int) incAmount;
+    PrintPpu("Incremented by %d bytes") % (int) incAmount;
 }
 
 void
