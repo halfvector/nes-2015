@@ -20,7 +20,7 @@ struct MemoryAddressResolveBase {
 template<int MemoryMode>
 struct MemoryAddressResolve : MemoryAddressResolveBase {
     static tCPU::word GetEffectiveAddress(InstructionContext *ctx) {
-        PrintWarning("MemoryAddressResolve<?>::GetEffectiveAddress(); Unimplemented Memory Mode: %s")
+        PrintWarning("Unimplemented Memory Mode: %s")
                 % AddressModeTitle[MemoryMode];
         PageBoundaryCrossed = false;
         throw new std::runtime_error("Unexpected warning");
@@ -33,7 +33,7 @@ struct MemoryAddressResolve<ADDR_MODE_NONE> : MemoryAddressResolveBase {
     static int NumOfCalls;
 
     static tCPU::word GetEffectiveAddress(InstructionContext *ctx) {
-        PrintWarning("MemoryAddressResolve<ADDR_MODE_NONE>::GetEffectiveAddress(); Unimplemented Memory Mode: %s")
+        PrintWarning("Unimplemented Memory Mode: %s")
                 % AddressModeTitle[ADDR_MODE_NONE];
         PageBoundaryCrossed = false;
 
@@ -67,7 +67,23 @@ struct MemoryAddressResolve<ADDR_MODE_ZEROPAGE_INDEXED_X> : MemoryAddressResolve
         tCPU::word effectiveAddress = ctx->mem->readByte(ctx->registers->LastPC + 1) + ctx->registers->X;
         PageBoundaryCrossed = false;
 
-        // zero-page address is only 1 byte, wrap around after additing value from X register
+        // zero-page address is only 1 byte, wrap around after adding value from X register
+        effectiveAddress = (tCPU::word) 0xFF & effectiveAddress;
+
+        NumOfCalls++;
+        return effectiveAddress;
+    }
+};
+
+template<>
+struct MemoryAddressResolve<ADDR_MODE_ZEROPAGE_INDEXED_Y> : MemoryAddressResolveBase {
+    static int NumOfCalls;
+
+    static tCPU::word GetEffectiveAddress(InstructionContext *ctx) {
+        tCPU::word effectiveAddress = ctx->mem->readByte(ctx->registers->LastPC + 1) + ctx->registers->Y;
+        PageBoundaryCrossed = false;
+
+        // zero-page address is only 1 byte, wrap around after adding value from Y register
         effectiveAddress = (tCPU::word) 0xFF & effectiveAddress;
 
         NumOfCalls++;
@@ -164,6 +180,11 @@ struct MemoryAddressResolve<ADDR_MODE_INDIRECT_INDEXED> : MemoryAddressResolveBa
     }
 };
 
+inline std::uint16_t operator "" _us(unsigned long long value)
+{
+    return static_cast<std::uint16_t>(value);
+}
+
 // FIXME: double check this and one above
 template<>
 struct MemoryAddressResolve<ADDR_MODE_INDIRECT_ABSOLUTE> : MemoryAddressResolveBase {
@@ -171,12 +192,24 @@ struct MemoryAddressResolve<ADDR_MODE_INDIRECT_ABSOLUTE> : MemoryAddressResolveB
 
     static tCPU::word GetEffectiveAddress(InstructionContext *ctx) {
         // address of where the real address is stored
-        tCPU::word IndirectAddress = ctx->mem->readWord(ctx->registers->LastPC + 1);
+        tCPU::word IndirectAddress = ctx->mem->readWord(ctx->registers->LastPC + 1_us);
         // the real address
         tCPU::word EffectiveAddress = ctx->mem->readWord(IndirectAddress);
 
-//        PrintDbg("ADDR_MODE_INDIRECT_ABSOLUTE; indirect address = $%04X -> effective address = $%04X")
-//            % (int) IndirectAddress % (int) EffectiveAddress;
+        PrintDbg("ADDR_MODE_INDIRECT_ABSOLUTE; indirect address = $%04X -> effective address = $%04X")
+            % (int) IndirectAddress % (int) EffectiveAddress;
+
+        // if edge case: indirect address ends on a page (0x__FF)
+        if((IndirectAddress & 0x00ff) == 0x00ff) {
+            PrintDbg("Edge case: indirect address wraparound page boundary: $%04X") % EffectiveAddress;
+
+            // fetch lower byte from the 16 bit address
+            tCPU::byte lowerByte = ctx->mem->readByte(IndirectAddress);
+            // fetch upper byte from the wrapped-around 16 bit address
+            tCPU::byte upperByte = ctx->mem->readByte(IndirectAddress & 0xff00_us);
+
+            EffectiveAddress = (upperByte << 8) + lowerByte; // replace with wrapped-around address fetched byte
+        }
 
         PageBoundaryCrossed = false;
 

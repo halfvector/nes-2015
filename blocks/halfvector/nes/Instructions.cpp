@@ -164,8 +164,25 @@ void Instructions::configureOpcodes() {
     opcodes[0x0E].set("ASL", 3, 6, 0, "ASL nnnn", ADDR_MODE_ABSOLUTE);
     opcodes[0x1E].set("ASL", 3, 7, 0, "ASL nnnn,X", ADDR_MODE_ABSOLUTE_INDEXED_X);
     opcodes[0x58].set("CLI", 1, 2, 0, "CLI", ADDR_MODE_NONE);
-    opcodes[0x1A].set("NOP", 1, 2, 0, "NOP", ADDR_MODE_NONE); // unofficial opcode
-    opcodes[0xEA].set("NOP", 1, 2, 0, "NOP", ADDR_MODE_NONE);
+
+    // NOP and Future Expansion / Unofficial Opcodes
+    for(int op : {0x1A, 0xEA, 0x3A, 0x5A, 0x7A, 0xDA, 0xFA}) {
+        opcodes[op].set("NOP", 1, 2, 0, "NOP", ADDR_MODE_NONE);
+        opcodes[op].execute = &InstructionImplementation<NOP, ADDR_MODE_NONE>::execute;
+    }
+
+    // NOP-like: Skip next byte
+    for(int op : {0x80, 0x82, 0xC2, 0xE2, 0x04, 0x14, 0x34, 0x44, 0x54, 0x64, 0x74, 0xD4, 0xF4}) {
+        opcodes[op].set("SKB", 2, 3, 0, "SKB nn", ADDR_MODE_ZEROPAGE);
+        opcodes[op].execute = &InstructionImplementation<NOP, ADDR_MODE_ZEROPAGE>::execute;
+    }
+
+    // NOP-like: Skip next word
+    for(int op : {0x0C, 0x1C, 0x3C, 0x5C, 0x7C, 0xDC, 0xFC}) {
+        opcodes[op].set("SKB", 3, 4, 0, "SKB nnnn", ADDR_MODE_ABSOLUTE);
+        opcodes[op].execute = &InstructionImplementation<NOP, ADDR_MODE_ABSOLUTE>::execute;
+    }
+
     opcodes[0x4A].set("LSR", 1, 2, 0, "LSR A", ADDR_MODE_ACCUMULATOR);
     opcodes[0x46].set("LSR", 2, 5, 0, "LSR nn", ADDR_MODE_ZEROPAGE);
     opcodes[0x56].set("LSR", 2, 6, 0, "LSR nn,X", ADDR_MODE_ZEROPAGE_INDEXED_X);
@@ -250,9 +267,9 @@ struct UnrollInstructions {
                 opcodeVariant = uint8_t(opcode + 0x10); // 0xBE
             }
 
-//            PrintInfo("  + opcode=0x%02X variant=0x%02X offset=%d mode=%d mask=%d")
-//                % (int) opcode % (int) opcodeVariant % (int) props[mode].offset
-//                % (int) mode % (int) AddressModeMask[mode];
+            PrintInfo("  + opcode=0x%02X variant=0x%02X offset=%d mode=%d mask=%d")
+                % (int) opcode % (int) opcodeVariant % (int) props[mode].offset
+                % (int) mode % (int) AddressModeMask[mode];
             assert(opcodes[opcodeVariant].execute == nullptr);
             opcodes[opcodeVariant].execute = &InstructionImplementation<opcode, mode>::execute;
         }
@@ -344,7 +361,6 @@ Instructions::generateOpcodeVariants() {
     Unroll<LDX>::start(opcodes, modes, ADDR_MODE_IMMEDIATE_TO_XY, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_Y, ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_Y);
     Unroll<LDY>::start(opcodes, modes, ADDR_MODE_IMMEDIATE_TO_XY, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X, ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X);
     Unroll<LSR>::start(opcodes, modes, ADDR_MODE_ACCUMULATOR, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X, ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X);
-    Unroll<NOP>::start(opcodes, modes, ADDR_MODE_NONE);
     Unroll<ORA>::start(opcodes, modes, ADDR_MODE_IMMEDIATE, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X, ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X, ADDR_MODE_ABSOLUTE_INDEXED_Y, ADDR_MODE_INDEXED_INDIRECT, ADDR_MODE_INDIRECT_INDEXED);
     Unroll<PHA>::start(opcodes, modes, ADDR_MODE_NONE);
     Unroll<PHP>::start(opcodes, modes, ADDR_MODE_NONE);
@@ -699,6 +715,9 @@ DEFINE_OPCODE(JSR) {
 
 DEFINE_OPCODE(JMP) {
     tCPU::word address = MemoryOperation<mode>::GetEffectiveAddress(ctx);
+
+    // special case: if address low byte is 0xff, wrap around and read upper byte
+
 //    PrintCpu("Setting new PC to $%04X") % address;
     ctx->registers->PC = address;
 }
@@ -709,6 +728,8 @@ DEFINE_OPCODE(RTS) {
     tCPU::word address = ctx->stack->popStackWord() + 1;
     ctx->registers->PC = address;
     PrintDbg("Restored old PC from stack: $%04X") % address;
+
+
 }
 
 // return from interrupt

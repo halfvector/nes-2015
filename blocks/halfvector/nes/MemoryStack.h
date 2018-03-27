@@ -13,6 +13,7 @@ public:
     void pushStackByte(tCPU::byte value);
     tCPU::word popStackWord();
     tCPU::byte popStackByte();
+    void dump();
 
 protected:
     Memory* mem;
