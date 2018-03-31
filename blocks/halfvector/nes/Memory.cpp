@@ -58,7 +58,7 @@ Memory::readByteDirectly(tCPU::word address) {
 
         // regular memory
         tCPU::byte value = memory[address];
-        PrintMemory("Read 0x%02X from $%04X", (int) value, (int) address);
+//        PrintMemory("Read 0x%02X from $%04X", (int) value, (int) address);
         return value;
     }
 }

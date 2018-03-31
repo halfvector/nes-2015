@@ -36,7 +36,7 @@ struct Loggy {
 
     template<typename... Args>
     void println(const char* fmt, const Args &... args) {
-        fputs(buffer, stdout);
+        printf("%60s", buffer);
         fmt::printf(fmt, args...);
         fputs("\n", stdout);
     }
