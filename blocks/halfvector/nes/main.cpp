@@ -20,6 +20,8 @@
 int main(int argc, char **argv) {
     Backtrace::install();
 
+    Loggy::Enabled = Loggy::DEBUG;
+
     CartridgeLoader loader;
     Cartridge rom = loader.loadCartridge("../roms/supermariobros.nes");
 
@@ -71,7 +73,9 @@ int main(int argc, char **argv) {
     registers->P.I = 1;
     registers->S = 0xFD;
 
-    for (int i = 0; i < 165000; i++) {
+    gui->render();
+
+    for (int i = 0; i < 400000; i++) {
         // grab next instruction
         tCPU::byte opCode = memory->readByteDirectly(registers->PC);
 
@@ -92,6 +96,7 @@ int main(int argc, char **argv) {
         }
 
         if (ppu->enteredVBlank()) {
+            ppu->renderDebug();
             gui->render();
         }
     }
