@@ -6,6 +6,10 @@ const unsigned short stackOffset = 0x100;
  * Manage stack portion of memory
  */
 
+inline std::uint16_t operator "" _us(unsigned long long value) {
+    return static_cast<std::uint16_t>(value);
+}
+
 /*
  * Push word. Increment stack by 2 bytes.
  */
@@ -13,9 +17,9 @@ void
 Stack::pushStackWord(tCPU::word value) {
     assert(reg->S > 2 && "Stack overflow");
 
-    PrintInfo("Pushing onto stack: 0x%04X / stack pointer: $%02X", (int) value, (int) reg->S);
+    PrintDbg("Pushing onto stack: 0x%04X / stack pointer: $%02X", (int) value, (int) reg->S);
     mem->writeByte(stackOffset + reg->S, (value >> 8) & 0xFF); // high byte
-    mem->writeByte(stackOffset + reg->S - 1, value & 0xFF); // low byte
+    mem->writeByte(stackOffset + reg->S - 1_us, value & 0xFF_us); // low byte
     reg->S -= 2;
 }
 
@@ -34,7 +38,7 @@ Stack::popStackWord() {
     mem->writeByte(stackOffset + reg->S, 0);
     mem->writeByte(stackOffset + reg->S - 1, 0);
 
-    PrintInfo("Popped from stack: 0x%04X / stack pointer: $%02X", (int) value, (int) reg->S);
+    PrintDbg("Popped from stack: 0x%04X / stack pointer: $%02X", (int) value, (int) reg->S);
     return value;
 }
 
@@ -42,7 +46,7 @@ void
 Stack::pushStackByte(tCPU::byte value) {
     assert(reg->S > 1 && "Stack overflow");
 
-    PrintInfo("Pushing onto stack: 0x%04X / stack pointer: $%02X", (int) value, (int) reg->S);
+    PrintDbg("Pushing onto stack: 0x%04X / stack pointer: $%02X", (int) value, (int) reg->S);
     mem->writeByte(stackOffset + reg->S, value);
     reg->S--;
 }
@@ -53,7 +57,7 @@ Stack::popStackByte() {
 
     reg->S++;
     tCPU::byte value = mem->readByte(stackOffset + reg->S);
-    PrintInfo("Popped from stack: 0x%02X / stack pointer: $%02X", (int) value, (int) reg->S);
+    PrintDbg("Popped from stack: 0x%02X / stack pointer: $%02X", (int) value, (int) reg->S);
 
     mem->writeByte(stackOffset + reg->S, 0);
 

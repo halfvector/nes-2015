@@ -142,7 +142,7 @@ MemoryIO::write(tCPU::word address, tCPU::byte value) {
             break;
 
         case 0x4011:
-            PrintWarning("Skipping Unimplemented I/O Port: APU $4011 - APU Delta Modulation D/A Register");
+            PrintUnimplementedIO("Skipping Unimplemented I/O Port: APU $4011 - APU Delta Modulation D/A Register");
             break;
 
         case 0x4014:
@@ -150,15 +150,15 @@ MemoryIO::write(tCPU::word address, tCPU::byte value) {
             break;
 
         case 0x4015:
-            PrintWarning("Skipping Unimplemented I/O Port: APU $4015 - APU Sound / Vertical Clock Signal Register");
+            PrintUnimplementedIO("Skipping Unimplemented I/O Port: APU $4015 - APU Sound / Vertical Clock Signal Register");
             break;
 
         case 0x4016:
-            PrintWarning("Skipping Unimplemented I/O Port: PPU $4016 - Joypad 1");
+            PrintUnimplementedIO("Skipping Unimplemented I/O Port: PPU $4016 - Joypad 1");
             break;
 
         case 0x4017:
-            PrintWarning("Skipping Unimplemented I/O Port: PPU $4017 - Joypad 2");
+            PrintUnimplementedIO("Skipping Unimplemented I/O Port: PPU $4017 - Joypad 2");
             break;
 
         default:
@@ -182,14 +182,13 @@ MemoryIO::read(tCPU::word address) {
 
         case 0x2007:
             return MemoryIOHandler<0x2007>::read(ppu);
-            break;
 
         case 0x4016:
-            PrintWarning("Skipping Unimplemented I/O Port: PPU $4016 - Joypad 1");
+            PrintUnimplementedIO("Skipping Unimplemented I/O Port: PPU $4016 - Joypad 1");
             break;
 
         case 0x4017:
-            PrintWarning("Skipping Unimplemented I/O Port: PPU $4016 - Joypad 1");
+            PrintUnimplementedIO("Skipping Unimplemented I/O Port: PPU $4017 - Joypad 2");
             break;
 
         default:
