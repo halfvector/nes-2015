@@ -22,11 +22,18 @@ void simplifyFunctionName(const char *name, char *shorter, size_t maxLength);
 //}
 
 struct Loggy {
+    enum Type {
+        DEBUG = 0x1, INFO = 0x2, WARNING = 0x4, ERROR = 0x8
+    };
     char buffer[128];
+    Type type;
 
-    static Loggy log(const char *name) {
+    static Type Enabled;
+
+    static Loggy log(const char *name, Type type) {
         Loggy x{};
         x.setCaller(name);
+        x.type = type;
         return x;
     }
 
@@ -35,22 +42,29 @@ struct Loggy {
     }
 
     template<typename... Args>
-    void println(const char* fmt, const Args &... args) {
+    void println(const char *fmt, const Args &... args) {
+        if (Enabled > type) {
+            return;
+        }
+
         printf("%60s", buffer);
         fmt::printf(fmt, args...);
         fputs("\n", stdout);
     }
 };
 
-#define PrintDbg        Loggy::log(__PRETTY_FUNCTION__).println
-#define PrintInfo       Loggy::log(__PRETTY_FUNCTION__).println
-#define PrintWarning    Loggy::log(__PRETTY_FUNCTION__).println
-#define PrintError      Loggy::log(__PRETTY_FUNCTION__).println
+// universal
+#define PrintDbg                Loggy::log(__PRETTY_FUNCTION__, Loggy::DEBUG).println
+#define PrintInfo               Loggy::log(__PRETTY_FUNCTION__, Loggy::INFO).println
+#define PrintWarning            Loggy::log(__PRETTY_FUNCTION__, Loggy::WARNING).println
+#define PrintError              Loggy::log(__PRETTY_FUNCTION__, Loggy::ERROR).println
 
-#define PrintCpu        Loggy::log(__PRETTY_FUNCTION__).println
-#define PrintMemory     Loggy::log(__PRETTY_FUNCTION__).println
-#define PrintMemoryIO   Loggy::log(__PRETTY_FUNCTION__).println
-#define PrintPpu        Loggy::log(__PRETTY_FUNCTION__).println
+// component specific
+#define PrintCpu                Loggy::log(__PRETTY_FUNCTION__, Loggy::DEBUG).println
+#define PrintMemory             Loggy::log(__PRETTY_FUNCTION__, Loggy::DEBUG).println
+#define PrintMemoryIO           Loggy::log(__PRETTY_FUNCTION__, Loggy::DEBUG).println
+#define PrintPpu                Loggy::log(__PRETTY_FUNCTION__, Loggy::DEBUG).println
+#define PrintUnimplementedIO    Loggy::log(__PRETTY_FUNCTION__, Loggy::DEBUG).println
 
 
 static std::string boostFormatWrapper(boost::format &f) {

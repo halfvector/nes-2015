@@ -1,5 +1,8 @@
 #include "Logging.h"
 
+// initialize statics
+Loggy::Type Loggy::Enabled = Loggy::DEBUG;
+
 // takes a __PRETTY_FUNCTION__ long method signature
 void simplifyFunctionName(const char *name, char *shorter, size_t maxLength) {
     size_t nameLength = strlen(name);
