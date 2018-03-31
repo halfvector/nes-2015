@@ -23,7 +23,7 @@ Memory::getRealMemoryAddress(tCPU::word address) {
     // repeating mirrors of the below i/o registers
     if (address >= 0x2008 && address < 0x3FFF) {
         address = 0x2000 + (address % 8);
-        PrintMemory("Adjusted Repeating I/O Mirror to 0x%04X") % address;
+        PrintMemory("Adjusted Repeating I/O Mirror to 0x%04X", address);
     }
 
     return address;
@@ -44,21 +44,21 @@ Memory::readByte(tCPU::word originalAddress) {
  */
 tCPU::byte
 Memory::readByteDirectly(tCPU::word address) {
-    //PrintMemory("Reading from memory address: 0x%08X without address resolution") % address;
+    //PrintMemory("Reading from memory address: 0x%08X without address resolution", address);
 
     if ((address >= 0x2000 && address <= 0x2007) || (address >= 0x4000 && address <= 0x401F)) {
         // i/o registers
-        PrintMemory("* Reading from Memory Mapped I/O Port (0x%04X)") % (int) address;
+        PrintMemory("* Reading from Memory Mapped I/O Port (0x%04X)", (int) address);
         return readFromIOPort(address);
     } else {
         // fun fact: stack memory
         if (address >= 0x0100 && address <= 0x01FF) {
-            PrintMemory("* Reading from Stack (0x%04X)") % (int) address;
+            PrintMemory("* Reading from Stack (0x%04X)", (int) address);
         }
 
         // regular memory
         tCPU::byte value = memory[address];
-        PrintMemory("Read 0x%02X from $%04X") % (int) value % (int) address;
+        PrintMemory("Read 0x%02X from $%04X", (int) value, (int) address);
         return value;
     }
 }
@@ -70,8 +70,7 @@ Memory::readWord(tCPU::word absoluteAddress) {
     tCPU::word lowByte = readByte(absoluteAddress);
     tCPU::word highByte = readByte(absoluteAddress + 1);
     tCPU::word value = ((highByte << 8) & 0xFF00) | lowByte;
-    PrintMemory("Read 0x%04X from address $%04X")
-            % (int) value % (int) absoluteAddress;
+    PrintMemory("Read 0x%04X from address $%04X", (int) value, (int) absoluteAddress);
     return value;
 }
 
@@ -85,17 +84,17 @@ Memory::writeByte(tCPU::word originalAddress, tCPU::byte value) {
 
     if ((address >= 0x2000 && address <= 0x2007) || (address >= 0x4000 && address <= 0x401F)) {
         // i/o registers
-        PrintMemory("* Writing to Memory Mapped I/O Port (0x%04X)") % (int) address;
+        PrintMemory("* Writing to Memory Mapped I/O Port (0x%04X)", (int) address);
         return writeToIOPort(address, value);
     } else {
         // fun fact: stack memory
         if (address >= 0x0100 && address <= 0x01FF) {
-            PrintMemory("* Writing to Stack (0x%04X)") % (int) address;
+            PrintMemory("* Writing to Stack (0x%04X)", (int) address);
         }
 
         // regular memory
         memory[address] = value;
-        PrintMemory("Wrote 0x%02X to $%04X") % (int) value % (int) address;
+        PrintMemory("Wrote 0x%02X to $%04X", (int) value, (int) address);
         return true;
     }
 }
@@ -115,7 +114,7 @@ Memory::writeWord(tCPU::word address, tCPU::word value) {
     writeByte(address, lowByte);
     writeByte(address+1, highByte);
 
-    PrintMemory("Wrote 0x%04X to $%04X") % (int) value % (int) address;
+    PrintMemory("Wrote 0x%04X to $%04X", (int) value, (int) address);
 }
 
 /**

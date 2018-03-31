@@ -42,7 +42,7 @@ struct MemoryOperation<ADDR_MODE_IMMEDIATE> : MemoryOperation<ADDR_MODE_NONE> {
 
     static tCPU::byte readByte(InstructionContext *ctx) {
         tCPU::byte value = ctx->mem->readByte(ctx->registers->LastPC + 1);
-        PrintMemory("value = 0x%X") % (int)value;
+        PrintMemory("value = 0x%X", (int) value);
         return value;
     }
 
@@ -51,7 +51,7 @@ struct MemoryOperation<ADDR_MODE_IMMEDIATE> : MemoryOperation<ADDR_MODE_NONE> {
     // its an address to work on ITSELF.. eg jump to there
     static tCPU::word readWord(InstructionContext *ctx) {
         tCPU::word value = ctx->mem->readWord(ctx->registers->LastPC + 1);
-        PrintMemory("value = 0x%X") % (int)value;
+        PrintMemory("value = 0x%X", (int) value);
         return value;
     }
 };
@@ -61,7 +61,7 @@ template<>
 struct MemoryOperation<ADDR_MODE_ACCUMULATOR> : MemoryOperation<ADDR_MODE_NONE> {
     static void writeByte(InstructionContext *ctx, tCPU::byte value) {
         ctx->registers->A = value;
-        PrintMemory("value = 0x%02X") % (int) value;
+        PrintMemory("value = 0x%02X", (int) value);
     }
 
     static void writeWord(tCPU::word value) {
@@ -70,7 +70,7 @@ struct MemoryOperation<ADDR_MODE_ACCUMULATOR> : MemoryOperation<ADDR_MODE_NONE> 
 
     static tCPU::byte readByte(InstructionContext *ctx) {
         tCPU::byte value = ctx->registers->A;
-        PrintMemory("value = 0x%02X") % (int) value;
+        PrintMemory("value = 0x%02X", (int) value);
         return value;
     }
 
@@ -84,5 +84,5 @@ struct MemoryOperation<ADDR_MODE_ACCUMULATOR> : MemoryOperation<ADDR_MODE_NONE> 
 // this is the same as normal immediate, except its to registers x/y (instead of accumulator?)
 // and so the opcode generated is diff, +4h instead of -4h or something like that
 template<>
-struct MemoryOperation<ADDR_MODE_IMMEDIATE_TO_XY> : MemoryOperation< ADDR_MODE_IMMEDIATE > {
+struct MemoryOperation<ADDR_MODE_IMMEDIATE_TO_XY> : MemoryOperation<ADDR_MODE_IMMEDIATE> {
 };

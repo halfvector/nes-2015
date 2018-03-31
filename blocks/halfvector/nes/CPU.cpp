@@ -43,7 +43,7 @@ CPU::load(Cartridge& rom) {
 void
 CPU::writePrgPage(int pageIdx, uint8_t buffer[]) {
     tCPU::dword pageAddress = 0x8000 + 0x4000 * pageIdx;
-    PrintCpu("Writing 16k PRG ROM to Page %d (@ 0x%08X)") % pageIdx % (int) pageAddress;
+    PrintCpu("Writing 16k PRG ROM to Page %d (@ 0x%08X)", pageIdx, (int) pageAddress);
 
 //    for(int j = 0; j < PRG_ROM_PAGE_SIZE; j+=8) {
 //        PrintDbg("%05X %02X %02X %02X %02X %02X %02X %02X %02X")
@@ -72,7 +72,7 @@ CPU::writeChrPage(uint8_t buffer[]) {
 void
 CPU::run() {
     reset();
-    PrintCpu("Reset program-counter to 0x%X") % registers->PC;
+    PrintCpu("Reset program-counter to 0x%X", registers->PC);
 
     //while(cpuAlive) {
     for(int i = 0; i < 30; i ++) {
@@ -136,8 +136,7 @@ CPU::executeOpcode(int code) {
             % (int) numCycles
     ;
 
-    PrintCpu("%-45s %s")
-        % instruction % cpuState;
+    PrintCpu("%-45s %s", instruction, cpuState.str());
 
     // update program counter
     registers->LastPC = registers->PC;

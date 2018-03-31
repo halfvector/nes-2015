@@ -3,7 +3,7 @@
 #include "MemoryOperation.h"
 #include "RegisterOperation.h"
 
-Instructions::Instructions(Opcode *opcodes, AddressModeProperties* modes) {
+Instructions::Instructions(Opcode *opcodes, AddressModeProperties *modes) {
     this->opcodes = opcodes;
     this->modes = modes;
 }
@@ -166,19 +166,19 @@ void Instructions::configureOpcodes() {
     opcodes[0x58].set("CLI", 1, 2, 0, "CLI", ADDR_MODE_NONE);
 
     // NOP and Future Expansion / Unofficial Opcodes
-    for(int op : {0x1A, 0xEA, 0x3A, 0x5A, 0x7A, 0xDA, 0xFA}) {
+    for (int op : {0x1A, 0xEA, 0x3A, 0x5A, 0x7A, 0xDA, 0xFA}) {
         opcodes[op].set("NOP", 1, 2, 0, "NOP", ADDR_MODE_NONE);
         opcodes[op].execute = &InstructionImplementation<NOP, ADDR_MODE_NONE>::execute;
     }
 
     // NOP-like: Skip next byte
-    for(int op : {0x80, 0x82, 0xC2, 0xE2, 0x04, 0x14, 0x34, 0x44, 0x54, 0x64, 0x74, 0xD4, 0xF4}) {
+    for (int op : {0x80, 0x82, 0xC2, 0xE2, 0x04, 0x14, 0x34, 0x44, 0x54, 0x64, 0x74, 0xD4, 0xF4}) {
         opcodes[op].set("SKB", 2, 3, 0, "SKB nn", ADDR_MODE_ZEROPAGE);
         opcodes[op].execute = &InstructionImplementation<NOP, ADDR_MODE_ZEROPAGE>::execute;
     }
 
     // NOP-like: Skip next word
-    for(int op : {0x0C, 0x1C, 0x3C, 0x5C, 0x7C, 0xDC, 0xFC}) {
+    for (int op : {0x0C, 0x1C, 0x3C, 0x5C, 0x7C, 0xDC, 0xFC}) {
         opcodes[op].set("SKB", 3, 4, 0, "SKB nnnn", ADDR_MODE_ABSOLUTE);
         opcodes[op].execute = &InstructionImplementation<NOP, ADDR_MODE_ABSOLUTE>::execute;
     }
@@ -257,7 +257,7 @@ template<InstructionMnemonic opcode, enum AddressMode mode>
 struct UnrollInstructions {
     static void unroll(Opcode *opcodes, AddressModeProperties *props) {
         // Validate address-mode is supported by instruction
-        if((opcodes[opcode].AddressModeMask & AddressModeMask[mode]) == AddressModeMask[mode]) {
+        if ((opcodes[opcode].AddressModeMask & AddressModeMask[mode]) == AddressModeMask[mode]) {
             // Calculate opcode variant given a memory address mode
             uint8_t opcodeVariant = opcode + props[mode].offset;
 
@@ -267,14 +267,13 @@ struct UnrollInstructions {
                 opcodeVariant = uint8_t(opcode + 0x10); // 0xBE
             }
 
-            PrintInfo("  + opcode=0x%02X variant=0x%02X offset=%d mode=%d mask=%d")
-                % (int) opcode % (int) opcodeVariant % (int) props[mode].offset
-                % (int) mode % (int) AddressModeMask[mode];
+//            PrintInfo("  + opcode=0x%02X variant=0x%02X offset=%d mode=%d mask=%d", (int) opcode, (int) opcodeVariant,
+//                      (int) props[mode].offset, (int) mode, (int) AddressModeMask[mode]);
             assert(opcodes[opcodeVariant].execute == nullptr);
             opcodes[opcodeVariant].execute = &InstructionImplementation<opcode, mode>::execute;
         }
 
-        UnrollInstructions<opcode, static_cast<AddressMode>(mode-1)>::unroll(opcodes, props);
+        UnrollInstructions<opcode, static_cast<AddressMode>(mode - 1)>::unroll(opcodes, props);
     }
 };
 
@@ -286,7 +285,7 @@ struct UnrollInstructions<opcode, ADDR_MODE_NONE> {
     static void unroll(Opcode *opcodes, AddressModeProperties *props) {
 
         // Validate address-mode is supported by instruction
-        if(opcodes[opcode].AddressModeMask == AddressModeMask[ADDR_MODE_NONE]) {
+        if (opcodes[opcode].AddressModeMask == AddressModeMask[ADDR_MODE_NONE]) {
             // Calculate opcode variant given a memory address mode
             uint8_t opcodeVariant = opcode + props[ADDR_MODE_NONE].offset;
 
@@ -310,10 +309,12 @@ struct UnrollInstructions<opcode, ADDR_MODE_NONE> {
  */
 template<InstructionMnemonic opcode>
 struct Unroll {
-    static void start(Opcode *opcodes, AddressModeProperties *props, int mask1 = 0, int mask2 = 0, int mask3 = 0, int mask4 = 0, int mask5 = 0, int mask6 = 0, int mask7 = 0, int mask8 = 0) {
+    static void
+    start(Opcode *opcodes, AddressModeProperties *props, int mask1 = 0, int mask2 = 0, int mask3 = 0, int mask4 = 0,
+          int mask5 = 0, int mask6 = 0, int mask7 = 0, int mask8 = 0) {
         uint16_t mask = AddressModeMask[mask1] + AddressModeMask[mask2]
-                + AddressModeMask[mask3] + AddressModeMask[mask4] + AddressModeMask[mask5]
-                + AddressModeMask[mask6] + AddressModeMask[mask7] + AddressModeMask[mask8];
+                        + AddressModeMask[mask3] + AddressModeMask[mask4] + AddressModeMask[mask5]
+                        + AddressModeMask[mask6] + AddressModeMask[mask7] + AddressModeMask[mask8];
 
 //        PrintInfo("assigning mask=%d") % std::bitset<8>(mask).to_string('0', '1');
 
@@ -328,9 +329,14 @@ struct Unroll {
  */
 void
 Instructions::generateOpcodeVariants() {
-    Unroll<ADC>::start(opcodes, modes, ADDR_MODE_IMMEDIATE, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X, ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X, ADDR_MODE_ABSOLUTE_INDEXED_Y, ADDR_MODE_INDEXED_INDIRECT, ADDR_MODE_INDIRECT_INDEXED);
-    Unroll<AND>::start(opcodes, modes, ADDR_MODE_IMMEDIATE, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X, ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X, ADDR_MODE_ABSOLUTE_INDEXED_Y, ADDR_MODE_INDEXED_INDIRECT, ADDR_MODE_INDIRECT_INDEXED);
-    Unroll<ASL>::start(opcodes, modes, ADDR_MODE_ACCUMULATOR, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X, ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X);
+    Unroll<ADC>::start(opcodes, modes, ADDR_MODE_IMMEDIATE, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X,
+                       ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X, ADDR_MODE_ABSOLUTE_INDEXED_Y,
+                       ADDR_MODE_INDEXED_INDIRECT, ADDR_MODE_INDIRECT_INDEXED);
+    Unroll<AND>::start(opcodes, modes, ADDR_MODE_IMMEDIATE, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X,
+                       ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X, ADDR_MODE_ABSOLUTE_INDEXED_Y,
+                       ADDR_MODE_INDEXED_INDIRECT, ADDR_MODE_INDIRECT_INDEXED);
+    Unroll<ASL>::start(opcodes, modes, ADDR_MODE_ACCUMULATOR, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X,
+                       ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X);
     Unroll<BCC>::start(opcodes, modes, ADDR_MODE_RELATIVE);
     Unroll<BCS>::start(opcodes, modes, ADDR_MODE_RELATIVE);
     Unroll<BEQ>::start(opcodes, modes, ADDR_MODE_RELATIVE);
@@ -345,36 +351,55 @@ Instructions::generateOpcodeVariants() {
     Unroll<CLD>::start(opcodes, modes, ADDR_MODE_NONE);
     Unroll<CLI>::start(opcodes, modes, ADDR_MODE_NONE);
     Unroll<CLV>::start(opcodes, modes, ADDR_MODE_NONE);
-    Unroll<CMP>::start(opcodes, modes, ADDR_MODE_IMMEDIATE, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X, ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X, ADDR_MODE_ABSOLUTE_INDEXED_Y, ADDR_MODE_INDEXED_INDIRECT, ADDR_MODE_INDIRECT_INDEXED);
+    Unroll<CMP>::start(opcodes, modes, ADDR_MODE_IMMEDIATE, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X,
+                       ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X, ADDR_MODE_ABSOLUTE_INDEXED_Y,
+                       ADDR_MODE_INDEXED_INDIRECT, ADDR_MODE_INDIRECT_INDEXED);
     Unroll<CPX>::start(opcodes, modes, ADDR_MODE_IMMEDIATE_TO_XY, ADDR_MODE_ZEROPAGE, ADDR_MODE_ABSOLUTE);
     Unroll<CPY>::start(opcodes, modes, ADDR_MODE_IMMEDIATE_TO_XY, ADDR_MODE_ZEROPAGE, ADDR_MODE_ABSOLUTE);
-    Unroll<DEC>::start(opcodes, modes, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X, ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X);
+    Unroll<DEC>::start(opcodes, modes, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X, ADDR_MODE_ABSOLUTE,
+                       ADDR_MODE_ABSOLUTE_INDEXED_X);
     Unroll<DEX>::start(opcodes, modes, ADDR_MODE_NONE);
     Unroll<DEY>::start(opcodes, modes, ADDR_MODE_NONE);
-    Unroll<EOR>::start(opcodes, modes, ADDR_MODE_IMMEDIATE, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X, ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X, ADDR_MODE_ABSOLUTE_INDEXED_Y, ADDR_MODE_INDEXED_INDIRECT, ADDR_MODE_INDIRECT_INDEXED);
-    Unroll<INC>::start(opcodes, modes, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X, ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X);
+    Unroll<EOR>::start(opcodes, modes, ADDR_MODE_IMMEDIATE, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X,
+                       ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X, ADDR_MODE_ABSOLUTE_INDEXED_Y,
+                       ADDR_MODE_INDEXED_INDIRECT, ADDR_MODE_INDIRECT_INDEXED);
+    Unroll<INC>::start(opcodes, modes, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X, ADDR_MODE_ABSOLUTE,
+                       ADDR_MODE_ABSOLUTE_INDEXED_X);
     Unroll<INX>::start(opcodes, modes, ADDR_MODE_NONE);
     Unroll<INY>::start(opcodes, modes, ADDR_MODE_NONE);
     Unroll<JMP>::start(opcodes, modes, ADDR_MODE_ABSOLUTE, ADDR_MODE_INDIRECT_ABSOLUTE);
     Unroll<JSR>::start(opcodes, modes, ADDR_MODE_ABSOLUTE);
-    Unroll<LDA>::start(opcodes, modes, ADDR_MODE_IMMEDIATE, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X, ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X, ADDR_MODE_ABSOLUTE_INDEXED_Y, ADDR_MODE_INDEXED_INDIRECT, ADDR_MODE_INDIRECT_INDEXED);
-    Unroll<LDX>::start(opcodes, modes, ADDR_MODE_IMMEDIATE_TO_XY, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_Y, ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_Y);
-    Unroll<LDY>::start(opcodes, modes, ADDR_MODE_IMMEDIATE_TO_XY, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X, ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X);
-    Unroll<LSR>::start(opcodes, modes, ADDR_MODE_ACCUMULATOR, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X, ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X);
-    Unroll<ORA>::start(opcodes, modes, ADDR_MODE_IMMEDIATE, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X, ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X, ADDR_MODE_ABSOLUTE_INDEXED_Y, ADDR_MODE_INDEXED_INDIRECT, ADDR_MODE_INDIRECT_INDEXED);
+    Unroll<LDA>::start(opcodes, modes, ADDR_MODE_IMMEDIATE, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X,
+                       ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X, ADDR_MODE_ABSOLUTE_INDEXED_Y,
+                       ADDR_MODE_INDEXED_INDIRECT, ADDR_MODE_INDIRECT_INDEXED);
+    Unroll<LDX>::start(opcodes, modes, ADDR_MODE_IMMEDIATE_TO_XY, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_Y,
+                       ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_Y);
+    Unroll<LDY>::start(opcodes, modes, ADDR_MODE_IMMEDIATE_TO_XY, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X,
+                       ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X);
+    Unroll<LSR>::start(opcodes, modes, ADDR_MODE_ACCUMULATOR, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X,
+                       ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X);
+    Unroll<ORA>::start(opcodes, modes, ADDR_MODE_IMMEDIATE, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X,
+                       ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X, ADDR_MODE_ABSOLUTE_INDEXED_Y,
+                       ADDR_MODE_INDEXED_INDIRECT, ADDR_MODE_INDIRECT_INDEXED);
     Unroll<PHA>::start(opcodes, modes, ADDR_MODE_NONE);
     Unroll<PHP>::start(opcodes, modes, ADDR_MODE_NONE);
     Unroll<PLA>::start(opcodes, modes, ADDR_MODE_NONE);
     Unroll<PLP>::start(opcodes, modes, ADDR_MODE_NONE);
-    Unroll<ROL>::start(opcodes, modes, ADDR_MODE_ACCUMULATOR, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X, ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X);
-    Unroll<ROR>::start(opcodes, modes, ADDR_MODE_ACCUMULATOR, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X, ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X);
+    Unroll<ROL>::start(opcodes, modes, ADDR_MODE_ACCUMULATOR, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X,
+                       ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X);
+    Unroll<ROR>::start(opcodes, modes, ADDR_MODE_ACCUMULATOR, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X,
+                       ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X);
     Unroll<RTI>::start(opcodes, modes, ADDR_MODE_NONE);
     Unroll<RTS>::start(opcodes, modes, ADDR_MODE_NONE);
-    Unroll<SBC>::start(opcodes, modes, ADDR_MODE_IMMEDIATE, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X, ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X, ADDR_MODE_ABSOLUTE_INDEXED_Y, ADDR_MODE_INDEXED_INDIRECT, ADDR_MODE_INDIRECT_INDEXED);
+    Unroll<SBC>::start(opcodes, modes, ADDR_MODE_IMMEDIATE, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X,
+                       ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X, ADDR_MODE_ABSOLUTE_INDEXED_Y,
+                       ADDR_MODE_INDEXED_INDIRECT, ADDR_MODE_INDIRECT_INDEXED);
     Unroll<SEC>::start(opcodes, modes, ADDR_MODE_NONE);
     Unroll<SED>::start(opcodes, modes, ADDR_MODE_NONE);
     Unroll<SEI>::start(opcodes, modes, ADDR_MODE_NONE);
-    Unroll<STA>::start(opcodes, modes, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X, ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X, ADDR_MODE_ABSOLUTE_INDEXED_Y, ADDR_MODE_INDEXED_INDIRECT, ADDR_MODE_INDIRECT_INDEXED);
+    Unroll<STA>::start(opcodes, modes, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X, ADDR_MODE_ABSOLUTE,
+                       ADDR_MODE_ABSOLUTE_INDEXED_X, ADDR_MODE_ABSOLUTE_INDEXED_Y, ADDR_MODE_INDEXED_INDIRECT,
+                       ADDR_MODE_INDIRECT_INDEXED);
     Unroll<STX>::start(opcodes, modes, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_Y, ADDR_MODE_ABSOLUTE);
     Unroll<STY>::start(opcodes, modes, ADDR_MODE_ZEROPAGE, ADDR_MODE_ZEROPAGE_INDEXED_X, ADDR_MODE_ABSOLUTE);
     Unroll<TAX>::start(opcodes, modes, ADDR_MODE_NONE);
@@ -622,7 +647,7 @@ DEFINE_OPCODE(BVS) {
 
 template<Register R, AddressMode M>
 struct GenericComparator {
-    static void execute(InstructionContext* ctx) {
+    static void execute(InstructionContext *ctx) {
         tCPU::byte mem = MemoryOperation<M>::readByte(ctx);
         tCPU::byte reg = RegisterOperation<R>::read(ctx);
         tCPU::byte result = reg - mem;
@@ -692,6 +717,7 @@ DEFINE_OPCODE(INX) {
     ctx->registers->setSignBit(value);
     ctx->registers->setZeroBit(value);
 }
+
 DEFINE_OPCODE(INY) {
     tCPU::byte value = RegisterOperation<REGISTER_Y>::read(ctx) + 1;
     RegisterOperation<REGISTER_Y>::write(ctx, value);
@@ -707,8 +733,7 @@ DEFINE_OPCODE(JSR) {
     ctx->stack->pushStackWord(--ctx->registers->PC);
     tCPU::word address = MemoryOperation<mode>::GetEffectiveAddress(ctx);
 
-    PrintCpu("Pushed old PC $%04X on stack; Setting new PC to $%04X")
-            % ctx->registers->PC % address;
+    PrintCpu("Pushed old PC $%04X on stack; Setting new PC to $%04X", ctx->registers->PC, address);
 
     ctx->registers->PC = address;
 }
@@ -727,7 +752,7 @@ DEFINE_OPCODE(RTS) {
     // pop return address from stack and increment by 1
     tCPU::word address = ctx->stack->popStackWord() + 1;
     ctx->registers->PC = address;
-    PrintDbg("Restored old PC from stack: $%04X") % address;
+    PrintDbg("Restored old PC from stack: $%04X", address);
 
 
 }
@@ -740,7 +765,7 @@ DEFINE_OPCODE(RTI) {
 
     // restore program counter from stack
     ctx->registers->PC = ctx->stack->popStackWord();
-    PrintDbg("Restored old PC from stack: 0x%04X") % ctx->registers->PC;
+    PrintDbg("Restored old PC from stack: 0x%04X", ctx->registers->PC);
 }
 
 /*
@@ -854,7 +879,7 @@ DEFINE_OPCODE(ROR) {
 DEFINE_OPCODE(BRK) {
     // PC has already been incremented by 1 (brk = 1 byte opcode)
     // we want PC+2
-    ctx->registers->PC ++;
+    ctx->registers->PC++;
     ctx->stack->pushStackWord(ctx->registers->PC);
     // set break flag
     ctx->registers->P.B = 1;
@@ -865,8 +890,7 @@ DEFINE_OPCODE(BRK) {
 
     tCPU::word breakAddress = ctx->mem->readWord(0xFFFE);
 
-    PrintCpu("Break Vector; saved next PC=$%04X in stack; setting PC=$%04X")
-            % ctx->registers->PC % breakAddress;
+    PrintCpu("Break Vector; saved next PC=$%04X in stack; setting PC=$%04X", ctx->registers->PC, breakAddress);
 
     ctx->registers->PC = breakAddress;
 }

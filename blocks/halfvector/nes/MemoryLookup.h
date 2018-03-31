@@ -7,7 +7,7 @@
 struct InstructionContext {
     Memory *mem;
     Registers *registers;
-    Stack* stack;
+    Stack *stack;
 };
 
 struct MemoryAddressResolveBase {
@@ -20,8 +20,7 @@ struct MemoryAddressResolveBase {
 template<int MemoryMode>
 struct MemoryAddressResolve : MemoryAddressResolveBase {
     static tCPU::word GetEffectiveAddress(InstructionContext *ctx) {
-        PrintWarning("Unimplemented Memory Mode: %s")
-                % AddressModeTitle[MemoryMode];
+        PrintWarning("Unimplemented Memory Mode: %s", AddressModeTitle[MemoryMode]);
         PageBoundaryCrossed = false;
         throw new std::runtime_error("Unexpected warning");
         return 0;
@@ -33,8 +32,7 @@ struct MemoryAddressResolve<ADDR_MODE_NONE> : MemoryAddressResolveBase {
     static int NumOfCalls;
 
     static tCPU::word GetEffectiveAddress(InstructionContext *ctx) {
-        PrintWarning("Unimplemented Memory Mode: %s")
-                % AddressModeTitle[ADDR_MODE_NONE];
+        PrintWarning("Unimplemented Memory Mode: %s", AddressModeTitle[ADDR_MODE_NONE]);
         PageBoundaryCrossed = false;
 
         NumOfCalls++;
@@ -50,7 +48,7 @@ struct MemoryAddressResolve<ADDR_MODE_ZEROPAGE> : MemoryAddressResolveBase {
     static tCPU::word GetEffectiveAddress(InstructionContext *ctx) {
         tCPU::word effectiveAddress = ctx->mem->readByte(ctx->registers->LastPC + 1);
         PageBoundaryCrossed = false;
-        
+
         // zero-page address is only 1 byte, wrap around after additing value from X register
         effectiveAddress = (tCPU::word) 0xFF & effectiveAddress;
 
@@ -180,8 +178,7 @@ struct MemoryAddressResolve<ADDR_MODE_INDIRECT_INDEXED> : MemoryAddressResolveBa
     }
 };
 
-inline std::uint16_t operator "" _us(unsigned long long value)
-{
+inline std::uint16_t operator "" _us(unsigned long long value) {
     return static_cast<std::uint16_t>(value);
 }
 
@@ -196,12 +193,12 @@ struct MemoryAddressResolve<ADDR_MODE_INDIRECT_ABSOLUTE> : MemoryAddressResolveB
         // the real address
         tCPU::word EffectiveAddress = ctx->mem->readWord(IndirectAddress);
 
-        PrintDbg("ADDR_MODE_INDIRECT_ABSOLUTE; indirect address = $%04X -> effective address = $%04X")
-            % (int) IndirectAddress % (int) EffectiveAddress;
+        PrintDbg("ADDR_MODE_INDIRECT_ABSOLUTE; indirect address = $%04X -> effective address = $%04X",
+                 (int) IndirectAddress, (int) EffectiveAddress);
 
         // if edge case: indirect address ends on a page (0x__FF)
-        if((IndirectAddress & 0x00ff) == 0x00ff) {
-            PrintDbg("Edge case: indirect address wraparound page boundary: $%04X") % EffectiveAddress;
+        if ((IndirectAddress & 0x00ff) == 0x00ff) {
+            PrintDbg("Edge case: indirect address wraparound page boundary: $%04X", EffectiveAddress);
 
             // fetch lower byte from the 16 bit address
             tCPU::byte lowerByte = ctx->mem->readByte(IndirectAddress);

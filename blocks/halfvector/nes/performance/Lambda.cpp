@@ -1,4 +1,4 @@
-#include "../Logging.h"
+#include "Logging.h"
 
 int targetCounter = 0;
 const int NUM_ITERATIONS = 1000;

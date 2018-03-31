@@ -29,13 +29,13 @@ void
 CartridgeLoader::readHeader(std::fstream &fh, Cartridge &rom) {
     fh.read((char *) &rom.header, sizeof(rom.header));
 
-    PrintInfo("signature: %d") % rom.header.signature;
-    PrintInfo("programData: %d") % (int) rom.header.numPrgPages;
-    PrintInfo("characterData: %d") % (int) rom.header.numChrPages;
+    PrintInfo("signature: %d%d%d%d", rom.header.signature[0], rom.header.signature[1], rom.header.signature[2], rom.header.signature[3]);
+    PrintInfo("programData: %d", (int) rom.header.numPrgPages);
+    PrintInfo("characterData: %d", (int) rom.header.numChrPages);
 
     bool headerIsClean = true;
-    for (unsigned int i = 0; i < 8; i++) {
-        headerIsClean |= rom.header.reserved[i];
+    for (signed char i : rom.header.reserved) {
+        headerIsClean |= i;
     }
 
     // warn if header contains reserved bits (not supported)
@@ -69,7 +69,7 @@ CartridgeLoader::analyzeHeader(Cartridge &rom) {
 
     // determine memory mapper type (256 possible variants)
     int MapperId = ((rom.header.CB1 & 0xF0) >> 4) + ((rom.header.CB2 & 0xF0) >> 4);
-    PrintInfo("ROM requires Memory Mapper #%d") % MapperId;
+    PrintInfo("ROM requires Memory Mapper #%d", MapperId);
 
     if (rom.info.trainerPresent) {
         PrintInfo("512 Byte Trainer Present");
@@ -84,17 +84,15 @@ CartridgeLoader::analyzeHeader(Cartridge &rom) {
 void
 CartridgeLoader::readData(std::fstream &fh, Cartridge &rom) {
     // read prg pages
-    PrintInfo("Reading %d PRG-ROM Pages (%d bytes)")
-            % (int) rom.header.numPrgPages
-            % (rom.header.numPrgPages * PRG_ROM_PAGE_SIZE);
+    PrintInfo("Reading %d PRG-ROM Pages (%d bytes)", (int) rom.header.numPrgPages,
+              (rom.header.numPrgPages * PRG_ROM_PAGE_SIZE));
 
     for (uint8_t i = 0; i < rom.header.numPrgPages; i++) {
         fh.read((char *) rom.programDataPages[i].buffer, PRG_ROM_PAGE_SIZE);
     }
 
-    PrintInfo("Reading %d CHR-ROM Pages (%d bytes)")
-            % (int) rom.header.numChrPages
-            % (rom.header.numChrPages * CHR_ROM_PAGE_SIZE);
+    PrintInfo("Reading %d CHR-ROM Pages (%d bytes)", (int) rom.header.numChrPages,
+              (rom.header.numChrPages * CHR_ROM_PAGE_SIZE));
 
     for (uint8_t i = 0; i < rom.header.numChrPages; i++) {
         fh.read((char *) rom.characterDataPages[i].buffer, CHR_ROM_PAGE_SIZE);

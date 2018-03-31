@@ -1,5 +1,6 @@
 #pragma once
 
+#include <map>
 #include "Logging.h"
 #include "Platform.h"
 #include "PPU.h"
@@ -12,13 +13,13 @@ enum IOAccessMode { READ_WRITE, READ_ONLY, WRITE_ONLY };
 template<tCPU::word Address>
 struct MemoryIOHandler {
     static tCPU::byte read() {
-        PrintWarning("MemoryIO::Read(); Unhandled Memory Mapped I/O at 0x%04X") % Address;
+        PrintWarning("MemoryIO::Read(); Unhandled Memory Mapped I/O at 0x%04X", Address);
         throw new std::runtime_error("Unexpected warning");
         return 0;
     }
 
     static bool write(tCPU::byte Value) {
-        PrintWarning("MemoryIO::Write(); Unhandled Memory Mapped I/O at 0x%04X") % Address;
+        PrintWarning("MemoryIO::Write(); Unhandled Memory Mapped I/O at 0x%04X", Address);
         throw new std::runtime_error("Unexpected warning");
         return false;
     }

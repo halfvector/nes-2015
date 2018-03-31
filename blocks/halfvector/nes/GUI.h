@@ -1,7 +1,7 @@
 #pragma once
 
+#include <SDL2/SDL.h>
 #include "Platform.h"
-#include "miguel/sdl2/include/SDL.h"
 
 class GUI {
 public:

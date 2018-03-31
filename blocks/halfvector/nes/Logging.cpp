@@ -1,17 +1,18 @@
 #include "Logging.h"
 
-INITIALIZE_EASYLOGGINGPP;
-el::Logger *logger = el::Loggers::getLogger("default");
+// takes a __PRETTY_FUNCTION__ long method signature
+void simplifyFunctionName(const char *name, char *shorter, size_t maxLength) {
+    size_t nameLength = strlen(name);
+    const char *start = std::find(name, name + nameLength, ' ');
+    const char *end = std::find(name, name + nameLength, '(');
 
-std::string simplifyFunctionName(std::string prettyFunction) {
-    size_t begin = prettyFunction.find(" ") + 1;
-
-    // skip attributes, look for next token
-    if(prettyFunction.substr(0, begin).find("static") != std::string::npos) {
-        begin = prettyFunction.find(" ", begin) + 1;
+    // if next token is an attribute, skip it
+    if (!strcmp(start, "static")) {
+        start += 7;
     }
 
-    size_t length = prettyFunction.rfind("(") - begin;
+    const char *prefix = "\u001b[33m";
+    const char *postfix = "\u001b[0;97m";
 
-    return prettyFunction.substr(begin, length) + "(); ";
+    snprintf(shorter, maxLength, "%s%.*s%s(); ", prefix, int(end - start), start, postfix);
 }

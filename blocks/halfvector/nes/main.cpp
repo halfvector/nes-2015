@@ -13,9 +13,9 @@
 #include <iostream>
 #include <typeinfo>
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 #include <cstdlib>
 #include <unistd.h>
 
@@ -53,8 +53,7 @@ auto f = [](auto type) { std::cout << typeid(decltype(type)).name() << std::endl
 //    return injector;
 //}
 
-void onTerminate() {
-    ;
+void onTerminate() noexcept {
 }
 
 void onUnhandledException() {
@@ -62,49 +61,10 @@ void onUnhandledException() {
 
 int main(int argc, char **argv) {
 //    std::set_terminate(&onTerminate);
-//    std::set_unexpected(&onUnhandledException);
+//    std::set_unexpected(&onTerminate);
 
+    std::ios_base::sync_with_stdio(false);
     Backtrace::install();
-
-    el::Configurations defaultConf;
-    defaultConf.setToDefault();
-
-//    defaultConf.set(el::Level::Debug, el::ConfigurationType::Format,
-//            "\033[1;30m╭──\033[0;33m %level\033[1;30m / %fbase:%line / %func\n\033[1;30m╰─>\033[1;37m %msg\n");
-//    defaultConf.set(el::Level::Info, el::ConfigurationType::Format,
-//            "\033[1;30m╭──\033[0;33m %level\033[1;30m / %fbase:%line / %func\n\033[1;30m╰─>\033[1;37m %msg\n");
-//    defaultConf.set(el::Level::Error, el::ConfigurationType::Format,
-//            "\033[1;30m╭──\033[0;31m %level\033[1;30m / %fbase:%line / %func\n\033[1;30m╰─>\033[1;37m %msg\n");
-//    defaultConf.set(el::Level::Warning, el::ConfigurationType::Format,
-//            "\033[1;30m╭──\033[1;31m %level\033[1;30m / %fbase:%line / %func\n\033[1;30m╰─>\033[1;37m %msg\n");
-
-//    defaultConf.set(el::Level::Debug, el::ConfigurationType::Format,
-//            "\033[0;33m%level\033[1;30m |\033[1;30m %msg \033[1;30m @ %fbase:%line");
-//    defaultConf.set(el::Level::Info, el::ConfigurationType::Format,
-//            "\033[0;33m%level\033[1;30m |\033[1;37m %msg \033[1;30m @ %fbase:%line");
-//    defaultConf.set(el::Level::Error, el::ConfigurationType::Format,
-//            "\033[0;31m%level\033[1;30m |\033[0;31m %msg \033[1;30m @ %fbase:%line");
-//    defaultConf.set(el::Level::Warning, el::ConfigurationType::Format,
-//            "\033[0;31m%level\033[1;30m |\033[0;31m %msg \033[1;30m @ %fbase:%line");
-
-//    defaultConf.set(el::Level::Debug, el::ConfigurationType::Format, "%datetime{%h:%m:%s.%g %F} | %level | %msg");
-//    defaultConf.set(el::Level::Info, el::ConfigurationType::Format, "%datetime{%h:%m:%s.%g %F} | %level | %msg");
-//    defaultConf.set(el::Level::Error, el::ConfigurationType::Format, "%datetime{%h:%m:%s.%g %F} | %level | %msg");
-//    defaultConf.set(el::Level::Warning, el::ConfigurationType::Format, "%datetime{%h:%m:%s.%g %F} | %level | %msg");
-//
-    defaultConf.set(el::Level::Debug, el::ConfigurationType::Format, "%msg");
-    defaultConf.set(el::Level::Info, el::ConfigurationType::Format, "%msg");
-    defaultConf.set(el::Level::Error, el::ConfigurationType::Format, "%msg");
-    defaultConf.set(el::Level::Warning, el::ConfigurationType::Format, "%msg");
-//    defaultConf.set(el::Level::Debug, el::ConfigurationType::ToFile, "false");
-//    defaultConf.set(el::Level::Info, el::ConfigurationType::ToFile, "false");
-
-    ///   * el::Configuration confFilenameInfo(el::Level::Info, el::ConfigurationType::Filename, "/var/log/my.log");
-    defaultConf.setGlobally(el::ConfigurationType::ToFile, std::string("false"));
-
-    el::Loggers::reconfigureAllLoggers(defaultConf);
-
-    TIMED_FUNC(root);
 
     CartridgeLoader loader;
     Cartridge rom = loader.loadCartridge("../roms/supermariobros.nes");
@@ -144,7 +104,7 @@ int main(int argc, char **argv) {
     cpu->load(rom);
     cpu->reset();
 
-    PrintDbg("Reset program-counter to 0x%X") % registers->PC;
+    PrintDbg("Reset program-counter to 0x%X", registers->PC);
 
     auto doVblankNMI = [&]() {
         PrintDbg("Doing VBlank NMI (pushes to stack)");
@@ -191,7 +151,7 @@ int main(int argc, char **argv) {
 
     SDL_Delay(2000);
 
-    PrintDbg("Ran for %d cycles") % (int) cpu->getCycleRuntime();
+    PrintDbg("Ran for %d cycles", (int) cpu->getCycleRuntime());
 
     delete gui;
 }

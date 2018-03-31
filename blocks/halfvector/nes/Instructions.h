@@ -29,19 +29,18 @@ struct tInstructionBase {
 template<uint8_t opcode, enum AddressMode mode>
 struct InstructionImplementationA {
     static void execute(InstructionContext *ctx) {
-        PrintError("InstructionImplementationA::execute(); Unimplemented opcode = %02X in address mode = %s")
-                % (int) opcode
-                % AddressModeTitle[static_cast<int>(mode)];
+        PrintError("InstructionImplementationA::execute(); Unimplemented opcode = %02X in address mode = %s",
+                   (int) opcode, AddressModeTitle[static_cast<int>(mode)]);
         throw new std::runtime_error("Unimplemented opcode");
     }
 };
 
-typedef tCPU::word (*MemoryResolver)(InstructionContext* ctx);
+typedef tCPU::word (*MemoryResolver)(InstructionContext *ctx);
 
 template<uint8_t opcode, AddressMode mode>
 struct InstructionImplementationX {
     static void execute(InstructionContext *ctx, MemoryResolver resolver) {
-        PrintError("Unimplemented opcode = %02X") % (int) opcode;
+        PrintError("Unimplemented opcode = %02X", (int) opcode);
         throw new std::runtime_error("Unimplemented opcode");
     }
 };
@@ -74,7 +73,7 @@ struct Opcode {
     methodPtr execute = nullptr;
 
     void set(const char *M, unsigned char B, unsigned char C, bool PBC,
-            const char *D, enum AddressMode A, bool I = false) {
+             const char *D, enum AddressMode A, bool I = false) {
         Mnemonic = M;
         Bytes = B;
         Cycles = C;
@@ -93,17 +92,20 @@ struct Opcode {
 class Instructions {
 public:
 
-    Instructions(Opcode *opcodes, AddressModeProperties* modes);
+    Instructions(Opcode *opcodes, AddressModeProperties *modes);
 
     void initialize();
+
     void execute(int opcode, InstructionContext *ctx);
 
 protected:
 
     Opcode *opcodes;
-    AddressModeProperties* modes;
+    AddressModeProperties *modes;
 
     void configureOpcodes();
+
     void configureMemoryAddressModes();
+
     void generateOpcodeVariants();
 };

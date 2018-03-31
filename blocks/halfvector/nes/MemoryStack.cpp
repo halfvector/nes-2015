@@ -13,7 +13,7 @@ void
 Stack::pushStackWord(tCPU::word value) {
     assert(reg->S > 2 && "Stack overflow");
 
-    PrintInfo("Pushing onto stack: 0x%04X / stack pointer: $%02X") % (int) value % (int) reg->S;
+    PrintInfo("Pushing onto stack: 0x%04X / stack pointer: $%02X", (int) value, (int) reg->S);
     mem->writeByte(stackOffset + reg->S, (value >> 8) & 0xFF); // high byte
     mem->writeByte(stackOffset + reg->S - 1, value & 0xFF); // low byte
     reg->S -= 2;
@@ -34,7 +34,7 @@ Stack::popStackWord() {
     mem->writeByte(stackOffset + reg->S, 0);
     mem->writeByte(stackOffset + reg->S - 1, 0);
 
-    PrintInfo("Popped from stack: 0x%04X / stack pointer: $%02X") % (int) value % (int) reg->S;
+    PrintInfo("Popped from stack: 0x%04X / stack pointer: $%02X", (int) value, (int) reg->S);
     return value;
 }
 
@@ -42,7 +42,7 @@ void
 Stack::pushStackByte(tCPU::byte value) {
     assert(reg->S > 1 && "Stack overflow");
 
-    PrintInfo("Pushing onto stack: 0x%04X / stack pointer: $%02X") % (int) value % (int) reg->S;
+    PrintInfo("Pushing onto stack: 0x%04X / stack pointer: $%02X", (int) value, (int) reg->S);
     mem->writeByte(stackOffset + reg->S, value);
     reg->S--;
 }
@@ -53,7 +53,7 @@ Stack::popStackByte() {
 
     reg->S++;
     tCPU::byte value = mem->readByte(stackOffset + reg->S);
-    PrintInfo("Popped from stack: 0x%02X / stack pointer: $%02X") % (int) value % (int) reg->S;
+    PrintInfo("Popped from stack: 0x%02X / stack pointer: $%02X", (int) value, (int) reg->S);
 
     mem->writeByte(stackOffset + reg->S, 0);
 
@@ -62,8 +62,8 @@ Stack::popStackByte() {
 
 void
 Stack::dump() {
-    PrintMemoryIO("Stack position: %0X") % (unsigned short) (reg->S);
+    PrintMemoryIO("Stack position: %0X", (unsigned short) (reg->S));
     for (unsigned short i = 0; i <= 0xFF; i++) {
-        PrintMemoryIO("%x: %x") % (stackOffset + i) % (unsigned short) (mem->readByte(stackOffset + i));
+        PrintMemoryIO("%x: %x", (stackOffset + i), (unsigned short) (mem->readByte(stackOffset + i)));
     }
 }
