@@ -288,7 +288,7 @@ void PPU::renderScanline(int Y) {
     tCPU::word NametableAddress = settings.NameTableAddress;
     int NametableId = (NametableAddress - 0x2000) / 0x400;
 
-    if (horizontalScrollOrigin >= 256) {
+    if (horizontalScrollOrigin >= 255) {
         if (NametableId == 0)
             NametableAddress += 0x400;
         else
@@ -502,7 +502,14 @@ void PPU::renderScanline(int Y) {
         statusRegister |= Bit<5>::Set(true);
     }
 
-//    PrintPpu("Rendered scanline Y=%d") % Y;
+//    for(int x = 0; x < 256; x ++) {
+//        raster->screenBuffer[Y * 256 * 4 + x * 4 + 0] = 0x33; // b
+//        raster->screenBuffer[Y * 256 * 4 + x * 4 + 1] = 0x66; // g
+//        raster->screenBuffer[Y * 256 * 4 + x * 4 + 2] = Y; // r
+//        raster->screenBuffer[Y * 256 * 4 + x * 4 + 3] = 0x33; // alpha
+//    }
+
+    PrintPpu("Rendered scanline Y=%d", Y);
 }
 
 // palettetype: 0 = background, 1 = sprites
@@ -643,7 +650,7 @@ PPU::GetEffectiveAddress(tCPU::word address) {
     }
 
     if (address >= 0x4000 && address < 0x10000) {
-        PrintDbg("Address in range: (0x4000-0x10000); Mirror of $%04X", (int) (address % 0x4000));
+        PrintDbg("Address in range: (0x4000-0x10000); Mirror of $%04X", address % 0x4000);
         address = address % 0x4000;
     }
 
@@ -741,4 +748,41 @@ PPU::StartSpriteXferDMA(Memory *memory, tCPU::byte address) {
     }
 
     vramAddress14bit = 0;
+}
+
+void PPU::renderDebug() {
+    // clear
+    for (int x = 0; x < 256; x++) {
+        for (int y = 0; y < 256; y++) {
+            raster->screenBuffer[y * 256 * 4 + x * 4 + 0] = 0x66; // b
+            raster->screenBuffer[y * 256 * 4 + x * 4 + 1] = 0x66; // g
+            raster->screenBuffer[y * 256 * 4 + x * 4 + 2] = 0x66; // r
+            raster->screenBuffer[y * 256 * 4 + x * 4 + 3] = 0xff; // alpha
+        }
+    }
+
+    // rows (240 pixels vertically)
+    for (int i = 0; i < 30; i++) {
+        // columns (256 pixels horizontally)
+        for (int j = 0; j < 32; j++) {
+            // 8x8 tile number
+            tCPU::byte Value = PPU_RAM[0x2000 + i * 32 + j];
+            int offsetY = i * 8 * 256 * 4;
+            int offsetX = j * 8 * 4;
+
+            // render 8x8 block
+            for (int k = 0; k < 8; k++) {
+                for (int l = 0; l < 8; l++) {
+                    int offsetBlockY = offsetY + offsetX + k * 256 * 4;
+                    int offsetBytes = offsetBlockY + l * 4;
+
+                    // write 4 bytes BGRA
+                    raster->screenBuffer[offsetBytes + 0] = Value; // b
+                    raster->screenBuffer[offsetBytes + 1] = Value; // g
+                    raster->screenBuffer[offsetBytes + 2] = Value; // r
+                    raster->screenBuffer[offsetBytes + 3] = 0xff; // alpha
+                }
+            }
+        }
+    }
 }

@@ -59,6 +59,8 @@ public:
     void execute(int numCycles);
     tCPU::byte getStatusRegister();
 
+    void renderDebug();
+
     bool enteredVBlank() {
         return currentScanline == 243 && scanlinePixel == 0;
     }
