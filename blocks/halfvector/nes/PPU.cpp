@@ -518,7 +518,7 @@ PPU::GetColorFromPalette(int PaletteType, int NameTableId, int ColorId) {
         Color = PPU_RAM[0x3F00 + PaletteType * 0x10 + ColorId + NameTableId * 4];
     } else {
         PrintError("PPU::GetColorFromPalette(%d, %d); Invalid Color Id", NameTableId, ColorId);
-        throw new std::runtime_error("Unexpected error");
+        throw std::runtime_error("Unexpected error");
     }
 
     return Color;

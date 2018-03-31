@@ -22,8 +22,7 @@ struct MemoryAddressResolve : MemoryAddressResolveBase {
     static tCPU::word GetEffectiveAddress(InstructionContext *ctx) {
         PrintWarning("Unimplemented Memory Mode: %s", AddressModeTitle[MemoryMode]);
         PageBoundaryCrossed = false;
-        throw new std::runtime_error("Unexpected warning");
-        return 0;
+        throw std::runtime_error("Unexpected warning");
     }
 };
 
@@ -36,8 +35,7 @@ struct MemoryAddressResolve<ADDR_MODE_NONE> : MemoryAddressResolveBase {
         PageBoundaryCrossed = false;
 
         NumOfCalls++;
-        throw new std::runtime_error("Unexpected warning");
-        return 0;
+        throw std::runtime_error("Unexpected warning");
     }
 };
 
@@ -257,7 +255,7 @@ template<ProcessorStatusFlags T>
 struct ProcessorStatusFlag {
     static bool getState(InstructionContext *ctx) {
         PrintError("Unknown ProcessorStatusFlag Requested");
-        throw new std::runtime_error("Unknown processor status flag");
+        throw std::runtime_error("Unknown processor status flag");
         return false;
     }
 };

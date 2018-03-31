@@ -32,12 +32,12 @@ template<>
 struct MemoryOperation<ADDR_MODE_IMMEDIATE> : MemoryOperation<ADDR_MODE_NONE> {
     static void writeByte(InstructionContext *ctx, tCPU::byte value) {
         PrintError("Impossible Action in Immediate Mode");
-        throw new std::runtime_error("Unexpected error");
+        throw std::runtime_error("Unexpected error");
     }
 
     static void writeWord(InstructionContext *ctx, tCPU::word value) {
         PrintError("Impossible Action in Immediate Mode");
-        throw new std::runtime_error("Unexpected error");
+        throw std::runtime_error("Unexpected error");
     }
 
     static tCPU::byte readByte(InstructionContext *ctx) {
@@ -65,7 +65,7 @@ struct MemoryOperation<ADDR_MODE_ACCUMULATOR> : MemoryOperation<ADDR_MODE_NONE> 
     }
 
     static void writeWord(tCPU::word value) {
-        throw new std::runtime_error("cannot writeWord in Accumulator");
+        throw std::runtime_error("cannot writeWord in Accumulator");
     }
 
     static tCPU::byte readByte(InstructionContext *ctx) {
@@ -75,7 +75,7 @@ struct MemoryOperation<ADDR_MODE_ACCUMULATOR> : MemoryOperation<ADDR_MODE_NONE> 
     }
 
     static tCPU::word readWord(InstructionContext *ctx) {
-        throw new std::runtime_error("cannot readWord in Accumulator");
+        throw std::runtime_error("cannot readWord in Accumulator");
         return 0;
     }
 };

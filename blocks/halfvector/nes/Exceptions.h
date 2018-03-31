@@ -12,6 +12,6 @@ public:
         boost::format fmt(format);
         std::string result = boostFormatWrapper(fmt, std::forward<Ts>(args)...);
         PrintError(result.c_str());
-        throw new ExceptionType(result);
+        throw ExceptionType(result);
     }
 };

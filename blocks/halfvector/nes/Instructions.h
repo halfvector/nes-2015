@@ -31,7 +31,7 @@ struct InstructionImplementationA {
     static void execute(InstructionContext *ctx) {
         PrintError("InstructionImplementationA::execute(); Unimplemented opcode = %02X in address mode = %s",
                    (int) opcode, AddressModeTitle[static_cast<int>(mode)]);
-        throw new std::runtime_error("Unimplemented opcode");
+        throw std::runtime_error("Unimplemented opcode");
     }
 };
 
@@ -41,7 +41,7 @@ template<uint8_t opcode, AddressMode mode>
 struct InstructionImplementationX {
     static void execute(InstructionContext *ctx, MemoryResolver resolver) {
         PrintError("Unimplemented opcode = %02X", (int) opcode);
-        throw new std::runtime_error("Unimplemented opcode");
+        throw std::runtime_error("Unimplemented opcode");
     }
 };
 
