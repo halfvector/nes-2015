@@ -77,7 +77,7 @@ int main(int argc, char **argv) {
 
     gui->render();
 
-    for (int i = 0; i < 200000; i++) {
+    for (int i = 0; i < 500000; i++) {
         // grab next instruction
         tCPU::byte opCode = memory->readByteDirectly(registers->PC);
 
