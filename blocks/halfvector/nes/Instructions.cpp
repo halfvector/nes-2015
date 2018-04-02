@@ -586,12 +586,11 @@ struct BranchIf {
         tCPU::word jmpAddress = ctx->registers->PC + relativeOffset;
         bool flagState = ProcessorStatusFlag<Register>::getState(ctx);
 
-//        PrintCpu("-> Status Register %s: %d; Relative offset: $%02X; Calculated jump address = $%04X")
-//                % ProcessorStatusFlagNames[Register] % (int) flagState
-//                % (signed int) relativeOffset % jmpAddress;
+        PrintCpu("-> Status Register %s is %d; expected: %d; Relative offset: $%hhX; Calculated jump address = $%04X",
+                 ProcessorStatusFlagNames[Register], (int) flagState, expectedState, relativeOffset, jmpAddress);
 
         if (flagState == expectedState) {
-//            PrintCpu("-> Branch Taken");
+            PrintCpu("-> Branch Taken");
 //            CPU::Singleton()->IncCycles();
 
             // add another cycle if branch goes to a diff page

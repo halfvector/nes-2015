@@ -141,8 +141,8 @@ MemoryIO::write(tCPU::word address, tCPU::byte value) {
             MemoryIOHandler<0x2007>::write(ppu, value);
             break;
 
-        case 0x4011:
-            PrintUnimplementedIO("Skipping Unimplemented I/O Port: APU $4011 - APU Delta Modulation D/A Register");
+        case 0x4000 ... 0x4013:
+            PrintUnimplementedIO("Skipping Unimplemented I/O Port: APU $40XX - APU");
             break;
 
         case 0x4014:
@@ -154,11 +154,11 @@ MemoryIO::write(tCPU::word address, tCPU::byte value) {
             break;
 
         case 0x4016:
-            PrintUnimplementedIO("Skipping Unimplemented I/O Port: PPU $4016 - Joypad 1");
+            PrintUnimplementedIO("Skipping Unimplemented I/O Port: $4016 - Joypad 1");
             break;
 
         case 0x4017:
-            PrintUnimplementedIO("Skipping Unimplemented I/O Port: PPU $4017 - Joypad 2");
+            PrintUnimplementedIO("Skipping Unimplemented I/O Port: $4017 - Joypad 2");
             break;
 
         default:
