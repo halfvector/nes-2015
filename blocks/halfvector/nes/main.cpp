@@ -20,7 +20,7 @@
 int main(int argc, char **argv) {
     Backtrace::install();
 
-    Loggy::Enabled = Loggy::DEBUG;
+    Loggy::Enabled = Loggy::INFO;
 
     CartridgeLoader loader;
     Cartridge rom = loader.loadCartridge("../roms/supermariobros.nes");
@@ -33,6 +33,7 @@ int main(int argc, char **argv) {
     auto raster = new Raster();
     // ppu
     auto ppu = new PPU(raster);
+    ppu->loadRom(rom);
     // i/o port mapper
     auto mmio = new MemoryIO(ppu);
     // cpu memory
@@ -42,7 +43,7 @@ int main(int argc, char **argv) {
     // cpu stack
     auto stack = new Stack(memory, registers);
     // rendering
-    auto gui = new GUI(raster->screenBuffer);
+    auto gui = new GUI(raster->screenBuffer, raster->patternTable);
 
     mmio->setMemory(memory);
 
@@ -50,6 +51,7 @@ int main(int argc, char **argv) {
     auto cpu = new CPU(registers, memory, stack);
     cpu->load(rom);
     cpu->reset();
+
 
     PrintDbg("Reset program-counter to 0x%X", registers->PC);
 
@@ -75,7 +77,7 @@ int main(int argc, char **argv) {
 
     gui->render();
 
-    for (int i = 0; i < 400000; i++) {
+    for (int i = 0; i < 200000; i++) {
         // grab next instruction
         tCPU::byte opCode = memory->readByteDirectly(registers->PC);
 
@@ -100,8 +102,6 @@ int main(int argc, char **argv) {
             gui->render();
         }
     }
-
-    SDL_Delay(2000);
 
     PrintDbg("Ran for %d cycles", (int) cpu->getCycleRuntime());
 

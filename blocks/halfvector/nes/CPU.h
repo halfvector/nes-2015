@@ -39,7 +39,6 @@ protected:
 
     bool cpuAlive = true;
     void writePrgPage(int i, uint8_t buffer[]);
-    void writeChrPage(uint8_t buffer[]);
 };
 
 static const int RESET_VECTOR_ADDR = 0xFFFC;

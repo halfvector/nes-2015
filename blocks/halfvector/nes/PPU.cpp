@@ -2,6 +2,7 @@
 #include "Registers.h"
 #include "Logging.h"
 #include "Memory.h"
+#include "Cartridge.h"
 #include <math.h>
 #include <bitset>
 
@@ -164,9 +165,9 @@ PPU::setVerticalBlank() {
     statusRegister |= 1 << 7;
 
     // generate nmi trigger if we have one pending
-    if (generateInterruptOnVBlank) {
+    if (settings.GenerateInterruptOnVBlank) {
         vblankNmiAwaiting = true;
-        generateInterruptOnVBlank = false;
+        settings.GenerateInterruptOnVBlank = false;
     }
 }
 
@@ -483,6 +484,7 @@ void PPU::renderScanline(int Y) {
                     tPaletteEntry &RGBColor = colorPalette[Chrominance + Luminance * 16];
 
                     *(screenBufferPtr32bit) = RGBColor.B | RGBColor.G << 8 | RGBColor.R << 16 | 0xff000000;
+//                    PrintInfo("Wrote %X into %0X", *(screenBufferPtr32bit), (reverseY * 256) * 4 + X * 4);
                     //*(screenBufferPtr32bit) = g_ColorPalette[Chrominance + Luminance * 16].ColorValue;
                     //screenBufferPtr32bit++;
                 }
@@ -503,10 +505,10 @@ void PPU::renderScanline(int Y) {
     }
 
 //    for(int x = 0; x < 256; x ++) {
-//        raster->screenBuffer[Y * 256 * 4 + x * 4 + 0] = 0x33; // b
-//        raster->screenBuffer[Y * 256 * 4 + x * 4 + 1] = 0x66; // g
-//        raster->screenBuffer[Y * 256 * 4 + x * 4 + 2] = Y; // r
-//        raster->screenBuffer[Y * 256 * 4 + x * 4 + 3] = 0x33; // alpha
+//        raster->finalBuffer[Y * 256 * 4 + x * 4 + 0] = 0x33; // b
+//        raster->finalBuffer[Y * 256 * 4 + x * 4 + 1] = 0x66; // g
+//        raster->finalBuffer[Y * 256 * 4 + x * 4 + 2] = Y; // r
+//        raster->finalBuffer[Y * 256 * 4 + x * 4 + 3] = 0x33; // alpha
 //    }
 
     PrintPpu("Rendered scanline Y=%d", Y);
@@ -542,33 +544,36 @@ PPU::setControlRegister1(tCPU::byte value) {
     controlRegister1 = value;
 
     tCPU::byte nameTableIdx = bits.test(0) + bits.test(1);
-    nameTableAddress = 0x2000 + nameTableIdx * 0x400;
+    settings.NameTableAddress = 0x2000 + nameTableIdx * 0x400;
 
     // increment vram address (on port $2007 activity) by 1 (horizontal) or 32 (vertical) bytes
-    doVerticalWrites = bits.test(2);
-    spritePatternTableAddress = bits.test(3) ? 0x1000 : 0x0000;
-    backgroundPatternTableAddress = bits.test(4) ? 0x1000 : 0x0000;
+    settings.DoVerticalWrites = bits.test(2);
+    settings.SpritePatternTableAddress = bits.test(3) ? 0x1000 : 0x0000;
+    settings.BackgroundPatternTableAddress = bits.test(4) ? 0x1000 : 0x0000;
 
-    spriteSize = bits.test(5) ? SpriteSizes::SPRITE_8x16 : SpriteSizes::SPRITE_8x8;
+    settings.SpriteSize = bits.test(5) ? SPRITE_SIZE_8x16 : SPRITE_SIZE_8x8;
 
-    generateInterruptOnSprite = bits.test(6);
-    generateInterruptOnVBlank = bits.test(7);
+    settings.GenerateInterruptOnSprite = bits.test(6);
+    settings.GenerateInterruptOnVBlank = bits.test(7);
 
     vramAddress14bit &= 0xF3FF;
     vramAddress14bit |= (value & 0x03) << 10;
 
-    PrintPpu("Generate an NMI at start of vertical blanking interval: %d", generateInterruptOnVBlank);
+//    PrintInfo("Set base nametable address to %X", settings.NameTableAddress);
+//    PrintInfo("Set base background pattern table address to %X", settings.BackgroundPatternTableAddress);
+//    PrintInfo("Set base sprite pattern table address to %X", settings.SpritePatternTableAddress);
+    PrintPpu("Generate an NMI at start of vertical blanking interval: %d", settings.GenerateInterruptOnVBlank);
 }
 
 void
 PPU::setControlRegister2(tCPU::byte value) {
     std::bitset<8> bits(value);
 
-    displayTypeMonochrome = bits.test(0);
-    backgroundClipping = bits.test(1);
-    spriteClipping = bits.test(2);
-    backgroundVisible = bits.test(3);
-    spriteVisible = bits.test(4);
+    settings.DisplayTypeMonochrome = bits.test(0);
+    settings.BackgroundClipping = bits.test(1);
+    settings.SpriteClipping = bits.test(2);
+    settings.BackgroundVisible = bits.test(3);
+    settings.SpriteVisible = bits.test(4);
 }
 
 /**
@@ -627,6 +632,11 @@ PPU::writeToVRam(tCPU::byte value) {
 
 tCPU::word
 PPU::GetEffectiveAddress(tCPU::word address) {
+    if (address < 0x2000) {
+        // pattern table chr-rom page
+        PrintInfo("Address is < 0x2000; Referencing CHR-ROM @ $%04X", (int) (address));
+    }
+
     if (address >= 0x3000 && address <= 0x3EFF) {
         // mirror of 2000h-2EFFh
         PrintDbg("Address in range: (0x3000-0x3EFF); Mirror of $%04X", (int) (address - 0x1000));
@@ -675,7 +685,7 @@ PPU::WriteInternalMemoryByte(tCPU::word Address, tCPU::byte Value) {
 
 void
 PPU::AutoIncrementVRAMAddress() {
-    tCPU::byte incAmount = doVerticalWrites ? 32 : 1;
+    tCPU::byte incAmount = settings.DoVerticalWrites ? 32 : 1;
     vramAddress14bit += incAmount;
     PrintPpu("Incremented by %d bytes", (int) incAmount);
 }
@@ -708,7 +718,7 @@ PPU::setVRamAddressRegister1(tCPU::byte value) {
     }
 
     PrintDbg("tempVRAMAddress = 0x%04X first write = %d", (int) tempVRAMAddress, (int) firstWriteToSFF);
-    PrintDbg("-> Background/Sprite Visibility: %d/%d", (int) backgroundVisible, (int) spriteVisible);
+    PrintDbg("-> Background/Sprite Visibility: %d/%d", (int) settings.BackgroundVisible, (int) settings.SpriteVisible);
 
     // flip
     firstWriteToSFF = !firstWriteToSFF;
@@ -751,7 +761,7 @@ PPU::StartSpriteXferDMA(Memory *memory, tCPU::byte address) {
 }
 
 void PPU::renderDebug() {
-    // clear
+    // clear final output (256x256@32bit)
     for (int x = 0; x < 256; x++) {
         for (int y = 0; y < 256; y++) {
             raster->screenBuffer[y * 256 * 4 + x * 4 + 0] = 0x66; // b
@@ -761,28 +771,212 @@ void PPU::renderDebug() {
         }
     }
 
-    // rows (240 pixels vertically)
-    for (int i = 0; i < 30; i++) {
-        // columns (256 pixels horizontally)
-        for (int j = 0; j < 32; j++) {
-            // 8x8 tile number
-            tCPU::byte Value = PPU_RAM[0x2000 + i * 32 + j];
-            int offsetY = i * 8 * 256 * 4;
-            int offsetX = j * 8 * 4;
+    // clear pattern table debug view (128x128@32bit)
+    for (int x = 0; x < 128; x++) {
+        for (int y = 0; y < 256; y++) {
+            raster->patternTable[y * 128 * 4 + x * 4 + 0] = 0x33; // b
+            raster->patternTable[y * 128 * 4 + x * 4 + 1] = 0x33; // g
+            raster->patternTable[y * 128 * 4 + x * 4 + 2] = 0x33; // r
+            raster->patternTable[y * 128 * 4 + x * 4 + 3] = 0xff; // alpha
+        }
+    }
 
-            // render 8x8 block
-            for (int k = 0; k < 8; k++) {
-                for (int l = 0; l < 8; l++) {
-                    int offsetBlockY = offsetY + offsetX + k * 256 * 4;
-                    int offsetBytes = offsetBlockY + l * 4;
+    tCPU::word NametableAddress = settings.NameTableAddress;
+//    int NametableId = (NametableAddress - 0x2000) / 0x400;
+//
+//    if (horizontalScrollOrigin >= 255) {
+//        if (NametableId == 0)
+//            NametableAddress += 0x400;
+//        else
+//            NametableAddress -= 0x400;
+//
+//        NametableId = (NametableAddress - 0x2000) / 0x400;
+//    }
+//
+//    // rows (240 pixels vertically)
+//    for (unsigned int i = 0; i < 30; i++) {
+//        // columns (256 pixels horizontally)
+//        for (unsigned int j = 0; j < 32; j++) {
+//            // 8x8 tile number
+//            // first 960 bytes contain tiles
+//            tCPU::byte Value = PPU_RAM[NametableAddress + i * 32 + j];
+//            int offsetY = i * 8 * 256 * 4;
+//            int offsetX = j * 8 * 4;
+//
+//            // grab attributes for the tile
+//            tCPU::byte UpperBits;
+//
+//            auto AttrI = (int) floor(j / 4.0);
+//            auto AttrJ = (int) floor(i / 4.0);
+//
+//            auto patternI = (short) floor(i / 2.0);
+//            auto patternJ = (short) floor(j / 2.0);
+//
+//            // after tiles, we have two scanlines for attributes
+//            tCPU::byte Attribute = PPU_RAM[NametableAddress + 0x3C0 + AttrJ * 8 + AttrI];
+//
+//            int AttrOffsetI = (j / 2) % 2;
+//            int AttrOffsetJ = (i / 2) % 2;
+//
+//            tCPU::byte UpperLeft = Bits<0, 1>::Get(Attribute);
+//            tCPU::byte UpperRight = Bits<2, 3>::Get(Attribute);
+//            tCPU::byte LowerLeft = Bits<4, 5>::Get(Attribute);
+//            tCPU::byte LowerRight = Bits<6, 7>::Get(Attribute);
+//
+//            if (!AttrOffsetI && !AttrOffsetJ)
+//                UpperBits = UpperLeft;
+//            else if (AttrOffsetI && !AttrOffsetJ)
+//                UpperBits = UpperRight;
+//            else if (!AttrOffsetI && AttrOffsetJ)
+//                UpperBits = LowerLeft;
+//            else
+//                UpperBits = LowerRight;
+//
+//            // render 8x8 block
+//            // row
+//            for (unsigned short k = 0; k < 8; k++) {
+//
+//                int addy1 = (i << 8) | (j << 4) | (0 << 3) | (k);
+//                int addy2 = (i << 8) | (j << 4) | (1 << 3) | (k);
+//
+//                tCPU::byte PatternByte0 = PPU_RAM[settings.BackgroundPatternTableAddress + Value * 16];
+//                tCPU::byte PatternByte1 = PPU_RAM[settings.BackgroundPatternTableAddress + Value * 16 + 1];
+//
+//                // column
+//                for (short l = 7; l >= 0; l--) {
+//                    bool PixelBit0 = PatternByte0 & (1 << l) ? 1 : 0;
+//                    bool PixelBit1 = PatternByte1 & (1 << l) ? 1 : 0;
+//                    tCPU::byte Color = (PixelBit0 ? 1 : 0) + (PixelBit1 ? 2 : 0);
+//                    tCPU::byte PaletteId = GetColorFromPalette(0, UpperBits, Color);
+//
+//                    tPaletteEntry &RGBColor = colorPalette[PaletteId];
+//
+//                    int offsetBlockY = offsetY + offsetX + k * 256 * 4;
+//                    int offsetBytes = offsetBlockY + l * 4;
+//
+//                    // write 4 bytes BGRA
+//                    raster->finalBuffer[offsetBytes + 0] = 0; // b
+//                    raster->finalBuffer[offsetBytes + 1] = PatternByte0; // g
+//                    raster->finalBuffer[offsetBytes + 2] = Value * 3; // r
+//                    raster->finalBuffer[offsetBytes + 3] = 0xff; // alpha
+//                }
+//            }
+//
+////            // render 8x8 block
+////            for (int k = 0; k < 8; k++) {
+////                for (int l = 0; l < 8; l++) {
+////                    int offsetBlockY = offsetY + offsetX + k * 256 * 4;
+////                    int offsetBytes = offsetBlockY + l * 4;
+////
+////                    // write 4 bytes BGRA
+////                    raster->screenBuffer[offsetBytes + 0] = Value; // b
+////                    raster->screenBuffer[offsetBytes + 1] = Value; // g
+////                    raster->screenBuffer[offsetBytes + 2] = Value; // r
+////                    raster->screenBuffer[offsetBytes + 3] = 0xff; // alpha
+////                }
+////            }
+//        }
+//    }
 
-                    // write 4 bytes BGRA
-                    raster->screenBuffer[offsetBytes + 0] = Value; // b
-                    raster->screenBuffer[offsetBytes + 1] = Value; // g
-                    raster->screenBuffer[offsetBytes + 2] = Value; // r
-                    raster->screenBuffer[offsetBytes + 3] = 0xff; // alpha
+    /*
+     * 8x8 attributes table (32 pixels wide)
+     * each attribute entry has a 2x2 sub sector (16 pixels wide)
+     * each sub sector represents a 2x2 set of tiles
+     * thus each attribute tile is made up of 4x4 tiles (each tile is 8 pixels wide)
+     */
+
+    // rows
+//    for (int i = 0; i < 8; i++) {
+//        // columns
+//        for (int j = 0; j < 8; j++) {
+//            // 32x32 tile attributes, 2 bits for each 16x16 sub-tile (which in effect is 4 pattern tiles)
+//            tCPU::byte Attribute = PPU_RAM[0x2000 + 0x3C0 + i * 8 + j];
+//
+//            tCPU::byte UpperLeft = Bits<0, 1>::Get(Attribute);
+//            tCPU::byte UpperRight = Bits<2, 3>::Get(Attribute);
+//            tCPU::byte LowerLeft = Bits<4, 5>::Get(Attribute);
+//            tCPU::byte LowerRight = Bits<6, 7>::Get(Attribute);
+//
+//            //printf( "%02X: ($%02X $%02X $%02X $%02X)  ", Attribute, GetColorFromPalette( NametableId, UpperLeft ), GetColorFromPalette( NametableId, UpperRight ), GetColorFromPalette( NametableId, LowerRight ), GetColorFromPalette( NametableId, LowerLeft ) );
+//            printf("%02X: %02X %02X %02X %02X  ", Attribute, UpperLeft, UpperRight, LowerRight, LowerLeft);
+//
+//            int offsetY = i * 32 * 4;
+//            int offsetX = j * 32 * 4;
+//            int offsetBytes = offsetY + offsetX;
+//
+//            raster->finalBuffer[offsetBytes + 0] = Value; // b
+//            raster->finalBuffer[offsetBytes + 1] = Value; // g
+//            raster->finalBuffer[offsetBytes + 2] = Value; // r
+//            raster->finalBuffer[offsetBytes + 3] = 0xff; // alpha
+//        }
+//        printf("\n");
+//    }
+
+    // print pattern table
+    unsigned int pitch = 16;
+
+    // destination width of image in pixels
+    unsigned int dstPitch = 128;
+
+    // rows
+    for (unsigned int i = 0; i < 32; i++) {
+        // columns
+        for (unsigned int j = 0; j < 16; j++) {
+            // draw as 8x8 blocks
+            // rows
+            for (unsigned int k = 0; k < 8; k++) {
+
+                // 16 bytes per 8x8 tile
+                // two 8 byte blocks
+                unsigned int addr = (i * pitch + j) * 16;
+                addr += k * 2;
+
+                tCPU::byte pattern1 = PPU_RAM[addr + 0];
+                tCPU::byte pattern2 = PPU_RAM[addr + 1];
+
+//                PrintInfo("%05X = %X", addr, pattern1);
+
+                // columns
+                for (unsigned int l = 0; l < 8; l++) {
+                    unsigned int dstAddr = (i * dstPitch * 8) + j * 8;
+                    dstAddr += k * dstPitch + (7 - l);
+
+                    int pixel1 = (pattern1 & (1 << l)) ? 255 : 0;
+                    int pixel2 = (pattern2 & (1 << l)) ? 255 : 0;
+
+                    tCPU::byte color = (pixel1 ? 1 : 0) + (pixel2 ? 2 : 0);
+//                    tCPU::byte paletteId = GetColorFromPalette(1, 0, color);
+//                    tPaletteEntry &rgbColor = colorPalette[paletteId];
+
+                    raster->patternTable[dstAddr * 4 + 0] = color * 64; // b
+                    raster->patternTable[dstAddr * 4 + 1] = color * 64; // g
+                    raster->patternTable[dstAddr * 4 + 2] = color * 64; // r
+                    raster->patternTable[dstAddr * 4 + 3] = 0xff; // alpha
                 }
             }
         }
     }
+}
+
+void
+PPU::loadRom(Cartridge &rom) {
+    for (uint8_t i = 0; i < rom.header.numChrPages; i++) {
+        writeChrPage(rom.characterDataPages[i].buffer);
+    }
+}
+
+/**
+ * Write 8kB chr-rom page to PPU memory
+ * Populates the pattern table
+ */
+void
+PPU::writeChrPage(uint8_t buffer[]) {
+
+//    for (int j = 0; j < CHR_ROM_PAGE_SIZE; j += 8) {
+//        PrintInfo("%05X %02X %02X %02X %02X %02X %02X %02X %02X", (j), (int) buffer[j + 0], (int) buffer[j + 1],
+//                  (int) buffer[j + 2], (int) buffer[j + 3], (int) buffer[j + 4], (int) buffer[j + 5],
+//                  (int) buffer[j + 6], (int) buffer[j + 7]);
+//    }
+
+    memcpy(PPU_RAM, buffer, 0x2000);
 }

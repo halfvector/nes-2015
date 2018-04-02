@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Platform.h"
+#include "Cartridge.h"
 
 class Memory;
 
@@ -14,7 +15,7 @@ struct PPU_Settings {
     bool GenerateInterruptOnVBlank;
 
     // Port 2007h VRAM Address Increment (1byte = horizontal, 32bytes = vertical)
-    // cause the nametable is 32 bytes wide, so skipping 32 bytes gets u down one row
+    // since nametable is 32 bytes wide, skipping 32 bytes gets you down one row
     bool DoVerticalWrites;
 
     // 8x16 or 8x8 sprites
@@ -44,11 +45,13 @@ class Raster {
 public:
     Raster() {
         screenBuffer = new tCPU::byte[256 * 256 * 4];
+        patternTable = new tCPU::byte[128 * 256 * 4];
         backgroundMask = new tCPU::byte[256 * 256];
         spriteMask = new tCPU::byte[256 * 256];
     }
 
     tCPU::byte* screenBuffer;
+    tCPU::byte* patternTable;
     tCPU::byte* backgroundMask;
     tCPU::byte* spriteMask;
 };
@@ -56,6 +59,10 @@ public:
 class PPU {
 public:
     PPU(Raster *);
+
+    void loadRom(Cartridge &rom);
+    void writeChrPage(uint8_t buffer[]);
+
     void execute(int numCycles);
     tCPU::byte getStatusRegister();
 
@@ -137,28 +144,10 @@ protected:
     /*
      * PPU Settings
      */
-    tCPU::word nameTableAddress;
-    tCPU::word spritePatternTableAddress;
-
-    tCPU::word backgroundPatternTableAddress;
-    bool displayTypeMonochrome;
-    bool backgroundClipping;
-    bool spriteClipping;
-    bool backgroundVisible;
 
     // port $2003, $2004
     tCPU::word spriteRamAddress = 0;
 
-    bool spriteVisible;
-    // Port 2007h VRAM Address Increment (1byte = horizontal, 32bytes = vertical)
-    // since nametable is 32 bytes wide, skipping 32 bytes gets you down one row
-    bool doVerticalWrites;
-    bool generateInterruptOnSprite;
-
-    bool generateInterruptOnVBlank;
-
     // activated when generateInterruptOnVBlank is true and vblank interval entered
     bool vblankNmiAwaiting = false;
-    enum SpriteSizes { SPRITE_8x16 = 1, SPRITE_8x8 = 0 };
-    SpriteSizes spriteSize;
 };
