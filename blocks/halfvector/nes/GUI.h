@@ -2,24 +2,25 @@
 
 #include <SDL2/SDL.h>
 #include "Platform.h"
+#include "PPU.h"
 
 class GUI {
 public:
-    GUI(tCPU::byte* final, tCPU::byte* patternBuffer);
+    GUI(Raster *raster);
+
     ~GUI();
 
     void render();
 
 protected:
-    tCPU::byte* finalBuffer;
-    tCPU::byte* patternBuffer;
+    Raster *raster;
 
-    SDL_Window* window;
-    SDL_Renderer* renderer;
-    SDL_Texture* finalTexture;
+    SDL_Window *window;
+    SDL_Renderer *renderer;
+    SDL_Texture *finalTexture;
 
     // debug buffers
-    SDL_Texture* patternTexture;
+    SDL_Texture *patternTexture, *attributeTexture;
 };
 
 

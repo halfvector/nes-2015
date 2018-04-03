@@ -1,8 +1,8 @@
 #include "GUI.h"
 #include "Logging.h"
 
-GUI::GUI(tCPU::byte *screenBuffer, tCPU::byte *patternBuffer)
-        : finalBuffer(screenBuffer), patternBuffer(patternBuffer) {
+GUI::GUI(Raster *raster)
+        : raster(raster) {
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
         PrintError("SDL_Init failed: %s\n", SDL_GetError());
         throw std::runtime_error("SDL_Init failed");
@@ -23,15 +23,9 @@ GUI::GUI(tCPU::byte *screenBuffer, tCPU::byte *patternBuffer)
         throw std::runtime_error("SDL_CreateRenderer failed");
     }
 
-    finalTexture = SDL_CreateTexture(renderer,
-                                     SDL_PIXELFORMAT_ARGB8888,
-                                     SDL_TEXTUREACCESS_STREAMING,
-                                     256, 256);
-
-    patternTexture = SDL_CreateTexture(renderer,
-                                       SDL_PIXELFORMAT_ARGB8888,
-                                       SDL_TEXTUREACCESS_STREAMING,
-                                       128, 256);
+    finalTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 256, 256);
+    patternTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 128, 256);
+    attributeTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 256, 256);
 
     if (finalTexture == NULL) {
         PrintError("SDL_CreateTexture failed: %s\n", SDL_GetError());
@@ -43,12 +37,16 @@ GUI::GUI(tCPU::byte *screenBuffer, tCPU::byte *patternBuffer)
 
 void
 GUI::render() {
-    if (SDL_UpdateTexture(finalTexture, NULL, finalBuffer, 256 * 4) < 0) {
+    if (SDL_UpdateTexture(finalTexture, NULL, raster->screenBuffer, 256 * 4) < 0) {
         PrintError("SDL_UpdateTexture(final) failed: %s\n", SDL_GetError());
     }
 
-    if (SDL_UpdateTexture(patternTexture, NULL, patternBuffer, 128 * 4) < 0) {
+    if (SDL_UpdateTexture(patternTexture, NULL, raster->patternTable, 128 * 4) < 0) {
         PrintError("SDL_UpdateTexture(patternTable) failed: %s\n", SDL_GetError());
+    }
+
+    if (SDL_UpdateTexture(attributeTexture, NULL, raster->attributeTable, 128 * 4) < 0) {
+        PrintError("SDL_UpdateTexture(attributeTable) failed: %s\n", SDL_GetError());
     }
 
     SDL_SetRenderDrawColor(renderer, 10, 10, 10, 255);
@@ -65,6 +63,11 @@ GUI::render() {
             256, 0, 256, 512
     };
     SDL_RenderCopy(renderer, patternTexture, NULL, &patternRect);
+
+    auto attributesRect = SDL_Rect{
+            0, 256, 256, 256
+    };
+    SDL_RenderCopy(renderer, attributeTexture, NULL, &attributesRect);
 
     // present surface
     SDL_RenderPresent(renderer);

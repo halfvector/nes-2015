@@ -766,10 +766,20 @@ void PPU::renderDebug() {
     // clear final output (256x256@32bit)
     for (int x = 0; x < 256; x++) {
         for (int y = 0; y < 256; y++) {
-            raster->screenBuffer[y * 256 * 4 + x * 4 + 0] = 0x66; // b
-            raster->screenBuffer[y * 256 * 4 + x * 4 + 1] = 0x66; // g
-            raster->screenBuffer[y * 256 * 4 + x * 4 + 2] = 0x66; // r
+            raster->screenBuffer[y * 256 * 4 + x * 4 + 0] = 0x33; // b
+            raster->screenBuffer[y * 256 * 4 + x * 4 + 1] = 0x33; // g
+            raster->screenBuffer[y * 256 * 4 + x * 4 + 2] = 0x33; // r
             raster->screenBuffer[y * 256 * 4 + x * 4 + 3] = 0xff; // alpha
+        }
+    }
+
+    // clear pattern table debug view (128x128@32bit)
+    for (int x = 0; x < 128; x++) {
+        for (int y = 0; y < 128; y++) {
+            raster->attributeTable[y * 128 * 4 + x * 4 + 0] = 0x33; // b
+            raster->attributeTable[y * 128 * 4 + x * 4 + 1] = 0x33; // g
+            raster->attributeTable[y * 128 * 4 + x * 4 + 2] = 0x33; // r
+            raster->attributeTable[y * 128 * 4 + x * 4 + 3] = 0xff; // alpha
         }
     }
 
@@ -796,9 +806,9 @@ void PPU::renderDebug() {
 //    }
 //
 
-    for (unsigned int i = 0; i < 32; i++) {
-        PrintInfo("%d = %X", i, PPU_RAM[0x3F00 + i]);
-    }
+//    for (unsigned int i = 0; i < 32; i++) {
+//        PrintInfo("%d = %X", i, PPU_RAM[0x3F00 + i]);
+//    }
 
     // rows (240 pixels vertically)
     for (unsigned int i = 0; i < 30; i++) {
@@ -806,7 +816,7 @@ void PPU::renderDebug() {
         for (unsigned int j = 0; j < 32; j++) {
             // 8x8 tile number
             // first 960 bytes contain tiles
-            tCPU::byte Value = PPU_RAM[NametableAddress + i * 32 + j];
+            tCPU::byte tileNumber = PPU_RAM[NametableAddress + i * 32 + j];
             int offsetY = i * 8 * 256 * 4;
             int offsetX = j * 8 * 4;
 
@@ -843,11 +853,11 @@ void PPU::renderDebug() {
             // row
             for (unsigned short k = 0; k < 8; k++) {
 
-                int addy1 = (i << 8) | (j << 4) | (0 << 3) | (k);
-                int addy2 = (i << 8) | (j << 4) | (1 << 3) | (k);
+//                int addy1 = (i << 8) | (j << 4) | (0 << 3) | (k);
+//                int addy2 = (i << 8) | (j << 4) | (1 << 3) | (k);
 
-                tCPU::byte PatternByte0 = PPU_RAM[settings.BackgroundPatternTableAddress + Value * 16 + k];
-                tCPU::byte PatternByte1 = PPU_RAM[settings.BackgroundPatternTableAddress + Value * 16 + k + 8];
+                tCPU::byte PatternByte0 = PPU_RAM[settings.BackgroundPatternTableAddress + tileNumber * 16 + k];
+                tCPU::byte PatternByte1 = PPU_RAM[settings.BackgroundPatternTableAddress + tileNumber * 16 + k + 8];
 
                 // column
                 for (short l = 0; l < 8; l++) {
@@ -876,9 +886,9 @@ void PPU::renderDebug() {
 //                    int offsetBytes = offsetBlockY + l * 4;
 //
 //                    // write 4 bytes BGRA
-//                    raster->screenBuffer[offsetBytes + 0] = Value; // b
-//                    raster->screenBuffer[offsetBytes + 1] = Value; // g
-//                    raster->screenBuffer[offsetBytes + 2] = Value; // r
+//                    raster->screenBuffer[offsetBytes + 0] = tileNumber; // b
+//                    raster->screenBuffer[offsetBytes + 1] = tileNumber; // g
+//                    raster->screenBuffer[offsetBytes + 2] = tileNumber; // r
 //                    raster->screenBuffer[offsetBytes + 3] = 0xff; // alpha
 //                }
 //            }
@@ -893,72 +903,105 @@ void PPU::renderDebug() {
      */
 
     // rows
-//    for (int i = 0; i < 8; i++) {
-//        // columns
-//        for (int j = 0; j < 8; j++) {
-//            // 32x32 tile attributes, 2 bits for each 16x16 sub-tile (which in effect is 4 pattern tiles)
-//            tCPU::byte Attribute = PPU_RAM[0x2000 + 0x3C0 + i * 8 + j];
-//
-//            tCPU::byte UpperLeft = Bits<0, 1>::Get(Attribute);
-//            tCPU::byte UpperRight = Bits<2, 3>::Get(Attribute);
-//            tCPU::byte LowerLeft = Bits<4, 5>::Get(Attribute);
-//            tCPU::byte LowerRight = Bits<6, 7>::Get(Attribute);
-//
-//            //printf( "%02X: ($%02X $%02X $%02X $%02X)  ", Attribute, GetColorFromPalette( NametableId, UpperLeft ), GetColorFromPalette( NametableId, UpperRight ), GetColorFromPalette( NametableId, LowerRight ), GetColorFromPalette( NametableId, LowerLeft ) );
+    for (int i = 0; i < 8; i++) {
+        // columns
+        for (int j = 0; j < 8; j++) {
+            // 32x32 tile attributes, 2 bits for each 16x16 sub-tile (which in effect is 4 pattern tiles)
+            tCPU::byte Attribute = PPU_RAM[0x2000 + 0x3C0 + i * 8 + j];
+
+            tCPU::byte UpperLeft = Bits<0, 1>::Get(Attribute);
+            tCPU::byte UpperRight = Bits<2, 3>::Get(Attribute);
+            tCPU::byte LowerLeft = Bits<4, 5>::Get(Attribute);
+            tCPU::byte LowerRight = Bits<6, 7>::Get(Attribute);
+
+            //printf( "%02X: ($%02X $%02X $%02X $%02X)  ", Attribute, GetColorFromPalette( NametableId, UpperLeft ), GetColorFromPalette( NametableId, UpperRight ), GetColorFromPalette( NametableId, LowerRight ), GetColorFromPalette( NametableId, LowerLeft ) );
 //            printf("%02X: %02X %02X %02X %02X  ", Attribute, UpperLeft, UpperRight, LowerRight, LowerLeft);
-//
-//            int offsetY = i * 32 * 4;
-//            int offsetX = j * 32 * 4;
-//            int offsetBytes = offsetY + offsetX;
-//
-//            raster->finalBuffer[offsetBytes + 0] = Value; // b
-//            raster->finalBuffer[offsetBytes + 1] = Value; // g
-//            raster->finalBuffer[offsetBytes + 2] = Value; // r
-//            raster->finalBuffer[offsetBytes + 3] = 0xff; // alpha
-//        }
-//        printf("\n");
-//    }
 
-    // print pattern table
-    unsigned int pitch = 16;
+            // destination is a 256x256 grid
+            unsigned int addr = (i * 256 + j) * 32;
+            tCPU::byte color = 0;
 
-    // destination width of image in pixels
+            // render four 16x16 blocks
+            for (unsigned int b = 0; b < 2; b++) {
+                for (unsigned int c = 0; c < 2; c++) {
+                    unsigned int blockAddr = addr + (b * 256 + c) * 16;
+
+                    if (!b && !c)
+                        color = UpperLeft;
+                    else if (b && !c)
+                        color = UpperRight;
+                    else if (!b && c)
+                        color = LowerLeft;
+                    else
+                        color = LowerRight;
+
+                    // row
+                    for (unsigned int k = 0; k < 16; k++) {
+                        // column
+                        for (unsigned int l = 0; l < 16; l++) {
+                            unsigned int pixelAddr = (blockAddr + k * 256 + l) * 4;
+
+                            raster->attributeTable[pixelAddr + 0] = color; // b
+                            raster->attributeTable[pixelAddr + 1] = k * 16; // g
+                            raster->attributeTable[pixelAddr + 2] = l * 16; // r
+                            raster->attributeTable[pixelAddr + 3] = 0xff; // alpha
+
+                        }
+                    }
+
+                }
+            }
+        }
+    }
+
+    // render two pattern tables
+    // pattern table 0 = 0x0000 - 0x0FFF
+    // pattern table 1 = 0x1000 - 0x1FFF
+
+    // pattern table pitch
+    unsigned int srcPitch = 16;
+
+    // render target pitch
     unsigned int dstPitch = 128;
+
+    // each pattern table:
+    // has 256 tiles, 16x16
+    // each tile is 8x8 pixels
+    // each pixel has two bits for four colors
+    // renders into 128x128
 
     // rows
     for (unsigned int i = 0; i < 32; i++) {
         // columns
         for (unsigned int j = 0; j < 16; j++) {
             // draw as 8x8 blocks
+            auto src = (i * srcPitch + j) * 16;
+            auto dst = (i * dstPitch + j) * 8;
+
             // rows
             for (unsigned int k = 0; k < 8; k++) {
-
                 // 16 bytes per 8x8 tile
-                // two 8 byte blocks
-                unsigned int addr = (i * pitch + j) * 16;
-                addr += k * 2;
+                // 8 rows, each row takes two bytes
+                // each pixel in the byte is a color bit for a column
+                auto rowSrc = src + k;
 
-                tCPU::byte pattern1 = PPU_RAM[addr + 0];
-                tCPU::byte pattern2 = PPU_RAM[addr + 1];
-
-//                PrintInfo("%05X = %X", addr, pattern1);
+                auto pattern1 = PPU_RAM[rowSrc + 0];
+                auto pattern2 = PPU_RAM[rowSrc + 8];
 
                 // columns
                 for (unsigned int l = 0; l < 8; l++) {
-                    unsigned int dstAddr = (i * dstPitch * 8) + j * 8;
-                    dstAddr += k * dstPitch + (7 - l);
+                    auto pixel1 = (pattern1 & (1 << (7 - l))) ? 1 : 0;
+                    auto pixel2 = (pattern2 & (1 << (7 - l))) ? 1 : 0;
 
-                    int pixel1 = (pattern1 & (1 << l)) ? 255 : 0;
-                    int pixel2 = (pattern2 & (1 << l)) ? 255 : 0;
+                    auto color = (pixel1 ? 1 : 0) + (pixel2 ? 2 : 0);
+                    tCPU::byte paletteId = GetColorFromPalette(1, 0, color);
+                    tPaletteEntry &rgbColor = colorPalette[paletteId];
 
-                    tCPU::byte color = (pixel1 ? 1 : 0) + (pixel2 ? 2 : 0);
-//                    tCPU::byte paletteId = GetColorFromPalette(1, 0, color);
-//                    tPaletteEntry &rgbColor = colorPalette[paletteId];
-
-                    raster->patternTable[dstAddr * 4 + 0] = color * 64; // b
-                    raster->patternTable[dstAddr * 4 + 1] = color * 64; // g
-                    raster->patternTable[dstAddr * 4 + 2] = color * 64; // r
-                    raster->patternTable[dstAddr * 4 + 3] = 0xff; // alpha
+                    auto pixelAddr = dst + k * dstPitch + l;
+                    raster->patternTable[pixelAddr * 4 + 0] = paletteId * 64; // b
+                    raster->patternTable[pixelAddr * 4 + 1] = paletteId * 64; // g
+                    raster->patternTable[pixelAddr * 4 + 2] = paletteId * 64; // r
+                    raster->patternTable[pixelAddr * 4 + 3] = 0xff; // alpha
                 }
             }
         }

@@ -46,12 +46,14 @@ public:
     Raster() {
         screenBuffer = new tCPU::byte[256 * 256 * 4];
         patternTable = new tCPU::byte[128 * 256 * 4];
+        attributeTable = new tCPU::byte[256 * 256 * 4];
         backgroundMask = new tCPU::byte[256 * 256];
         spriteMask = new tCPU::byte[256 * 256];
     }
 
     tCPU::byte* screenBuffer;
     tCPU::byte* patternTable;
+    tCPU::byte* attributeTable;
     tCPU::byte* backgroundMask;
     tCPU::byte* spriteMask;
 };
