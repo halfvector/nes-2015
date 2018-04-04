@@ -45,6 +45,7 @@ class Raster {
 public:
     Raster() {
         screenBuffer = new tCPU::byte[256 * 256 * 4];
+        palette = new tCPU::byte[256 * 32 * 4];
         patternTable = new tCPU::byte[128 * 256 * 4];
         attributeTable = new tCPU::byte[256 * 256 * 4];
         backgroundMask = new tCPU::byte[256 * 256];
@@ -52,6 +53,7 @@ public:
     }
 
     tCPU::byte* screenBuffer;
+    tCPU::byte* palette;
     tCPU::byte* patternTable;
     tCPU::byte* attributeTable;
     tCPU::byte* backgroundMask;

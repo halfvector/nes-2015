@@ -97,7 +97,7 @@ struct Registers {
         LastPC = PC = 0;
 
         // stack pointer starts with 0, but points to memory address 0x1FF
-        // max value is 255 and then its pointin to 0x100
+        // max value is 255 and then its pointing to 0x100
         S = 0;
     }
 

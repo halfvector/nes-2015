@@ -15,7 +15,7 @@ inline std::uint16_t operator "" _us(unsigned long long value) {
  */
 void
 Stack::pushStackWord(tCPU::word value) {
-    assert(reg->S > 2 && "Stack overflow");
+    assert(reg->S > 1 && "Stack overflow");
 
     PrintDbg("Pushing onto stack: 0x%04X / stack pointer: $%02X", (int) value, (int) reg->S);
     mem->writeByte(stackOffset + reg->S, (value >> 8) & 0xFF); // high byte
@@ -44,7 +44,7 @@ Stack::popStackWord() {
 
 void
 Stack::pushStackByte(tCPU::byte value) {
-    assert(reg->S > 1 && "Stack overflow");
+    assert(reg->S > 0 && "Stack overflow");
 
     PrintDbg("Pushing onto stack: 0x%04X / stack pointer: $%02X", (int) value, (int) reg->S);
     mem->writeByte(stackOffset + reg->S, value);

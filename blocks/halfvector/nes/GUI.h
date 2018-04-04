@@ -20,7 +20,7 @@ protected:
     SDL_Texture *finalTexture;
 
     // debug buffers
-    SDL_Texture *patternTexture, *attributeTexture;
+    SDL_Texture *patternTexture, *attributeTexture, *paletteTexture;
 };
 
 

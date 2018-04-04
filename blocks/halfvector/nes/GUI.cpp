@@ -26,6 +26,7 @@ GUI::GUI(Raster *raster)
     finalTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 256, 256);
     patternTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 128, 256);
     attributeTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 256, 256);
+    paletteTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 256, 32);
 
     if (finalTexture == NULL) {
         PrintError("SDL_CreateTexture failed: %s\n", SDL_GetError());
@@ -45,8 +46,12 @@ GUI::render() {
         PrintError("SDL_UpdateTexture(patternTable) failed: %s\n", SDL_GetError());
     }
 
-    if (SDL_UpdateTexture(attributeTexture, NULL, raster->attributeTable, 128 * 4) < 0) {
+    if (SDL_UpdateTexture(attributeTexture, NULL, raster->attributeTable, 256 * 4) < 0) {
         PrintError("SDL_UpdateTexture(attributeTable) failed: %s\n", SDL_GetError());
+    }
+
+    if (SDL_UpdateTexture(paletteTexture, NULL, raster->palette, 256 * 4) < 0) {
+        PrintError("SDL_UpdateTexture(palette) failed: %s\n", SDL_GetError());
     }
 
     SDL_SetRenderDrawColor(renderer, 10, 10, 10, 255);
@@ -68,6 +73,11 @@ GUI::render() {
             0, 256, 256, 256
     };
     SDL_RenderCopy(renderer, attributeTexture, NULL, &attributesRect);
+
+    auto paletteRect = SDL_Rect{
+            0, 240, 256, 32
+    };
+    SDL_RenderCopy(renderer, paletteTexture, NULL, &paletteRect);
 
     // present surface
     SDL_RenderPresent(renderer);

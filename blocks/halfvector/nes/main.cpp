@@ -23,7 +23,7 @@ int main(int argc, char **argv) {
     Loggy::Enabled = Loggy::INFO;
 
     CartridgeLoader loader;
-    Cartridge rom = loader.loadCartridge("../roms/donkey_kong.nes");
+    Cartridge rom = loader.loadCartridge("../roms/supermariobros.nes");
 
     auto onVblankNmiSet = []() {
 
@@ -77,7 +77,7 @@ int main(int argc, char **argv) {
 
     gui->render();
 
-    for (int i = 0; i < 200000; i++) {
+    for (int i = 0; i < 500000; i++) {
         // grab next instruction
         tCPU::byte opCode = memory->readByteDirectly(registers->PC);
 

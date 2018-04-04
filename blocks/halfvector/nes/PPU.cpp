@@ -210,10 +210,11 @@ PPU::advanceRenderableScanline() {
             vramAddress14bit &= 0xFBE0;
             vramAddress14bit |= (tempVRAMAddress & 0x041F);
             vramAddress14bit &= 0x7FFF;
+
+//            PrintInfo("Start of Scanline; vramAddress14bit = 0x%X / tempVRAMAddress = %s",
+//                      vramAddress14bit, std::bitset<16>(tempVRAMAddress).to_string());
         }
 
-//        PrintPpu("Start of Scanline; vramAddress14bit = 0x%X / tempVRAMAddress = %s")
-//                % vramAddress14bit % std::bitset<16>(tempVRAMAddress);
     }
 
     scanlinePixel++;
@@ -588,7 +589,7 @@ PPU::setVRamAddressRegister2(tCPU::byte value) {
         tempVRAMAddress &= 0x00FF;
         tempVRAMAddress |= (value & 0x3F) << 8; // 6 bits to high byte
 
-        PrintPpu("vramAddress14bit first part = 0x%X", vramAddress14bit);
+//        PrintInfo("vramAddress14bit first part = 0x%X (0x%X)", vramAddress14bit, value);
     } else {
         // second write -- low byte
         vramAddress14bit = ((tCPU::word) latchedVRAMByte) << 8;
@@ -599,7 +600,7 @@ PPU::setVRamAddressRegister2(tCPU::byte value) {
         vramAddress14bit = tempVRAMAddress;
         vramAddress14bit &= 0x7FFF; // clear highest bit
 
-        PrintPpu("vramAddress14bit = 0x%X", vramAddress14bit);
+//        PrintInfo("vramAddress14bit second part = 0x%X (0x%X)", vramAddress14bit, value);
     }
 
     // flip
@@ -680,7 +681,7 @@ PPU::WriteInternalMemoryByte(tCPU::word Address, tCPU::byte Value) {
     tCPU::word EffectiveAddress = GetEffectiveAddress(Address);
     PPU_RAM[EffectiveAddress] = Value;
     if (EffectiveAddress >= 0x3f00 && EffectiveAddress < 0x4000) {
-        PrintInfo("Wrote 0x%02X to PPU RAM @ 0x%04X", (int) Value, (int) EffectiveAddress);
+        PrintInfo("Wrote 0x%02X to PPU RAM @ 0x%04X (0x%04X)", (int) Value, (int) EffectiveAddress, Address);
     }
     return true;
 }
@@ -708,7 +709,8 @@ PPU::setVRamAddressRegister1(tCPU::byte value) {
         tempVRAMAddress |= (value & 0xF8) >> 3;
 
         tileXOffset = value & 0x07;
-        PrintPpu("tileXOffset = %d", tileXOffset);
+//        PrintInfo("tileXOffset = %d", tileXOffset);
+//        PrintInfo("tempVRAMAddress = 0x%04X first write", (int) tempVRAMAddress);
     } else {
         // second write
         verticalScrollOrigin = value;
@@ -717,9 +719,11 @@ PPU::setVRamAddressRegister1(tCPU::byte value) {
         tempVRAMAddress |= (value & 0xF8) << 2;
         tempVRAMAddress &= 0x8FFF;
         tempVRAMAddress |= (value & 0x07) << 12;
+
+//        PrintInfo("tempVRAMAddress = 0x%04X second", (int) tempVRAMAddress);
     }
 
-    PrintDbg("tempVRAMAddress = 0x%04X first write = %d", (int) tempVRAMAddress, (int) firstWriteToSFF);
+
     PrintDbg("-> Background/Sprite Visibility: %d/%d", (int) settings.BackgroundVisible, (int) settings.SpriteVisible);
 
     // flip
@@ -790,6 +794,16 @@ void PPU::renderDebug() {
             raster->patternTable[y * 128 * 4 + x * 4 + 1] = 0x33; // g
             raster->patternTable[y * 128 * 4 + x * 4 + 2] = 0x33; // r
             raster->patternTable[y * 128 * 4 + x * 4 + 3] = 0xff; // alpha
+        }
+    }
+
+    // clear palette table debug view (128x16@32bit)
+    for (int x = 0; x < 256; x++) {
+        for (int y = 0; y < 32; y++) {
+            raster->palette[y * 256 * 4 + x * 4 + 0] = 0x33; // b
+            raster->palette[y * 256 * 4 + x * 4 + 1] = 0xff; // g
+            raster->palette[y * 256 * 4 + x * 4 + 2] = 0x99; // r
+            raster->palette[y * 256 * 4 + x * 4 + 3] = 0xff; // alpha
         }
     }
 
@@ -864,7 +878,7 @@ void PPU::renderDebug() {
                     int PixelBit0 = PatternByte0 & (1 << l) ? 255 : 0;
                     int PixelBit1 = PatternByte1 & (1 << l) ? 255 : 0;
                     tCPU::byte Color = (PixelBit0 ? 1 : 0) + (PixelBit1 ? 2 : 0);
-                    tCPU::byte PaletteId = GetColorFromPalette(1, UpperBits, Color);
+                    tCPU::byte PaletteId = GetColorFromPalette(0, UpperBits, Color);
 
                     tPaletteEntry &RGBColor = colorPalette[PaletteId];
 
@@ -872,9 +886,9 @@ void PPU::renderDebug() {
                     int offsetBytes = offsetBlockY + (7 - l) * 4;
 
                     // write 4 bytes BGRA
-                    raster->screenBuffer[offsetBytes + 0] = Color * 64; // b
-                    raster->screenBuffer[offsetBytes + 1] = Color * 64; // g
-                    raster->screenBuffer[offsetBytes + 2] = Color * 64; // r
+                    raster->screenBuffer[offsetBytes + 0] = RGBColor.B; // b
+                    raster->screenBuffer[offsetBytes + 1] = RGBColor.G; // g
+                    raster->screenBuffer[offsetBytes + 2] = RGBColor.R; // r
                     raster->screenBuffer[offsetBytes + 3] = 0xff; // alpha
                 }
             }
@@ -896,10 +910,12 @@ void PPU::renderDebug() {
     }
 
     /*
-     * 8x8 attributes table (32 pixels wide)
-     * each attribute entry has a 2x2 sub sector (16 pixels wide)
-     * each sub sector represents a 2x2 set of tiles
-     * thus each attribute tile is made up of 4x4 tiles (each tile is 8 pixels wide)
+     * 64 bytes for attributes
+     * 8x8 attributes table, 1 byte per attribute
+     * each attribute covers 32x32 pixels
+     * each attribute covers 2x2 super-tiles (16x16 pixels) with 2 color bits
+     * each super-tile covers 2x2 set of tiles (8x8 pixels each)
+     * thus each attribute tile is made up of 4x4 pattern tiles
      */
 
     // rows
@@ -907,7 +923,7 @@ void PPU::renderDebug() {
         // columns
         for (int j = 0; j < 8; j++) {
             // 32x32 tile attributes, 2 bits for each 16x16 sub-tile (which in effect is 4 pattern tiles)
-            tCPU::byte Attribute = PPU_RAM[0x2000 + 0x3C0 + i * 8 + j];
+            tCPU::byte Attribute = PPU_RAM[NametableAddress + 0x3C0 + i * 8 + j];
 
             tCPU::byte UpperLeft = Bits<0, 1>::Get(Attribute);
             tCPU::byte UpperRight = Bits<2, 3>::Get(Attribute);
@@ -915,16 +931,16 @@ void PPU::renderDebug() {
             tCPU::byte LowerRight = Bits<6, 7>::Get(Attribute);
 
             //printf( "%02X: ($%02X $%02X $%02X $%02X)  ", Attribute, GetColorFromPalette( NametableId, UpperLeft ), GetColorFromPalette( NametableId, UpperRight ), GetColorFromPalette( NametableId, LowerRight ), GetColorFromPalette( NametableId, LowerLeft ) );
-//            printf("%02X: %02X %02X %02X %02X  ", Attribute, UpperLeft, UpperRight, LowerRight, LowerLeft);
+//            PrintInfo("%02X: %02X %02X %02X %02X  ", Attribute, UpperLeft, UpperRight, LowerRight, LowerLeft);
 
             // destination is a 256x256 grid
-            unsigned int addr = (i * 256 + j) * 32;
+            unsigned int dstAddr = (i * 256 + j) * 32;
             tCPU::byte color = 0;
 
             // render four 16x16 blocks
             for (unsigned int b = 0; b < 2; b++) {
                 for (unsigned int c = 0; c < 2; c++) {
-                    unsigned int blockAddr = addr + (b * 256 + c) * 16;
+                    unsigned int blockAddr = dstAddr + (b * 256 + c) * 16;
 
                     if (!b && !c)
                         color = UpperLeft;
@@ -941,9 +957,9 @@ void PPU::renderDebug() {
                         for (unsigned int l = 0; l < 16; l++) {
                             unsigned int pixelAddr = (blockAddr + k * 256 + l) * 4;
 
-                            raster->attributeTable[pixelAddr + 0] = color; // b
-                            raster->attributeTable[pixelAddr + 1] = k * 16; // g
-                            raster->attributeTable[pixelAddr + 2] = l * 16; // r
+                            raster->attributeTable[pixelAddr + 0] = color * 64; // b
+                            raster->attributeTable[pixelAddr + 1] = color * 64; // g
+                            raster->attributeTable[pixelAddr + 2] = color * 64; // r
                             raster->attributeTable[pixelAddr + 3] = 0xff; // alpha
 
                         }
@@ -998,10 +1014,42 @@ void PPU::renderDebug() {
                     tPaletteEntry &rgbColor = colorPalette[paletteId];
 
                     auto pixelAddr = dst + k * dstPitch + l;
-                    raster->patternTable[pixelAddr * 4 + 0] = paletteId * 64; // b
-                    raster->patternTable[pixelAddr * 4 + 1] = paletteId * 64; // g
-                    raster->patternTable[pixelAddr * 4 + 2] = paletteId * 64; // r
+                    raster->patternTable[pixelAddr * 4 + 0] = rgbColor.B; // b
+                    raster->patternTable[pixelAddr * 4 + 1] = rgbColor.G; // g
+                    raster->patternTable[pixelAddr * 4 + 2] = rgbColor.R; // r
                     raster->patternTable[pixelAddr * 4 + 3] = 0xff; // alpha
+                }
+            }
+        }
+    }
+
+    // render color palette
+    //Color = PPU_RAM[0x3F00 + PaletteType * 0x10 + ColorId + NameTableId * 4];
+
+    // colors
+    for (unsigned int nametableId = 0; nametableId < 4; nametableId++) {
+        for (unsigned int i = 0; i < 32; i++) {
+
+            auto paletteType = 0; // 0 = background, 1 = sprite
+//            auto nametableId = 0; // 0-3 (4 tables, first one at 0x2000)
+            auto color = PPU_RAM[0x3F00 + paletteType * 16 + i + nametableId * 4];
+
+            auto pitch = 256;
+            auto dst = nametableId * pitch * 8 + i * 8;
+
+            tPaletteEntry &rgbColor = colorPalette[color];
+
+            // draw as 8x8 blocks
+            // rows
+            for (unsigned int k = 0; k < 8; k++) {
+                // columns
+                for (unsigned int l = 0; l < 8; l++) {
+//                tPaletteEntry &rgbColor = colorPalette[paletteId];
+                    auto pixelAddr = dst + k * pitch + l;
+                    raster->palette[pixelAddr * 4 + 0] = rgbColor.B; // b
+                    raster->palette[pixelAddr * 4 + 1] = rgbColor.G; // g
+                    raster->palette[pixelAddr * 4 + 2] = rgbColor.R; // r
+                    raster->palette[pixelAddr * 4 + 3] = 0xff; // alpha
                 }
             }
         }
