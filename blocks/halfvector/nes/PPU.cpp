@@ -556,8 +556,8 @@ PPU::setControlRegister1(tCPU::byte value) {
     settings.GenerateInterruptOnSprite = bits.test(6);
     settings.GenerateInterruptOnVBlank = bits.test(7);
 
-    vramAddress14bit &= 0xF3FF;
-    vramAddress14bit |= (value & 0x03) << 10;
+    tempVRAMAddress &= 0xF3FF;
+    tempVRAMAddress |= (value & 0x03) << 10;
 
 //    PrintInfo("Set base nametable address to %X", settings.NameTableAddress);
 //    PrintInfo("Set base background pattern table address to %X", settings.BackgroundPatternTableAddress);

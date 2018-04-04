@@ -11,23 +11,23 @@ struct PPU_Settings {
     /*
      * control register 1
      */
-    bool GenerateInterruptOnSprite;
-    bool GenerateInterruptOnVBlank;
+    bool GenerateInterruptOnSprite = false;
+    bool GenerateInterruptOnVBlank = false;
 
     // Port 2007h VRAM Address Increment (1byte = horizontal, 32bytes = vertical)
     // since nametable is 32 bytes wide, skipping 32 bytes gets you down one row
-    bool DoVerticalWrites;
+    bool DoVerticalWrites = false;
 
     // 8x16 or 8x8 sprites
-    enumSpriteSize SpriteSize;
+    enumSpriteSize SpriteSize = SPRITE_SIZE_8x8;
 
     // base addresses for pattern tables
-    tCPU::word SpritePatternTableAddress;
-    tCPU::word BackgroundPatternTableAddress;
+    tCPU::word SpritePatternTableAddress = 0x1000;
+    tCPU::word BackgroundPatternTableAddress = 0x0000;
 
     // because of mirroring there are only two real name tables, but this can have
     // 4 diff values: 0x2000, 0x2400, 0x2800, 0x2C00
-    tCPU::word NameTableAddress;
+    tCPU::word NameTableAddress = 0x2000;
 
     /**
      * control register 2
@@ -37,8 +37,8 @@ struct PPU_Settings {
     bool BackgroundClipping;
     // invisible in left 8 pixel column
     bool SpriteClipping;
-    bool BackgroundVisible;
-    bool SpriteVisible;
+    bool BackgroundVisible = false;
+    bool SpriteVisible = false;
 };
 
 class Raster {
