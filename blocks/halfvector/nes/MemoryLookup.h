@@ -256,6 +256,5 @@ struct ProcessorStatusFlag {
     static bool getState(InstructionContext *ctx) {
         PrintError("Unknown ProcessorStatusFlag Requested");
         throw std::runtime_error("Unknown processor status flag");
-        return false;
     }
 };

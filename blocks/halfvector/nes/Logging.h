@@ -22,7 +22,7 @@ struct Loggy {
 };
 
 // universal
-#define Logging                false
+#define Logging                true
 
 #define PrintDbg               if(Logging) Loggy::log(__PRETTY_FUNCTION__, Loggy::DEBUG).println
 #define PrintInfo              if(Logging) Loggy::log(__PRETTY_FUNCTION__, Loggy::INFO).println

@@ -103,7 +103,7 @@ Backtrace::backtrace(void* address) {
 
     std::cerr << "-------------------------------------------------" << std::endl;
 
-    delete unmangled;
+    delete[] unmangled;
 }
 
 void

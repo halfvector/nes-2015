@@ -84,13 +84,14 @@ CPU::reset() {
 int
 CPU::executeOpcode(int code) {
     unsigned char opcodeSize = opcodes[code].Bytes;
+
+#if false
     AddressMode mode = opcodes[code].AddressMode;
     const char *mnemonic = opcodes[code].Mnemonic;
     const char *title = AddressModeTitle[static_cast<uint8_t>(mode)];
 
 //    sprintf( StatusBuffer, "C:%d Z:%d V:%d N:%d I:%d B:%d S:%d | A:$%02X X:$%02X Y:$%02X",
 //             g_Registers.P.C, g_Registers.P.Z, g_Registers.P.V, g_Registers.P.N, g_Registers.P.I, g_Registers.P.B, g_Registers.A, g_Registers.X, g_Registers.Y, g_Registers.S );
-
 
     std::string instruction;
 
@@ -124,6 +125,7 @@ CPU::executeOpcode(int code) {
                     % (int) numCycles;
 
     PrintCpu("%-45s %s", instruction.c_str(), cpuState.str().c_str());
+#endif
 
     // update program counter
     registers->LastPC = registers->PC;

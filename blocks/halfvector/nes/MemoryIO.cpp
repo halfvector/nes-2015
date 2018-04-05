@@ -48,7 +48,7 @@ struct MemoryIOHandler<0x2004> {
         return value;
     }
     static void write(PPU* ppu, tCPU::byte value) {
-        PrintMemoryIO("Write 0x%02X to port $2004 - Sprite RAM I/O Register", (int) value);
+        PrintInfo("Write 0x%02X to port $2004 - Sprite RAM I/O Register", (int) value);
         ppu->writeSpriteMemory(value);
     }
 };
@@ -90,18 +90,12 @@ struct MemoryIOHandler<0x2007> {
 template<>
 struct MemoryIOHandler<0x4014> {
     static void write(PPU* ppu, Memory* memory, tCPU::byte value) {
-        PrintMemoryIO("Writing 0x%02X to port $2006 - VRAM Address Register 2", (int) value);
+        PrintDbg("Writing 0x%02X to port $2006 - VRAM Sprite DMA Xfer", (int) value);
         ppu->StartSpriteXferDMA(memory, value);
     }
 };
 
 MemoryIO::MemoryIO(PPU* ppu) : ppu(ppu) {
-    ioPortWriters.clear();
-    ioPortReaders.clear();
-
-    // bind parameters to methods
-    registerHandler(0x2002, std::bind(MemoryIOHandler<0x2002>::read, ppu));
-    //registerHandler(0x2002, MemoryIOHandler<0x2002>::Read);
 }
 
 class MemoryIOPortException : public ExceptionBase<MemoryIOPortException> {

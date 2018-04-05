@@ -1,7 +1,7 @@
 #include "Logging.h"
 
 // initialize statics
-Loggy::Type Loggy::Enabled = Loggy::DEBUG;
+Loggy::Type Loggy::Enabled = Loggy::INFO;
 
 Loggy
 Loggy::log(const char *name, Type type) {

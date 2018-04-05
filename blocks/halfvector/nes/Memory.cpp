@@ -92,6 +92,10 @@ Memory::writeByte(tCPU::word originalAddress, tCPU::byte value) {
             PrintMemory("* Writing to Stack (0x%04X)", (int) address);
         }
 
+        if (address >= 0x0200 && address <= 0x02FF) {
+            PrintDbg("Writing to Sprite Memory (0x%04X) = %0X", (int) address, value);
+        }
+
         // regular memory
         memory[address] = value;
         PrintMemory("Wrote 0x%02X to $%04X", (int) value, (int) address);

@@ -23,8 +23,6 @@ typedef std::chrono::high_resolution_clock clock_type;
 int main(int argc, char **argv) {
     Backtrace::install();
 
-    Loggy::Enabled = Loggy::INFO;
-
     CartridgeLoader loader;
     Cartridge rom = loader.loadCartridge("../roms/supermariobros.nes");
 
@@ -85,7 +83,7 @@ int main(int argc, char **argv) {
 
     auto start = std::chrono::high_resolution_clock::now();
 
-    for (int i = 0; i < 500000; i++) {
+    for (int i = 0; i < 2500000; i++) {
         // grab next instruction
         tCPU::byte opCode = memory->readByteDirectly(registers->PC);
 
@@ -113,7 +111,7 @@ int main(int argc, char **argv) {
 
     auto stop = clock_type::now();
     auto span = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count();
-    printf("Executed %d cycles; %.1f microseconds per op\n", (int) cpu->getCycleRuntime(), span / cpu->getCycleRuntime() / 1000.0);
+    printf("Executed %lld cycles in %1.f seconds; %.1f microseconds per op\n", cpu->getCycleRuntime(), span / 1e9, span / 1e3 / cpu->getCycleRuntime());
 
     delete gui;
 }

@@ -10,7 +10,7 @@ GUI::GUI(Raster *raster)
 
     window = SDL_CreateWindow("Nes Emulator",
                               SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-                              512, 512, 0);
+                              522, 564, 0);
 
     if (window == NULL) {
         PrintError("SDL_CreateWindow failed: %s\n", SDL_GetError());
@@ -65,17 +65,17 @@ GUI::render() {
 
     // copy textures into render surface
     auto patternRect = SDL_Rect{
-            256, 0, 256, 512
+            266, 0, 256, 512
     };
     SDL_RenderCopy(renderer, patternTexture, NULL, &patternRect);
 
     auto attributesRect = SDL_Rect{
-            0, 256, 256, 256
+            0, 266, 256, 256
     };
     SDL_RenderCopy(renderer, attributeTexture, NULL, &attributesRect);
 
     auto paletteRect = SDL_Rect{
-            0, 240, 256, 32
+            0, 532, 256, 32
     };
     SDL_RenderCopy(renderer, paletteTexture, NULL, &paletteRect);
 
