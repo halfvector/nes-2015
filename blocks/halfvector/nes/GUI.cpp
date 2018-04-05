@@ -83,10 +83,8 @@ GUI::render() {
     SDL_RenderPresent(renderer);
 
     // pump the event loop to ensure window visibility
-    SDL_Delay(10);
     SDL_Event e;
     while (SDL_PollEvent(&e)) {}
-    SDL_Delay(10);
 }
 
 GUI::~GUI() {

@@ -123,7 +123,7 @@ CPU::executeOpcode(int code) {
                     % (int) ctx->registers->S               // stack pointer
                     % (int) numCycles;
 
-    PrintCpu("%-45s %s", instruction, cpuState.str());
+    PrintCpu("%-45s %s", instruction.c_str(), cpuState.str().c_str());
 
     // update program counter
     registers->LastPC = registers->PC;

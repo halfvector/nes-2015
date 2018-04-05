@@ -108,7 +108,7 @@ tCPU::byte
 PPU::getStatusRegister() {
     tCPU::byte returnValue = statusRegister;
 
-    PrintPpu("PPU; Status register: %s", std::bitset<8>(statusRegister).to_string());
+    PrintPpu("PPU; Status register: %s", std::bitset<8>(statusRegister).to_string().c_str());
     PrintPpu("PPU; -> Scanline: %d, HBlank: %d, Pixel: %d", currentScanline, inHBlank, scanlinePixel);
 
     // reset vblank on register read
@@ -657,7 +657,7 @@ PPU::GetEffectiveAddress(tCPU::word address) {
 
 
     if (address >= 0x3F00 && address <= 0x3F1F) {
-        PrintInfo("address $%04X is a BG/Sprite Palette!", address);
+        PrintDbg("address $%04X is a BG/Sprite Palette!", address);
     }
 
     if (address >= 0x4000 && address < 0x10000) {
@@ -681,7 +681,7 @@ PPU::WriteInternalMemoryByte(tCPU::word Address, tCPU::byte Value) {
     tCPU::word EffectiveAddress = GetEffectiveAddress(Address);
     PPU_RAM[EffectiveAddress] = Value;
     if (EffectiveAddress >= 0x3f00 && EffectiveAddress < 0x4000) {
-        PrintInfo("Wrote 0x%02X to PPU RAM @ 0x%04X (0x%04X)", (int) Value, (int) EffectiveAddress, Address);
+        PrintDbg("Wrote 0x%02X to PPU RAM @ 0x%04X (0x%04X)", (int) Value, (int) EffectiveAddress, Address);
     }
     return true;
 }

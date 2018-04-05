@@ -749,11 +749,9 @@ DEFINE_OPCODE(JMP) {
 // return from subroutine
 DEFINE_OPCODE(RTS) {
     // pop return address from stack and increment by 1
-    tCPU::word address = ctx->stack->popStackWord() + 1;
+    tCPU::word address = ctx->stack->popStackWord() + 1_us;
     ctx->registers->PC = address;
     PrintDbg("Restored old PC from stack: $%04X", address);
-
-
 }
 
 // return from interrupt

@@ -4,67 +4,35 @@
 #include <boost/filesystem.hpp>
 #include <spdlog/logger.h>
 #include <iostream>
-//#include "halfvector/easylogging/easylogging++.h"
-
-//extern el::Logger *logger;
-//extern auto console = nullptr;
-extern std::shared_ptr<spdlog::logger> console;
-
-//std::string simplifyFunctionName(std::string prettyFunction);
-void simplifyFunctionName(const char *name, char *shorter, size_t maxLength);
-
-//#define __METHOD_NAME__ simplifyFunctionName(__PRETTY_FUNCTION__)
-
-
-//void printf(BasicWriter<Char> &w, BasicCStringRef<Char> format, ArgList args)
-//{
-//    internal::PrintfFormatter<Char>(args).format(w, format);
-//}
 
 struct Loggy {
     enum Type {
         DEBUG = 0x1, INFO = 0x2, WARNING = 0x4, ERROR = 0x8
     };
-    char buffer[128];
+    char methodName[128];
     Type type;
 
     static Type Enabled;
 
-    static Loggy log(const char *name, Type type) {
-        Loggy x{};
-        x.setCaller(name);
-        x.type = type;
-        return x;
-    }
+    static Loggy log(const char *name, Type type);
 
-    void setCaller(const char *name) {
-        simplifyFunctionName(name, buffer, 128);
-    }
+    void simplifyFunctionName(const char *name, char *shorter, size_t maxLength);
 
-    template<typename... Args>
-    void println(const char *fmt, const Args &... args) {
-        if (Enabled > type) {
-            return;
-        }
-
-        printf("%60s", buffer);
-        fmt::printf(fmt, args...);
-        fputs("\n", stdout);
-    }
+    void println(const char *fmt, ...);
 };
 
 // universal
-#define PrintDbg                Loggy::log(__PRETTY_FUNCTION__, Loggy::DEBUG).println
-#define PrintInfo               Loggy::log(__PRETTY_FUNCTION__, Loggy::INFO).println
-#define PrintWarning            Loggy::log(__PRETTY_FUNCTION__, Loggy::WARNING).println
-#define PrintError              Loggy::log(__PRETTY_FUNCTION__, Loggy::ERROR).println
+#define Logging                false
 
-// component specific
-#define PrintCpu                Loggy::log(__PRETTY_FUNCTION__, Loggy::DEBUG).println
-#define PrintMemory             Loggy::log(__PRETTY_FUNCTION__, Loggy::DEBUG).println
-#define PrintMemoryIO           Loggy::log(__PRETTY_FUNCTION__, Loggy::DEBUG).println
-#define PrintPpu                Loggy::log(__PRETTY_FUNCTION__, Loggy::DEBUG).println
-#define PrintUnimplementedIO    Loggy::log(__PRETTY_FUNCTION__, Loggy::DEBUG).println
+#define PrintDbg               if(Logging) Loggy::log(__PRETTY_FUNCTION__, Loggy::DEBUG).println
+#define PrintInfo              if(Logging) Loggy::log(__PRETTY_FUNCTION__, Loggy::INFO).println
+#define PrintWarning           if(Logging) Loggy::log(__PRETTY_FUNCTION__, Loggy::WARNING).println
+#define PrintError             if(Logging) Loggy::log(__PRETTY_FUNCTION__, Loggy::ERROR).println
+#define PrintCpu               if(Logging) Loggy::log(__PRETTY_FUNCTION__, Loggy::DEBUG).println
+#define PrintMemory            if(Logging) Loggy::log(__PRETTY_FUNCTION__, Loggy::DEBUG).println
+#define PrintMemoryIO          if(Logging) Loggy::log(__PRETTY_FUNCTION__, Loggy::DEBUG).println
+#define PrintPpu               if(Logging) Loggy::log(__PRETTY_FUNCTION__, Loggy::DEBUG).println
+#define PrintUnimplementedIO   if(Logging) Loggy::log(__PRETTY_FUNCTION__, Loggy::DEBUG).println
 
 
 static std::string boostFormatWrapper(boost::format &f) {
