@@ -6,6 +6,7 @@
 #include "Backtrace.h"
 #include "MemoryStack.h"
 #include "GUI.h"
+#include "Joypad.h"
 
 #include <iostream>
 #include <typeinfo>
@@ -35,18 +36,19 @@ int main(int argc, char **argv) {
     // ppu
     auto ppu = new PPU(raster);
     ppu->loadRom(rom);
+    // controllers
+    auto joypad = new Joypad();
     // i/o port mapper
-    auto mmio = new MemoryIO(ppu);
+    auto mmio = new MemoryIO(ppu, joypad);
     // cpu memory
     auto memory = new Memory(mmio);
+    mmio->setMemory(memory);
     // cpu registers
     auto registers = new Registers();
     // cpu stack
     auto stack = new Stack(memory, registers);
     // rendering
     auto gui = new GUI(raster);
-
-    mmio->setMemory(memory);
 
     // cpu
     auto cpu = new CPU(registers, memory, stack);
@@ -83,17 +85,13 @@ int main(int argc, char **argv) {
 
     auto start = std::chrono::high_resolution_clock::now();
 
-    for (int i = 0; i < 2500000; i++) {
+    bool alive = true;
+    while (alive) {
         // grab next instruction
         tCPU::byte opCode = memory->readByteDirectly(registers->PC);
 
         // step cpu
         int cpuCycles = cpu->executeOpcode(opCode);
-
-//        if(registers->PC == 0x8181) {
-//            stack->dump();
-//            break;
-//        }
 
         // step ppu in sync with cpu
         ppu->execute(cpuCycles * 3);
@@ -106,12 +104,53 @@ int main(int argc, char **argv) {
         if (ppu->enteredVBlank()) {
             ppu->renderDebug();
             gui->render();
+
+            // pump the event loop to ensure window visibility
+            SDL_Event e;
+            while (SDL_PollEvent(&e)) {
+                switch (e.type) {
+                    case SDL_KEYDOWN: {
+                        switch (e.key.keysym.sym) {
+                            case SDLK_SPACE:
+                                joypad->buttonDown(JoypadButtons::Select);
+                                break;
+                            case SDLK_RETURN:
+                                joypad->buttonDown(JoypadButtons::Start);
+                                break;
+                            case SDLK_RIGHT:
+                                joypad->buttonDown(JoypadButtons::Right);
+                                break;
+                            case SDLK_LEFT:
+                                joypad->buttonDown(JoypadButtons::Left);
+                                break;
+                            case SDLK_UP:
+                                joypad->buttonDown(JoypadButtons::Up);
+                                break;
+                            case SDLK_DOWN:
+                                joypad->buttonDown(JoypadButtons::Down);
+                                break;
+                            case SDLK_a:
+                                joypad->buttonDown(JoypadButtons::A);
+                                break;
+                            case SDLK_b:
+                                joypad->buttonDown(JoypadButtons::B);
+                                break;
+                            case SDLK_q:
+                                alive = false;
+                                break;
+                        }
+                    } break;
+                }
+            }
         }
     }
 
     auto stop = clock_type::now();
     auto span = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count();
-    printf("Executed %lld cycles in %1.f seconds; %.1f microseconds per op\n", cpu->getCycleRuntime(), span / 1e9, span / 1e3 / cpu->getCycleRuntime());
+    auto freq = cpu->getCycleRuntime() / (span / 1e3);
+    printf("Executed %lld cycles in %1.f seconds; %.1f microseconds per op; %.3f mhz (real 1.789 mhz)\n",
+           cpu->getCycleRuntime(), span / 1e9,
+           span / 1e3 / cpu->getCycleRuntime(), freq);
 
     delete gui;
 }

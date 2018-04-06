@@ -83,6 +83,7 @@ add_executable(nes
         PPU.h
         RegisterOperation.cpp
         RegisterOperation.h
-        Registers.h)
+        Registers.h
+        Joypad.cpp Joypad.h)
 
 target_link_libraries(nes SDL2::SDL2main SDL2::SDL2 Boost::system Boost::filesystem spdlog::spdlog)

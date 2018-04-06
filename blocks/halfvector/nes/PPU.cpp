@@ -914,7 +914,7 @@ void PPU::renderDebug() {
         int offsetY = y * 256 * 4;
         int offsetX = x * 4;
 
-        if (y >= 239) {
+        if (y >= 239 || y < 0) {
             continue;
         }
 

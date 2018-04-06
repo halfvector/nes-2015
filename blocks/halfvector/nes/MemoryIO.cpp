@@ -1,10 +1,11 @@
 #include "MemoryIO.h"
 #include "Exceptions.h"
+#include "Joypad.h"
 #include <functional>
 
 template<>
 struct MemoryIOHandler<0x2002> {
-    static tCPU::byte read(PPU* ppu) {
+    static tCPU::byte read(PPU *ppu) {
         tCPU::byte value = ppu->getStatusRegister();
         PrintMemoryIO("Reading port 0x%04X; status register = 0x%02X", 0x2002, (int) value);
         return value;
@@ -13,12 +14,13 @@ struct MemoryIOHandler<0x2002> {
 
 template<>
 struct MemoryIOHandler<0x2000> {
-    static tCPU::byte read(PPU* ppu) {
+    static tCPU::byte read(PPU *ppu) {
         tCPU::byte value = ppu->getControlRegister1();
         PrintMemoryIO("Reading port 0x%04X; status register = 0x%02X", 0x2000, (int) value);
         return value;
     }
-    static void write(PPU* ppu, tCPU::byte value) {
+
+    static void write(PPU *ppu, tCPU::byte value) {
         PrintMemoryIO("Writing 0x%02X to port $2000 - PPU Control Register 1", (int) value);
         ppu->setControlRegister1(value);
     }
@@ -26,7 +28,7 @@ struct MemoryIOHandler<0x2000> {
 
 template<>
 struct MemoryIOHandler<0x2001> {
-    static void write(PPU* ppu, tCPU::byte value) {
+    static void write(PPU *ppu, tCPU::byte value) {
         PrintMemoryIO("Writing 0x%02X to port $2001 - PPU Control Register 2", (int) value);
         ppu->setControlRegister2(value);
     }
@@ -34,7 +36,7 @@ struct MemoryIOHandler<0x2001> {
 
 template<>
 struct MemoryIOHandler<0x2003> {
-    static void write(PPU* ppu, tCPU::byte value) {
+    static void write(PPU *ppu, tCPU::byte value) {
         PrintMemoryIO("Writing 0x%02X to port $2003 - Sprite RAM Address", (int) value);
         ppu->setSprRamAddress(value);
     }
@@ -42,12 +44,13 @@ struct MemoryIOHandler<0x2003> {
 
 template<>
 struct MemoryIOHandler<0x2004> {
-    static tCPU::byte read(PPU* ppu) {
+    static tCPU::byte read(PPU *ppu) {
         tCPU::byte value = ppu->readSpriteMemory();
         PrintMemoryIO("Read 0x%02X from port $2004 - Sprite RAM I/O Register", (int) value);
         return value;
     }
-    static void write(PPU* ppu, tCPU::byte value) {
+
+    static void write(PPU *ppu, tCPU::byte value) {
         PrintInfo("Write 0x%02X to port $2004 - Sprite RAM I/O Register", (int) value);
         ppu->writeSpriteMemory(value);
     }
@@ -55,12 +58,13 @@ struct MemoryIOHandler<0x2004> {
 
 template<>
 struct MemoryIOHandler<0x2005> {
-    static tCPU::byte read(PPU* ppu) {
+    static tCPU::byte read(PPU *ppu) {
         tCPU::byte value = ppu->readSpriteMemory();
         PrintMemoryIO("Read 0x%02X from port $2005 - Sprite RAM I/O Register", (int) value);
         return value;
     }
-    static void write(PPU* ppu, tCPU::byte value) {
+
+    static void write(PPU *ppu, tCPU::byte value) {
         PrintMemoryIO("Writing 0x%02X to port $2005 - VRAM Address Register 2", (int) value);
         ppu->setVRamAddressRegister1(value);
     }
@@ -68,7 +72,7 @@ struct MemoryIOHandler<0x2005> {
 
 template<>
 struct MemoryIOHandler<0x2006> {
-    static void write(PPU* ppu, tCPU::byte value) {
+    static void write(PPU *ppu, tCPU::byte value) {
         PrintMemoryIO("Writing 0x%02X to port $2006 - VRAM Address Register 2", (int) value);
         ppu->setVRamAddressRegister2(value);
     }
@@ -76,12 +80,13 @@ struct MemoryIOHandler<0x2006> {
 
 template<>
 struct MemoryIOHandler<0x2007> {
-    static tCPU::byte read(PPU* ppu) {
+    static tCPU::byte read(PPU *ppu) {
         tCPU::byte value = ppu->readFromVRam();
         PrintMemoryIO("Read 0x%02X from port $2007 - VRAM I/O Register", (int) value);
         return value;
     }
-    static void write(PPU* ppu, tCPU::byte value) {
+
+    static void write(PPU *ppu, tCPU::byte value) {
         PrintMemoryIO("Writing 0x%02X to port $2007 - VRAM I/O Register", (int) value);
         ppu->writeToVRam(value);
     }
@@ -89,13 +94,27 @@ struct MemoryIOHandler<0x2007> {
 
 template<>
 struct MemoryIOHandler<0x4014> {
-    static void write(PPU* ppu, Memory* memory, tCPU::byte value) {
+    static void write(PPU *ppu, Memory *memory, tCPU::byte value) {
         PrintDbg("Writing 0x%02X to port $2006 - VRAM Sprite DMA Xfer", (int) value);
         ppu->StartSpriteXferDMA(memory, value);
     }
 };
 
-MemoryIO::MemoryIO(PPU* ppu) : ppu(ppu) {
+template<>
+struct MemoryIOHandler<0x4016> {
+    static tCPU::byte read(Joypad *joypad) {
+        tCPU::byte value = joypad->getStatePlayerOne();
+//        PrintInfo("Read 0x%02X from port 4016 - Joypad 1 status", (int) value);
+        return value;
+    }
+
+    static void write(Joypad *joypad, tCPU::byte value) {
+//        PrintInfo("Writing 0x%02X to port 4016 - Configuring Joypad", (int) value);
+    }
+};
+
+MemoryIO::MemoryIO(PPU *ppu, Joypad *joypad)
+        : ppu(ppu), joypad(joypad) {
 }
 
 class MemoryIOPortException : public ExceptionBase<MemoryIOPortException> {
@@ -106,7 +125,7 @@ public:
 
 bool
 MemoryIO::write(tCPU::word address, tCPU::byte value) {
-    switch(address) {
+    switch (address) {
         case 0x2000:
             MemoryIOHandler<0x2000>::write(ppu, value);
             break;
@@ -144,11 +163,13 @@ MemoryIO::write(tCPU::word address, tCPU::byte value) {
             break;
 
         case 0x4015:
-            PrintUnimplementedIO("Skipping Unimplemented I/O Port: APU $4015 - APU Sound / Vertical Clock Signal Register");
+            PrintUnimplementedIO(
+                        "Skipping Unimplemented I/O Port: APU $4015 - APU Sound / Vertical Clock Signal Register");
             break;
 
         case 0x4016:
-            PrintUnimplementedIO("Skipping Unimplemented I/O Port: $4016 - Joypad 1");
+//            PrintUnimplementedIO("Skipping Unimplemented I/O Port: $4016 - Joypad 1");
+            MemoryIOHandler<0x4016>::write(joypad, value);
             break;
 
         case 0x4017:
@@ -164,10 +185,10 @@ MemoryIO::write(tCPU::word address, tCPU::byte value) {
 
 tCPU::byte
 MemoryIO::read(tCPU::word address) {
-    switch(address) {
+    switch (address) {
         case 0x2000:
             return MemoryIOHandler<0x2000>::read(ppu);
-            
+
         case 0x2002:
             return MemoryIOHandler<0x2002>::read(ppu);
 
@@ -178,8 +199,7 @@ MemoryIO::read(tCPU::word address) {
             return MemoryIOHandler<0x2007>::read(ppu);
 
         case 0x4016:
-            PrintUnimplementedIO("Skipping Unimplemented I/O Port: PPU $4016 - Joypad 1");
-            break;
+            return MemoryIOHandler<0x4016>::read(joypad);
 
         case 0x4017:
             PrintUnimplementedIO("Skipping Unimplemented I/O Port: PPU $4017 - Joypad 2");

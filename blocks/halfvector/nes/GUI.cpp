@@ -81,10 +81,6 @@ GUI::render() {
 
     // present surface
     SDL_RenderPresent(renderer);
-
-    // pump the event loop to ensure window visibility
-    SDL_Event e;
-    while (SDL_PollEvent(&e)) {}
 }
 
 GUI::~GUI() {

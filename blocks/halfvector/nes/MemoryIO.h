@@ -4,6 +4,7 @@
 #include "Logging.h"
 #include "Platform.h"
 #include "PPU.h"
+#include "Joypad.h"
 
 template<tCPU::word Address>
 struct MemoryIOHandler {
@@ -23,7 +24,7 @@ struct MemoryIOHandler {
 * each memory address will have an appropriate read/write handler
 */
 struct MemoryIO {
-    MemoryIO(PPU* ppu);
+    MemoryIO(PPU *ppu, Joypad *joypad);
 
     bool write(tCPU::word address, tCPU::byte value);
 
@@ -33,4 +34,5 @@ struct MemoryIO {
 protected:
     PPU* ppu;
     Memory* memory;
+    Joypad* joypad;
 };
