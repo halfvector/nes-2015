@@ -32,7 +32,8 @@ struct Loggy {
 #define PrintMemory            if(Logging) Loggy::log(__PRETTY_FUNCTION__, Loggy::DEBUG).println
 #define PrintMemoryIO          if(Logging) Loggy::log(__PRETTY_FUNCTION__, Loggy::DEBUG).println
 #define PrintPpu               if(Logging) Loggy::log(__PRETTY_FUNCTION__, Loggy::DEBUG).println
-#define PrintUnimplementedIO   if(Logging) Loggy::log(__PRETTY_FUNCTION__, Loggy::DEBUG).println
+#define PrintApu               if(Logging) Loggy::log(__PRETTY_FUNCTION__, Loggy::DEBUG).println
+#define PrintUnimplementedIO   if(Logging) Loggy::log(__PRETTY_FUNCTION__, Loggy::INFO).println
 
 
 static std::string boostFormatWrapper(boost::format &f) {

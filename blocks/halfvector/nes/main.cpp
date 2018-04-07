@@ -7,6 +7,7 @@
 #include "MemoryStack.h"
 #include "GUI.h"
 #include "Joypad.h"
+#include "Audio.h"
 
 #include <iostream>
 #include <typeinfo>
@@ -26,6 +27,7 @@ int main(int argc, char **argv) {
 
     CartridgeLoader loader;
     Cartridge rom = loader.loadCartridge("../roms/supermariobros.nes");
+//    Cartridge rom = loader.loadCartridge("../roms/apu_mixer/square.nes");
 
     auto onVblankNmiSet = []() {
 
@@ -36,10 +38,12 @@ int main(int argc, char **argv) {
     // ppu
     auto ppu = new PPU(raster);
     ppu->loadRom(rom);
+    // apu
+    auto audio = new Audio();
     // controllers
     auto joypad = new Joypad();
     // i/o port mapper
-    auto mmio = new MemoryIO(ppu, joypad);
+    auto mmio = new MemoryIO(ppu, joypad, audio);
     // cpu memory
     auto memory = new Memory(mmio);
     mmio->setMemory(memory);
@@ -153,5 +157,7 @@ int main(int argc, char **argv) {
            span / 1e3 / cpu->getCycleRuntime(), freq);
 
     delete gui;
+
+    audio->close();
 }
 

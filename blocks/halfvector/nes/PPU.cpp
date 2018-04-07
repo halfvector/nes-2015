@@ -749,7 +749,7 @@ PPU::writeSpriteMemory(tCPU::byte value) {
     if (spriteRamAddress >= 256) {
         PrintError("spriteRamAddress is out of range; Expected < 256, Actual = %d", (int) spriteRamAddress);
     } else {
-        PrintInfo("Write byte $%02X to Sprite RAM @ $%02X", (int) value, (int) spriteRamAddress);
+        PrintDbg("Write byte $%02X to Sprite RAM @ $%02X", (int) value, (int) spriteRamAddress);
         SPR_RAM[spriteRamAddress] = value;
     }
 

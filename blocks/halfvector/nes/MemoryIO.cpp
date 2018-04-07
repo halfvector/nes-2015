@@ -51,7 +51,7 @@ struct MemoryIOHandler<0x2004> {
     }
 
     static void write(PPU *ppu, tCPU::byte value) {
-        PrintInfo("Write 0x%02X to port $2004 - Sprite RAM I/O Register", (int) value);
+        PrintMemoryIO("Write 0x%02X to port $2004 - Sprite RAM I/O Register", (int) value);
         ppu->writeSpriteMemory(value);
     }
 };
@@ -92,10 +92,99 @@ struct MemoryIOHandler<0x2007> {
     }
 };
 
+// Audio - Square 1
+
+template<>
+struct MemoryIOHandler<0x4000> {
+    static void write(Audio *apu, tCPU::byte value) {
+        PrintDbg("Writing 0x%02X to port $4000 - APU - Square 1 - Envelope Generator (Tone and Volume)", (int) value);
+        apu->setSquare1Envelope(value);
+    }
+};
+
+template<>
+struct MemoryIOHandler<0x4001> {
+    static void write(Audio *apu, tCPU::byte value) {
+        PrintDbg("Writing 0x%02X to port $4001 - APU - Square 1 - Sweep", (int) value);
+        apu->setSquare1Sweep(value);
+    }
+};
+
+template<>
+struct MemoryIOHandler<0x4002> {
+    static void write(Audio *apu, tCPU::byte value) {
+        PrintInfo("Writing 0x%02X to port $4002 - APU - Square 1 - Period (low bits)", (int) value);
+        apu->setSquare1NoteLow(value);
+    }
+};
+
+template<>
+struct MemoryIOHandler<0x4003> {
+    static void write(Audio *apu, tCPU::byte value) {
+        PrintInfo("Writing 0x%02X to port $4003 - APU - Square 1 - Duration and Period (high bits)", (int) value);
+        apu->setSquare1NoteHigh(value);
+    }
+};
+
+// Audio - Square 2
+
+template<>
+struct MemoryIOHandler<0x4004> {
+    static void write(Audio *apu, tCPU::byte value) {
+        PrintDbg("Writing 0x%02X to port $4004 - APU - Square 2 - Envelope Generator (Tone and Volume)", (int) value);
+        apu->setSquare2Envelope(value);
+    }
+};
+
+template<>
+struct MemoryIOHandler<0x4005> {
+    static void write(Audio *apu, tCPU::byte value) {
+        PrintDbg("Writing 0x%02X to port $4005 - APU - Square 2 - Sweep", (int) value);
+        apu->setSquare2Sweep(value);
+    }
+};
+
+template<>
+struct MemoryIOHandler<0x4006> {
+    static void write(Audio *apu, tCPU::byte value) {
+        PrintInfo("Writing 0x%02X to port $4006 - APU - Square 2 - Period (low bits)", (int) value);
+        apu->setSquare2NoteLow(value);
+    }
+};
+
+template<>
+struct MemoryIOHandler<0x4007> {
+    static void write(Audio *apu, tCPU::byte value) {
+        PrintInfo("Writing 0x%02X to port $4007 - APU - Square 2 - Duration and Period (high bits)", (int) value);
+        apu->setSquare2NoteHigh(value);
+    }
+};
+
+template<>
+struct MemoryIOHandler<0x4011> {
+    static void write(Audio *apu, tCPU::byte value) {
+        PrintApu("Writing 0x%02X to port $4011 - APU - DMC - Direct write to DAC", (int) value);
+        apu->writeDAC(value);
+    }
+};
+
+template<>
+struct MemoryIOHandler<0x4015> {
+    static tCPU::byte read(Audio *apu) {
+        tCPU::byte value = apu->getChannelStatus();
+        PrintApu("Read 0x%02X from port $4015 - APU - Channel Control", (int) value);
+        return value;
+    }
+    static void write(Audio *apu, tCPU::byte value) {
+        PrintApu("Writing 0x%02X to port $4015 - APU - Channel Control", (int) value);
+        apu->setChannelStatus(value);
+    }
+};
+
 template<>
 struct MemoryIOHandler<0x4014> {
     static void write(PPU *ppu, Memory *memory, tCPU::byte value) {
-        PrintDbg("Writing 0x%02X to port $2006 - VRAM Sprite DMA Xfer", (int) value);
+        PrintApu("Writing 0x%02X to port $2006 - VRAM Sprite DMA Xfer", (int) value);
         ppu->StartSpriteXferDMA(memory, value);
     }
 };
@@ -113,8 +202,8 @@ struct MemoryIOHandler<0x4016> {
     }
 };
 
-MemoryIO::MemoryIO(PPU *ppu, Joypad *joypad)
-        : ppu(ppu), joypad(joypad) {
+MemoryIO::MemoryIO(PPU *ppu, Joypad *joypad, Audio* apu)
+        : ppu(ppu), joypad(joypad), apu(apu) {
 }
 
 class MemoryIOPortException : public ExceptionBase<MemoryIOPortException> {
@@ -154,8 +243,47 @@ MemoryIO::write(tCPU::word address, tCPU::byte value) {
             MemoryIOHandler<0x2007>::write(ppu, value);
             break;
 
-        case 0x4000 ... 0x4013:
-            PrintUnimplementedIO("Skipping Unimplemented I/O Port: APU $40XX - APU");
+        // Audio - square waveform channel 1
+        case 0x4000:
+            MemoryIOHandler<0x4000>::write(apu, value);
+            break;
+
+        case 0x4001:
+            MemoryIOHandler<0x4001>::write(apu, value);
+            break;
+
+        case 0x4002:
+            MemoryIOHandler<0x4002>::write(apu, value);
+            break;
+
+        case 0x4003:
+            MemoryIOHandler<0x4003>::write(apu, value);
+            break;
+
+        // Audio - square waveform channel 2
+        case 0x4004:
+            MemoryIOHandler<0x4004>::write(apu, value);
+            break;
+
+        case 0x4005:
+            MemoryIOHandler<0x4005>::write(apu, value);
+            break;
+
+        case 0x4006:
+            MemoryIOHandler<0x4006>::write(apu, value);
+            break;
+
+        case 0x4007:
+            MemoryIOHandler<0x4007>::write(apu, value);
+            break;
+
+        case 0x4011:
+            MemoryIOHandler<0x4011>::write(apu, value);
+            break;
+
+        case 0x4008 ... 0x4010:
+        case 0x4012 ... 0x4013:
+//            PrintUnimplementedIO("Skipping Unimplemented I/O Port: APU $%04X - APU", address);
             break;
 
         case 0x4014:
@@ -163,8 +291,7 @@ MemoryIO::write(tCPU::word address, tCPU::byte value) {
             break;
 
         case 0x4015:
-            PrintUnimplementedIO(
-                        "Skipping Unimplemented I/O Port: APU $4015 - APU Sound / Vertical Clock Signal Register");
+            MemoryIOHandler<0x4015>::write(apu, value);
             break;
 
         case 0x4016:
@@ -173,7 +300,7 @@ MemoryIO::write(tCPU::word address, tCPU::byte value) {
             break;
 
         case 0x4017:
-            PrintUnimplementedIO("Skipping Unimplemented I/O Port: $4017 - Joypad 2");
+//            PrintUnimplementedIO("Skipping Unimplemented I/O Port: $4017 - Joypad 2");
             break;
 
         default:
@@ -198,11 +325,14 @@ MemoryIO::read(tCPU::word address) {
         case 0x2007:
             return MemoryIOHandler<0x2007>::read(ppu);
 
+        case 0x4015:
+            return MemoryIOHandler<0x4015>::read(apu);
+
         case 0x4016:
             return MemoryIOHandler<0x4016>::read(joypad);
 
         case 0x4017:
-            PrintUnimplementedIO("Skipping Unimplemented I/O Port: PPU $4017 - Joypad 2");
+//            PrintUnimplementedIO("Skipping Unimplemented I/O Port: $4017 - Joypad 2");
             break;
 
         default:
