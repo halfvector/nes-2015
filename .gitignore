@@ -8,4 +8,4 @@ roms
 lib
 .DS_Store
 cmake-build-debug
-nes
+blocks/**/nes/nes
