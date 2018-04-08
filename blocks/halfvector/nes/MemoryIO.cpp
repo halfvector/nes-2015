@@ -283,7 +283,7 @@ MemoryIO::write(tCPU::word address, tCPU::byte value) {
 
         case 0x4008 ... 0x4010:
         case 0x4012 ... 0x4013:
-//            PrintUnimplementedIO("Skipping Unimplemented I/O Port: APU $%04X - APU", address);
+            PrintUnimplementedIO("Skipping Unimplemented I/O Port: APU $%04X - APU", address);
             break;
 
         case 0x4014:
