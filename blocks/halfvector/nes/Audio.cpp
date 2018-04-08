@@ -1,7 +1,6 @@
 
 #include "Audio.h"
 #include "Logging.h"
-#include "Registers.h"
 
 /**
  * References:
@@ -11,55 +10,32 @@
  * https://nesdoug.com/2015/12/02/14-intro-to-sound/
  * http://nintendoage.com/forum/messageview.cfm?catid=22&threadid=22484
  * https://wiki.nesdev.com/w/index.php/Nerdy_Nights_sound
+ * https://wiki.nesdev.com/w/index.php/APU_Pulse
+ * https://wiki.nesdev.com/w/index.php/APU_Frame_Counter
  */
 
-/* These are in charge of maintaining our sine function */
-float sinPos;
-float sinStep;
-
-/* These are the audio card settings */
-#define FREQ 44100
-#define SAMPLES 1024
-
-/* This is basically an arbitrary number */
-#define VOLUME 127.0
-
-void init() {
-//    square_table [n] = 95.52 / (8128.0 / n + 100)
-
-}
-
-static bool DutyCycle[4][8] = {
-        { 1, 0, 0, 0, 0, 0, 0, 0 }, // 0, 12.5%
-        { 1, 1, 0, 0, 0, 0, 0, 0 }, // 1, 25%
-        { 1, 1, 1, 1, 0, 0, 0, 0 }, // 2, 50%
-        { 1, 1, 1, 1, 1, 1, 0, 0 }  // 3. 75%
+static bool dutyCycleSequence[4][8] = {
+        {1, 0, 0, 0, 0, 0, 0, 0}, // 0, 12.5%
+        {1, 1, 0, 0, 0, 0, 0, 0}, // 1, 25%
+        {1, 1, 1, 1, 0, 0, 0, 0}, // 2, 50%
+        {1, 1, 1, 1, 1, 1, 0, 0}  // 3. 75%
 };
 
 const double cpuFrequency = 1789773;
 
-/**
- * Duty cycle generator
- * 0 = 1/8 on
- * 1 = 2/8 on
- * 2 = 4/8 on
- * 3 = 6/8 on
- */
 void
 Audio::populate(Uint8 *stream, int len) {
     for (int i = 0; i < len; i++) {
-//        f = CPU / (16 * (t + 1))
-//        t = (CPU / (16 * f)) - 1
         int total = 0;
         int step = square1.phase / 8192;
-        int value = DutyCycle[square1.dutyCycle][step] ? 2 * square1.volume : 0;
-        square1.phase += cpuFrequency / (16 * (square1.note+1));
+        int value = dutyCycleSequence[square1.dutyCycle][step] ? 2 * square1.volume : 0;
+        square1.phase += cpuFrequency / (16 * (square1.note + 1));
         square1.phase %= 65536;
         total = value;
 
         step = square2.phase / 8192;
-        value = DutyCycle[square2.dutyCycle][step] ? 2 * square2.volume : 0;
-        square2.phase += cpuFrequency / (16 * (square2.note+1));
+        value = dutyCycleSequence[square2.dutyCycle][step] ? 2 * square2.volume : 0;
+        square2.phase += cpuFrequency / (16 * (square2.note + 1));
         square2.phase %= 65536;
         total += value;
 
@@ -68,34 +44,24 @@ Audio::populate(Uint8 *stream, int len) {
 }
 
 Audio::Audio() {
-    /* This will hold our data */
-    SDL_AudioSpec spec;
-    /* This will hold the requested frequency */
-    long reqFreq = 440;
-    /* This is the duration to hold the note for */
-    int duration = 1;
+    // open a single audio channel with unsigned 8-bit samples
+    // 44.1 khz and 1024 sample buffers
+    // callback is fired 43 times a second
+    SDL_AudioSpec spec = {
+            .freq = 44100,
+            .format = AUDIO_U8,
+            .samples = 1024,
+            .channels = 1,
 
-    /* Set up the requested settings */
-    spec.freq = FREQ;
-    spec.format = AUDIO_U8;
-    spec.channels = 1;
-    spec.samples = SAMPLES;
-    spec.callback = populateFuncPtr;
-    spec.userdata = this;
+            // functor
+            .callback = populateFuncPtr,
+            .userdata = this,
+    };
 
-    /* Open the audio channel */
     if (SDL_OpenAudio(&spec, NULL) < 0) {
-        /* FAIL! */
-        fprintf(stderr, "Failed to open audio: %s\n", SDL_GetError());
+        PrintError("Failed to open audio: %s", SDL_GetError());
         exit(1);
     }
-
-    /* Initialize the position of our sine wave */
-    sinPos = 0;
-    /* Calculate the step of our sin wave */
-    sinStep = 2 * M_PI * reqFreq / FREQ;
-
-//    SDL_PauseAudio(0);
 }
 
 void
@@ -120,7 +86,7 @@ Audio::setChannelStatus(tCPU::byte status) {
     PrintApu("Set channels: Square 1 = %d / Square 2 = %d / Triangle = %d / Noise = %d / DMC = %d",
              square1, square2, triangle, noise, dmc);
 
-    if(square1) {
+    if (square1) {
         SDL_PauseAudio(0);
     } else {
         SDL_PauseAudio(1);
@@ -156,8 +122,8 @@ Audio::setSquare1Envelope(tCPU::byte value) {
     this->square1.dutyCycle = (value & 0xc0) >> 6;
 
     PrintDbg("  volume = %d / saw-disabled = %d / length-disabled = %d / duty = %d",
-              this->square1.volume, this->square1.sawEnvelopeDisabled,
-              this->square1.lengthCounterDisabled, this->square1.dutyCycle);
+             this->square1.volume, this->square1.sawEnvelopeDisabled,
+             this->square1.lengthCounterDisabled, this->square1.dutyCycle);
 }
 
 void Audio::setSquare1NoteHigh(tCPU::byte value) {
@@ -175,13 +141,22 @@ void Audio::setSquare1NoteLow(tCPU::byte value) {
 }
 
 void Audio::setSquare1Sweep(tCPU::byte value) {
-    this->square1.sweep = value;
+    this->square1.sweep.enabled = value & (1 << 7);
+    this->square1.sweep.decrease = value & (1 << 3); // decrease or increase the wavelength
+    this->square1.sweep.shift = value & 0x7; // right shift amount
+    this->square1.sweep.period = (value >> 4) & 0x7; // update rate
 
-    bool enabled = value & (1 << 8);
-    bool increase = value & (1 << 3);
-    bool shift = value & 0x7;
+    tCPU::byte refreshRateFreq = 120 / (this->square1.sweep.period + 1);
 
-    PrintDbg("  sweep enabled = %d, increase = %d, shift = %d", enabled, increase, shift);
+    auto frequency = cpuFrequency / (16 * (this->square1.note + 1));
+
+    if (this->square1.sweep.enabled) {
+        PrintInfo("  sweep enabled = %d, decrease = %d, shift = %d, period = %d (%d hz)",
+                  this->square1.sweep.enabled, this->square1.sweep.decrease,
+                  this->square1.sweep.shift, this->square1.sweep.period,
+                  refreshRateFreq);
+        PrintInfo("  frequency = %d", frequency);
+    }
 }
 
 void
@@ -192,8 +167,8 @@ Audio::setSquare2Envelope(tCPU::byte value) {
     this->square2.dutyCycle = (value & 0xc0) >> 6;
 
     PrintDbg("  volume = %d / saw-disabled = %d / length-disabled = %d / duty = %d",
-              this->square2.volume, this->square2.sawEnvelopeDisabled,
-              this->square2.lengthCounterDisabled, this->square2.dutyCycle);
+             this->square2.volume, this->square2.sawEnvelopeDisabled,
+             this->square2.lengthCounterDisabled, this->square2.dutyCycle);
 }
 
 void Audio::setSquare2NoteHigh(tCPU::byte value) {
@@ -211,13 +186,58 @@ void Audio::setSquare2NoteLow(tCPU::byte value) {
 }
 
 void Audio::setSquare2Sweep(tCPU::byte value) {
-    this->square2.sweep = value;
+    this->square2.sweep.enabled = value & (1 << 8);
+    this->square2.sweep.decrease = value & (1 << 3); // decrease or increase the wavelength
+    this->square2.sweep.shift = value & 0x7; // right shift amount
+    this->square2.sweep.period = (value >> 4) & 0x7; // update rate
 
-    bool enabled = value & (1 << 8);
-    bool increase = value & (1 << 3);
-    bool shift = value & 0x7;
+    if (this->square2.sweep.enabled) {
+        PrintDbg("  sweep enabled = %d, increase = %d, shift = %d",
+                 this->square2.sweep.enabled, this->square2.sweep.decrease, this->square2.sweep.shift);
+    }
+}
 
-    PrintDbg("  sweep enabled = %d, increase = %d, shift = %d", enabled, increase, shift);
+void Audio::execute(int cycles) {
+    apuCycles += cycles;
+
+    if (apuCycles >= 14913) {
+        apuCycles = 0;
+
+        executeHalfFrame();
+    }
+}
+
+void Audio::configureFrameSequencer(tCPU::byte value) {
+    bool mode = value & (1 << 7);
+    bool clearInterrupt = value & (1 << 6);
+
+    PrintInfo("  frame rate mode = %d, clear interrupt = %d", mode, clearInterrupt);
+
+    if (mode) {
+        // 5-step sequence
+    } else {
+        // 4-step sequence
+    }
+}
+
+void Audio::executeHalfFrame() {
+    // execute sweep unit
+
+    if (this->square1.sweep.enabled) {
+        if (this->square1.sweep.shift > 0) {
+            PrintInfo("Applying note sweep, shift delta = %d", this->square1.note >> this->square1.sweep.shift);
+        }
+    }
+
+
+    if (this->square1.sweep.decrease) {
+//        this->square1.note -= this->square1.note >> this->square1.sweep.shift;
+    } else {
+//        this->square1.note += this->square1.note >> this->square1.sweep.shift;
+    }
+
+    // execute length counters
+
 }
 
 

@@ -105,7 +105,7 @@ struct MemoryIOHandler<0x4000> {
 template<>
 struct MemoryIOHandler<0x4001> {
     static void write(Audio *apu, tCPU::byte value) {
-        PrintDbg("Writing 0x%02X to port $4001 - APU - Square 1 - Sweep", (int) value);
+        PrintInfo("Writing 0x%02X to port $4001 - APU - Square 1 - Sweep", (int) value);
         apu->setSquare1Sweep(value);
     }
 };
@@ -113,7 +113,7 @@ struct MemoryIOHandler<0x4001> {
 template<>
 struct MemoryIOHandler<0x4002> {
     static void write(Audio *apu, tCPU::byte value) {
-        PrintInfo("Writing 0x%02X to port $4002 - APU - Square 1 - Period (low bits)", (int) value);
+        PrintDbg("Writing 0x%02X to port $4002 - APU - Square 1 - Period (low bits)", (int) value);
         apu->setSquare1NoteLow(value);
     }
 };
@@ -121,7 +121,7 @@ struct MemoryIOHandler<0x4002> {
 template<>
 struct MemoryIOHandler<0x4003> {
     static void write(Audio *apu, tCPU::byte value) {
-        PrintInfo("Writing 0x%02X to port $4003 - APU - Square 1 - Duration and Period (high bits)", (int) value);
+        PrintDbg("Writing 0x%02X to port $4003 - APU - Square 1 - Duration and Period (high bits)", (int) value);
         apu->setSquare1NoteHigh(value);
     }
 };
@@ -147,7 +147,7 @@ struct MemoryIOHandler<0x4005> {
 template<>
 struct MemoryIOHandler<0x4006> {
     static void write(Audio *apu, tCPU::byte value) {
-        PrintInfo("Writing 0x%02X to port $4006 - APU - Square 2 - Period (low bits)", (int) value);
+        PrintDbg("Writing 0x%02X to port $4006 - APU - Square 2 - Period (low bits)", (int) value);
         apu->setSquare2NoteLow(value);
     }
 };
@@ -155,7 +155,7 @@ struct MemoryIOHandler<0x4006> {
 template<>
 struct MemoryIOHandler<0x4007> {
     static void write(Audio *apu, tCPU::byte value) {
-        PrintInfo("Writing 0x%02X to port $4007 - APU - Square 2 - Duration and Period (high bits)", (int) value);
+        PrintDbg("Writing 0x%02X to port $4007 - APU - Square 2 - Duration and Period (high bits)", (int) value);
         apu->setSquare2NoteHigh(value);
     }
 };
@@ -175,6 +175,7 @@ struct MemoryIOHandler<0x4015> {
         PrintApu("Read 0x%02X from port $4015 - APU - Channel Control", (int) value);
         return value;
     }
+
     static void write(Audio *apu, tCPU::byte value) {
         PrintApu("Writing 0x%02X to port $4015 - APU - Channel Control", (int) value);
         apu->setChannelStatus(value);
@@ -202,7 +203,15 @@ struct MemoryIOHandler<0x4016> {
     }
 };
 
-MemoryIO::MemoryIO(PPU *ppu, Joypad *joypad, Audio* apu)
+template<>
+struct MemoryIOHandler<0x4017> {
+    static void write(Audio *apu, tCPU::byte value) {
+        PrintInfo("Writing 0x%02X to port 4017 - Configuring APU Frame Counter control", (int) value);
+        apu->configureFrameSequencer(value);
+    }
+};
+
+MemoryIO::MemoryIO(PPU *ppu, Joypad *joypad, Audio *apu)
         : ppu(ppu), joypad(joypad), apu(apu) {
 }
 
@@ -243,7 +252,7 @@ MemoryIO::write(tCPU::word address, tCPU::byte value) {
             MemoryIOHandler<0x2007>::write(ppu, value);
             break;
 
-        // Audio - square waveform channel 1
+            // Audio - square waveform channel 1
         case 0x4000:
             MemoryIOHandler<0x4000>::write(apu, value);
             break;
@@ -260,7 +269,7 @@ MemoryIO::write(tCPU::word address, tCPU::byte value) {
             MemoryIOHandler<0x4003>::write(apu, value);
             break;
 
-        // Audio - square waveform channel 2
+            // Audio - square waveform channel 2
         case 0x4004:
             MemoryIOHandler<0x4004>::write(apu, value);
             break;
@@ -300,7 +309,8 @@ MemoryIO::write(tCPU::word address, tCPU::byte value) {
             break;
 
         case 0x4017:
-//            PrintUnimplementedIO("Skipping Unimplemented I/O Port: $4017 - Joypad 2");
+            // when written, frame counter control
+            MemoryIOHandler<0x4017>::write(apu, value);
             break;
 
         default:

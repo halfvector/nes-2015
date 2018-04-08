@@ -4,6 +4,13 @@
 #include <SDL2/SDL_audio.h>
 #include "Platform.h"
 
+struct Sweep {
+    bool enabled;
+    bool decrease;
+    tCPU::byte shift;
+    tCPU::byte period;
+};
+
 struct SquareEnvelope {
     tCPU::byte volume;
     bool sawEnvelopeDisabled;
@@ -13,7 +20,8 @@ struct SquareEnvelope {
 
     tCPU::word note; // 11 bit note period
     tCPU::byte duration; // 3 bit duration
-    tCPU::byte sweep;
+
+    Sweep sweep;
 };
 
 class Audio {
@@ -26,6 +34,7 @@ public:
         static_cast<Audio*>(data)->populate(stream, len);
     }
 
+    void configureFrameSequencer(tCPU::byte value);
     void setChannelStatus(tCPU::byte status);
     tCPU::byte getChannelStatus();
 
@@ -40,11 +49,16 @@ public:
     void setSquare2NoteLow(tCPU::byte value);
     void setSquare2Sweep(tCPU::byte value);
 
+    void execute(int cycles);
+
 private:
     tCPU::byte channelStatus;
+    tCPU::word apuCycles;
 
     SquareEnvelope square1;
     SquareEnvelope square2;
+
+    void executeHalfFrame();
 };
 
 

@@ -100,6 +100,9 @@ int main(int argc, char **argv) {
         // step ppu in sync with cpu
         ppu->execute(cpuCycles * 3);
 
+        // step apu in sync with cpu
+        audio->execute(cpuCycles);
+
         // super mario brothers will spin in a `jmp $8057` loop until vblank
         if (ppu->pullNMI()) {
             doVblankNMI();
