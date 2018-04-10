@@ -12,6 +12,7 @@
  * https://wiki.nesdev.com/w/index.php/Nerdy_Nights_sound
  * https://wiki.nesdev.com/w/index.php/APU_Pulse
  * https://wiki.nesdev.com/w/index.php/APU_Frame_Counter
+ * http://web.textfiles.com/games/nessound.txt -- excellent envelope decay and sweep unit details
  */
 
 static bool dutyCycleSequence[4][8] = {
@@ -116,8 +117,11 @@ Audio::writeDAC(tCPU::byte value) {
 
 void
 Audio::setSquare1Envelope(tCPU::byte value) {
-    this->square1.volume = value & 0x0f;
-    this->square1.sawEnvelopeDisabled = value & (1 << 4);
+    this->square1.volume = value & 0x0f; // volume or envelope decay rate
+
+    // if bit is set (1): envelope decay is disabled and volume is sent directly to DAC
+    // else: volume is used as a decay rate (240Hz/(volume+1) to decrement volume
+    this->square1.sawEnvelopeDisabled = value & (1 << 4); // if true, envelope decay is enabled
     this->square1.lengthCounterDisabled = value & (1 << 5);
     this->square1.dutyCycle = (value & 0xc0) >> 6;
 
