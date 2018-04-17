@@ -27,6 +27,7 @@ int main(int argc, char **argv) {
 
     CartridgeLoader loader;
     Cartridge rom = loader.loadCartridge("../roms/supermariobros.nes");
+//    Cartridge rom = loader.loadCartridge("../roms/donkey_kong.nes");
 //    Cartridge rom = loader.loadCartridge("../roms/apu_mixer/square.nes");
 
     auto onVblankNmiSet = []() {
@@ -111,6 +112,7 @@ int main(int argc, char **argv) {
         if (ppu->enteredVBlank()) {
             ppu->renderDebug();
             gui->render();
+            ppu->clear();
 
             // pump the event loop to ensure window visibility
             SDL_Event e;

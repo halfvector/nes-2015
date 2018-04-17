@@ -135,13 +135,13 @@ void Audio::setSquare1NoteHigh(tCPU::byte value) {
     this->square1.note |= (value & 0x7) << 8; // OR upper 3 bits
     this->square1.duration = (value & 0xf8) >> 3; // upper 5 bits
 
-    PrintInfo("  note (w/ high bits) = %d / duration = %d", this->square1.note, this->square1.duration);
+    PrintApu("  note (w/ high bits) = %d / duration = %d", this->square1.note, this->square1.duration);
 }
 
 void Audio::setSquare1NoteLow(tCPU::byte value) {
     this->square1.note &= 0xff00; // clear lower 8 bits
     this->square1.note |= value; // OR lower 8 bits
-    PrintInfo("  note (low bits) = %d", this->square1.note);
+    PrintApu("  note (low bits) = %d", this->square1.note);
 }
 
 void Audio::setSquare1Sweep(tCPU::byte value) {
@@ -155,11 +155,11 @@ void Audio::setSquare1Sweep(tCPU::byte value) {
     auto frequency = cpuFrequency / (16 * (this->square1.note + 1));
 
     if (this->square1.sweep.enabled) {
-        PrintInfo("  sweep enabled = %d, decrease = %d, shift = %d, period = %d (%d hz)",
+        PrintApu("  sweep enabled = %d, decrease = %d, shift = %d, period = %d (%d hz)",
                   this->square1.sweep.enabled, this->square1.sweep.decrease,
                   this->square1.sweep.shift, this->square1.sweep.period,
                   refreshRateFreq);
-        PrintInfo("  frequency = %d", frequency);
+        PrintApu("  frequency = %d", frequency);
     }
 }
 
@@ -180,13 +180,13 @@ void Audio::setSquare2NoteHigh(tCPU::byte value) {
     this->square2.note |= (value & 0x7) << 8; // OR upper 3 bits
     this->square2.duration = (value & 0xf8) >> 3; // upper 5 bits
 
-    PrintInfo("  note (w/ high bits) = %d / duration = %d", this->square2.note, this->square2.duration);
+    PrintApu("  note (w/ high bits) = %d / duration = %d", this->square2.note, this->square2.duration);
 }
 
 void Audio::setSquare2NoteLow(tCPU::byte value) {
     this->square2.note &= 0xff00; // clear lower 8 bits
     this->square2.note |= value; // OR lower 8 bits
-    PrintInfo("  note (low bits) = %d", this->square2.note);
+    PrintApu("  note (low bits) = %d", this->square2.note);
 }
 
 void Audio::setSquare2Sweep(tCPU::byte value) {
@@ -215,7 +215,7 @@ void Audio::configureFrameSequencer(tCPU::byte value) {
     bool mode = value & (1 << 7);
     bool clearInterrupt = value & (1 << 6);
 
-    PrintInfo("  frame rate mode = %d, clear interrupt = %d", mode, clearInterrupt);
+    PrintApu("  frame rate mode = %d, clear interrupt = %d", mode, clearInterrupt);
 
     if (mode) {
         // 5-step sequence
@@ -229,7 +229,7 @@ void Audio::executeHalfFrame() {
 
     if (this->square1.sweep.enabled) {
         if (this->square1.sweep.shift > 0) {
-            PrintInfo("Applying note sweep, shift delta = %d", this->square1.note >> this->square1.sweep.shift);
+            PrintApu("Applying note sweep, shift delta = %d", this->square1.note >> this->square1.sweep.shift);
         }
     }
 

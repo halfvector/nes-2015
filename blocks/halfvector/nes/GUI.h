@@ -21,6 +21,9 @@ protected:
 
     // debug buffers
     SDL_Texture *patternTexture, *attributeTexture, *paletteTexture;
+    SDL_Texture *nametableTexture;
+    SDL_Texture *backgroundMaskTexture;
+    SDL_Texture *spriteMaskTexture;
 };
 
 

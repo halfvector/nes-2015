@@ -10,7 +10,7 @@ GUI::GUI(Raster *raster)
 
     window = SDL_CreateWindow("Nes Emulator",
                               SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-                              522, 564, 0);
+                              1320, 564, 0);
 
     if (window == NULL) {
         PrintError("SDL_CreateWindow failed: %s\n", SDL_GetError());
@@ -27,8 +27,16 @@ GUI::GUI(Raster *raster)
     patternTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 128, 256);
     attributeTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 256, 256);
     paletteTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 256, 32);
+    nametableTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 512, 512);
+    backgroundMaskTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGB332, SDL_TEXTUREACCESS_STREAMING, 256, 256);
+    spriteMaskTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGB332, SDL_TEXTUREACCESS_STREAMING, 256, 256);
 
     if (finalTexture == NULL) {
+        PrintError("SDL_CreateTexture failed: %s\n", SDL_GetError());
+        throw std::runtime_error("SDL_CreateTexture failed");
+    }
+
+    if (backgroundMaskTexture == NULL) {
         PrintError("SDL_CreateTexture failed: %s\n", SDL_GetError());
         throw std::runtime_error("SDL_CreateTexture failed");
     }
@@ -52,6 +60,18 @@ GUI::render() {
 
     if (SDL_UpdateTexture(paletteTexture, NULL, raster->palette, 256 * 4) < 0) {
         PrintError("SDL_UpdateTexture(palette) failed: %s\n", SDL_GetError());
+    }
+
+    if (SDL_UpdateTexture(nametableTexture, NULL, raster->nametables, 512 * 4) < 0) {
+        PrintError("SDL_UpdateTexture(nametableTexture) failed: %s\n", SDL_GetError());
+    }
+
+    if (SDL_UpdateTexture(backgroundMaskTexture, NULL, raster->backgroundMask, 256) < 0) {
+        PrintError("SDL_UpdateTexture(backgroundMaskTexture) failed: %s\n", SDL_GetError());
+    }
+
+    if (SDL_UpdateTexture(spriteMaskTexture, NULL, raster->spriteMask, 256) < 0) {
+        PrintError("SDL_UpdateTexture(spriteMaskTexture) failed: %s\n", SDL_GetError());
     }
 
     SDL_SetRenderDrawColor(renderer, 10, 10, 10, 255);
@@ -78,6 +98,21 @@ GUI::render() {
             0, 532, 256, 32
     };
     SDL_RenderCopy(renderer, paletteTexture, NULL, &paletteRect);
+
+    auto nametableRect = SDL_Rect{
+            532, 0, 512, 512
+    };
+    SDL_RenderCopy(renderer, nametableTexture, NULL, &nametableRect);
+
+    auto backgroundMaskRect = SDL_Rect{
+            1054, 0, 256, 256
+    };
+    SDL_RenderCopy(renderer, backgroundMaskTexture, NULL, &backgroundMaskRect);
+
+    auto spriteMaskRect = SDL_Rect{
+            1054, 266, 256, 256
+    };
+    SDL_RenderCopy(renderer, spriteMaskTexture, NULL, &spriteMaskRect);
 
     // present surface
     SDL_RenderPresent(renderer);

@@ -58,14 +58,8 @@ struct MemoryIOHandler<0x2004> {
 
 template<>
 struct MemoryIOHandler<0x2005> {
-    static tCPU::byte read(PPU *ppu) {
-        tCPU::byte value = ppu->readSpriteMemory();
-        PrintMemoryIO("Read 0x%02X from port $2005 - Sprite RAM I/O Register", (int) value);
-        return value;
-    }
-
     static void write(PPU *ppu, tCPU::byte value) {
-        PrintMemoryIO("Writing 0x%02X to port $2005 - VRAM Address Register 2", (int) value);
+        PrintMemoryIO("Writing 0x%02X to port $2005 - VRAM Address Register 1", (int) value);
         ppu->setVRamAddressRegister1(value);
     }
 };
@@ -105,7 +99,7 @@ struct MemoryIOHandler<0x4000> {
 template<>
 struct MemoryIOHandler<0x4001> {
     static void write(Audio *apu, tCPU::byte value) {
-        PrintInfo("Writing 0x%02X to port $4001 - APU - Square 1 - Sweep", (int) value);
+        PrintDbg("Writing 0x%02X to port $4001 - APU - Square 1 - Sweep", (int) value);
         apu->setSquare1Sweep(value);
     }
 };
@@ -194,19 +188,19 @@ template<>
 struct MemoryIOHandler<0x4016> {
     static tCPU::byte read(Joypad *joypad) {
         tCPU::byte value = joypad->getStatePlayerOne();
-//        PrintInfo("Read 0x%02X from port 4016 - Joypad 1 status", (int) value);
+        PrintMemoryIO("Read 0x%02X from port 4016 - Joypad 1 status", (int) value);
         return value;
     }
 
     static void write(Joypad *joypad, tCPU::byte value) {
-//        PrintInfo("Writing 0x%02X to port 4016 - Configuring Joypad", (int) value);
+//        PrintMemoryIO("Writing 0x%02X to port 4016 - Configuring Joypad", (int) value);
     }
 };
 
 template<>
 struct MemoryIOHandler<0x4017> {
     static void write(Audio *apu, tCPU::byte value) {
-        PrintInfo("Writing 0x%02X to port 4017 - Configuring APU Frame Counter control", (int) value);
+        PrintDbg("Writing 0x%02X to port $4017 - Configuring APU Frame Counter control", (int) value);
         apu->configureFrameSequencer(value);
     }
 };
@@ -292,7 +286,7 @@ MemoryIO::write(tCPU::word address, tCPU::byte value) {
 
         case 0x4008 ... 0x4010:
         case 0x4012 ... 0x4013:
-            PrintUnimplementedIO("Skipping Unimplemented I/O Port: APU $%04X - APU", address);
+//            PrintUnimplementedIO("Skipping Unimplemented I/O Port: APU $%04X - APU", address);
             break;
 
         case 0x4014:

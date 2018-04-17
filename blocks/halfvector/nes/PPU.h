@@ -50,6 +50,7 @@ public:
         attributeTable = new tCPU::byte[256 * 256 * 4];
         backgroundMask = new tCPU::byte[256 * 256];
         spriteMask = new tCPU::byte[256 * 256];
+        nametables = new tCPU::byte[512 * 512 * 4];
     }
 
     tCPU::byte* screenBuffer;
@@ -58,6 +59,7 @@ public:
     tCPU::byte* attributeTable;
     tCPU::byte* backgroundMask;
     tCPU::byte* spriteMask;
+    tCPU::byte* nametables;
 };
 
 class PPU {
@@ -66,6 +68,7 @@ public:
 
     void loadRom(Cartridge &rom);
     void writeChrPage(uint8_t buffer[]);
+    void clear();
 
     void execute(int numCycles);
     tCPU::byte getStatusRegister();
@@ -154,4 +157,16 @@ protected:
 
     // activated when generateInterruptOnVBlank is true and vblank interval entered
     bool vblankNmiAwaiting = false;
+
+    void RenderDebugNametables();
+
+    void RenderDebugColorPalette() const;
+
+    void RenderDebugAttributes(tCPU::word NametableAddress) const;
+
+    void RenderDebugPatternTables();
+
+    void RenderBackgroundTiles();
+
+    void RenderSpriteTiles();
 };
