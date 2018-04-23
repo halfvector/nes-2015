@@ -26,7 +26,8 @@ int main(int argc, char **argv) {
     Backtrace::install();
 
     CartridgeLoader loader;
-    Cartridge rom = loader.loadCartridge("../roms/supermariobros.nes");
+//    Cartridge rom = loader.loadCartridge("../roms/supermariobros.nes");
+    Cartridge rom = loader.loadCartridge("../roms/scanline.nes");
 //    Cartridge rom = loader.loadCartridge("../roms/donkey_kong.nes");
 //    Cartridge rom = loader.loadCartridge("../roms/apu_mixer/square.nes");
 
@@ -58,7 +59,7 @@ int main(int argc, char **argv) {
     // cpu
     auto cpu = new CPU(registers, memory, stack);
     cpu->load(rom);
-    cpu->reset();
+    cpu->reset(); // read PC from RESET vector
 
 
     PrintDbg("Reset program-counter to 0x%X", registers->PC);

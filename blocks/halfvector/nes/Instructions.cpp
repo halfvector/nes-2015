@@ -742,6 +742,11 @@ DEFINE_OPCODE(JMP) {
 
     // special case: if address low byte is 0xff, wrap around and read upper byte
 
+    if(ctx->registers->LastPC == address) {
+        PrintInfo("Infinite loop detected. Breaking.");
+        exit(1);
+    }
+
 //    PrintCpu("Setting new PC to $%04X") % address;
     ctx->registers->PC = address;
 }

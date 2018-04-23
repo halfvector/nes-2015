@@ -127,21 +127,26 @@ PPU::getStatusRegister() {
 
 void
 PPU::execute(int numCycles) {
+    // each cycle is 1 pixel
 
     /**
      *   0-239 = rendering scanlines
-     *     240 = idle scanline
+     *     240 = idle scanline / post-rendering
      * 241-260 = vertical blanking
+     *     261 = pre-rendering
      */
 
     for (int i = 0; i < numCycles; i++) {
         if (currentScanline < 240) {
+            // [0,239]
             // process scanline
             advanceRenderableScanline();
-        } else if (currentScanline < 243) {
+        } else if (currentScanline < 241) {
+            // [240]
             advanceBlankScanline();
-        } else if (currentScanline < 262) {
-            if (currentScanline == 243 && scanlinePixel == 0) {
+        } else if (currentScanline < 261) {
+            // [241,260]
+            if (currentScanline == 241 && scanlinePixel == 0) {
                 setVerticalBlank();
             }
             advanceBlankScanline();
@@ -197,18 +202,22 @@ PPU::advanceBlankScanline() {
  */
 void
 PPU::advanceRenderableScanline() {
-    if (scanlinePixel < 255) {
+    if (scanlinePixel < 257) {
+        // [0,256]
         // drawing pixels
         inHBlank = false;
-    } else if (scanlinePixel == 255) {
+    } else if (scanlinePixel == 257) {
+        // [257]
         // last pixel of the scanline. enter hblank.
-        // TODO: perform sprite-0 hit detection
         inHBlank = true;
         onEnterHBlank();
     } else if (scanlinePixel < 340) {
+        // [258, 340]
         // in hblank
         inHBlank = true;
     } else {
+        // [340]
+        // last pixel of
         // leave hblank and increment scanline
         inHBlank = false;
         currentScanline++;
@@ -220,8 +229,8 @@ PPU::advanceRenderableScanline() {
             vramAddress14bit |= (tempVRAMAddress & 0x041F); // copy over just the position bits
             vramAddress14bit &= 0x7FFF; // ensure 15th bit is zero
 
-            PrintInfo("Start of Scanline; vramAddress14bit = 0x%X / tempVRAMAddress = %s",
-                      vramAddress14bit, std::bitset<16>(vramAddress14bit).to_string().c_str());
+//            PrintInfo("Start of Scanline; vramAddress14bit = 0x%X / tempVRAMAddress = %s",
+//                      vramAddress14bit, std::bitset<16>(vramAddress14bit).to_string().c_str());
         }
 
     }
@@ -735,7 +744,7 @@ PPU::setVRamAddressRegister1(tCPU::byte value) {
 
 
 //        PrintInfo("tempVRAMAddress = 0x%04X second", (int) tempVRAMAddress);
-        PrintPpu("verticalScrollOrigin = %d", verticalScrollOrigin);
+        PrintInfo("verticalScrollOrigin = %d", verticalScrollOrigin);
     }
 
 
