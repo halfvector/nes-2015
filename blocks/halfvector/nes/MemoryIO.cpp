@@ -193,6 +193,7 @@ struct MemoryIOHandler<0x4016> {
     }
 
     static void write(Joypad *joypad, tCPU::byte value) {
+        joypad->setStrobe(value);
 //        PrintMemoryIO("Writing 0x%02X to port 4016 - Configuring Joypad", (int) value);
     }
 };
