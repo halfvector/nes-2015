@@ -15,10 +15,11 @@ struct RomHeader {
     int8_t reserved[8];
 };
 
+enum eMirroringType {
+    VERTICAL_MIRRORING, HORIZONTAL_MIRRORING
+};
+
 struct RomInfo {
-    enum eMirroringType {
-        VERTICAL_MIRRORING, HORIZONTAL_MIRRORING
-    };
     eMirroringType mirroring;
     bool sramEnabled;
     bool trainerPresent;

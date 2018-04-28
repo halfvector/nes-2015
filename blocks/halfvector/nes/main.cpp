@@ -26,14 +26,16 @@ int main(int argc, char **argv) {
     Backtrace::install();
 
     CartridgeLoader loader;
-//    Cartridge rom = loader.loadCartridge("../roms/supermariobros.nes");
-    Cartridge rom = loader.loadCartridge("../roms/scanline.nes");
-//    Cartridge rom = loader.loadCartridge("../roms/donkey_kong.nes");
+//    Cartridge rom = loader.loadCartridge("../roms/supermariobros.nes"); // intro works, cannot tile scroll
+//    Cartridge rom = loader.loadCartridge("../roms/SuperMarioClouds.nes"); // draws zeroes instead of clouds
+//    Cartridge rom = loader.loadCartridge("../roms/stars.nes"); // draws tiles instead of stars
+//    Cartridge rom = loader.loadCartridge("../roms/scanline.nes"); // unstable, scrolls
+//    Cartridge rom = loader.loadCartridge("../roms/scroll.nes"); // doesn't work at all
+//    Cartridge rom = loader.loadCartridge("../roms/gradius.nes"); // scrolling intro almost works
+//    Cartridge rom = loader.loadCartridge("../roms/megaman1.nes");
+    Cartridge rom = loader.loadCartridge("../roms/donkey_kong.nes"); // draws zeroes instead of sprites
 //    Cartridge rom = loader.loadCartridge("../roms/apu_mixer/square.nes");
 
-    auto onVblankNmiSet = []() {
-
-    };
 
     // raster output
     auto raster = new Raster();
@@ -61,12 +63,14 @@ int main(int argc, char **argv) {
     cpu->load(rom);
     cpu->reset(); // read PC from RESET vector
 
+    gui->render();
+
 
     PrintDbg("Reset program-counter to 0x%X", registers->PC);
 
     // https://www.pagetable.com/?p=410
     auto doVblankNMI = [&]() {
-        PrintDbg("Doing VBlank NMI (pushes to stack)");
+//        PrintInfo("Doing VBlank NMI (pushes to stack)");
         stack->pushStackWord(registers->PC);
         stack->pushStackByte(registers->P.asByte());
 
@@ -85,6 +89,8 @@ int main(int argc, char **argv) {
     registers->S = 0xFD;
 
     gui->render();
+    SDL_Event e;
+    while (SDL_PollEvent(&e)) {}
 
     std::chrono::high_resolution_clock::now();
     std::chrono::high_resolution_clock::now();
@@ -124,7 +130,7 @@ int main(int argc, char **argv) {
                             case SDLK_SPACE:
                                 joypad->buttonDown(JoypadButtons::Select);
                                 break;
-                            case SDLK_RETURN:
+                            case SDLK_c:
                                 joypad->buttonDown(JoypadButtons::Start);
                                 break;
                             case SDLK_RIGHT:
@@ -147,6 +153,13 @@ int main(int argc, char **argv) {
                                 break;
                             case SDLK_q:
                                 alive = false;
+                                break;
+                        }
+                    } break;
+                    case SDL_KEYUP: {
+                        switch (e.key.keysym.sym) {
+                            case SDLK_RIGHT:
+                                joypad->buttonUp(JoypadButtons::Right);
                                 break;
                         }
                     } break;

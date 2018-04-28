@@ -39,6 +39,7 @@ struct PPU_Settings {
     bool SpriteClipping;
     bool BackgroundVisible = false;
     bool SpriteVisible = false;
+    eMirroringType mirroring;
 };
 
 class Raster {
@@ -76,7 +77,10 @@ public:
     void renderDebug();
 
     bool enteredVBlank() {
-        return currentScanline == 243 && scanlinePixel == 0;
+//        return currentScanline == 243 && scanlinePixel == 0;
+        auto wasInVBlank = inVBlank;
+        inVBlank = false;
+        return wasInVBlank;
     }
 
     /**
@@ -114,7 +118,6 @@ protected:
     tCPU::word cycles;
     tCPU::word vramAddress14bit;
     tCPU::word tempVRAMAddress;
-    tCPU::byte tileXOffset;
     tCPU::byte latchedVRAMByte;
 
     // states
@@ -127,7 +130,7 @@ protected:
     // memory
     tCPU::byte *WRAM = new tCPU::byte[2000];
     tCPU::byte *VRAM = new tCPU::byte[2000];
-    tCPU::byte *PPU_RAM = new tCPU::byte[0x4000];
+    tCPU::byte *PPU_RAM = new tCPU::byte[0x10000]; // should be 0x4000?
     tCPU::byte *SPR_RAM = new tCPU::byte[0x100];
 
     Raster *raster;
@@ -135,6 +138,7 @@ protected:
     // shared flipflop by port 2005 and 2006 to maintain first-write bit
     // reset by port 2002 reads
     bool firstWriteToSFF = true;
+    bool firstWriteToSFF2 = true;
     tCPU::byte horizontalScrollOrigin;
     tCPU::byte verticalScrollOrigin;
 

@@ -58,7 +58,7 @@ CartridgeLoader::analyzeHeader(Cartridge &rom) {
     PrintBitState(CB1, 0x04, "512-byte trainer present");
     PrintBitState(CB1, 0x08, "Four-screen VRAM layout");
 
-    rom.info.mirroring = CB1 & 0x01 ? RomInfo::VERTICAL_MIRRORING : RomInfo::HORIZONTAL_MIRRORING;
+    rom.info.mirroring = CB1 & 0x01 ? VERTICAL_MIRRORING : HORIZONTAL_MIRRORING;
     rom.info.sramEnabled = (CB1 & 0x02) != 0;
     rom.info.trainerPresent = (CB1 & 0x04) != 0;
     rom.info.fourScreenVRAM = (CB1 & 0x08) != 0;
@@ -107,6 +107,6 @@ CartridgeLoader::readData(std::fstream &fh, Cartridge &rom) {
 
     // assert no content left unread in rom file
     if (totalRead != fileLength) {
-        ThrowException("ROM contains unprocessed data");
+        PrintWarning("ROM contains unprocessed data (read %d of %d bytes)", totalRead, fileLength);
     }
 }

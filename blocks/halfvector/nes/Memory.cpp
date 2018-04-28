@@ -82,6 +82,30 @@ bool
 Memory::writeByte(tCPU::word originalAddress, tCPU::byte value) {
     tCPU::word address = getRealMemoryAddress(originalAddress);
 
+//    if(address == 0x71c) {
+//        PrintInfo("Writing byte 0x%X to ScreenEdge_X_Pos", value);
+//    }
+//
+//    if(address == 0x86) {
+//        PrintInfo("Writing byte 0x%X to Player_X_Position", value);
+//    }
+//
+//    if(address == 0x57) {
+//        PrintInfo("Writing byte 0x%X to Player_X_Speed", value);
+//    }
+//
+//    if(address == 0x073f) {
+//        PrintInfo("Writing byte 0x%X to HorizontalScroll", value);
+//    }
+//
+//    if(address == 0x755) {
+//        PrintInfo("Writing byte 0x%X to Player_Pos_ForScroll", value);
+//    }
+//
+//    if(address == 0x6ff) {
+//        PrintInfo("Writing byte 0x%X to Player_X_Scroll", value);
+//    }
+
     if ((address >= 0x2000 && address <= 0x2007) || (address >= 0x4000 && address <= 0x401F)) {
         // i/o registers
         PrintMemory("* Writing to Memory Mapped I/O Port (0x%04X)", (int) address);

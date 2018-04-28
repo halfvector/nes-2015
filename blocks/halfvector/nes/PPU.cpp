@@ -93,7 +93,7 @@ PPU::PPU(Raster *raster) : raster(raster) {
     inHBlank = false, inVBlank = false;
 
     currentScanline = 0, scanlinePixel = 0, cycles = 0, vramAddress14bit = 0,
-    tempVRAMAddress = 0, tileXOffset = 0, latchedVRAMByte = 0, statusRegister = 0,
+    tempVRAMAddress = 0, latchedVRAMByte = 0, statusRegister = 0,
     horizontalScrollOrigin = 0, verticalScrollOrigin = 0, reloadBits = 0;
 
     // clear memory
@@ -113,9 +113,11 @@ PPU::getStatusRegister() {
 
     // reset vblank on register read
     statusRegister &= ~(1 << 7);
+    inVBlank = false;
 
     // reset $2005 and $2006 write modes
     firstWriteToSFF = true;
+    firstWriteToSFF2 = true;
 
 //    // detect sprite 0 collision with current scanline
 //    for(int i = 0; i < 64; i++ ){
@@ -146,9 +148,22 @@ PPU::execute(int numCycles) {
             advanceBlankScanline();
         } else if (currentScanline < 261) {
             // [241,260]
-            if (currentScanline == 241 && scanlinePixel == 0) {
+            if (currentScanline == 241 && scanlinePixel == 1) {
                 setVerticalBlank();
             }
+//            if (currentScanline == 261 && scanlinePixel == 280) {
+//                // copy all horizontal scrolling information from temp to vram addy
+//                if (settings.BackgroundVisible && settings.SpriteVisible) {
+//                    vramAddress14bit &= ~0x041F; // zero out position bits
+//                    vramAddress14bit |= (tempVRAMAddress & 0x041F); // copy over just the position bits
+//                    vramAddress14bit &= 0x7FFF; // ensure 15th bit is zero
+//
+//                    PrintInfo("Scanline %d Pixel %d; vramAddress14bit = 0x%X; tempVRAMAddress = %s",
+//                              currentScanline, scanlinePixel,
+//                              vramAddress14bit, std::bitset<16>(vramAddress14bit).to_string().c_str());
+//                }
+//            }
+
             advanceBlankScanline();
         } else {
             // end of vblank
@@ -176,6 +191,10 @@ PPU::execute(int numCycles) {
 void
 PPU::setVerticalBlank() {
     statusRegister |= 1 << 7; // set vblank bit
+    inVBlank = true;
+
+//    PrintInfo("GenerateInterruptOnVBlank = %d / vblankNmiAwaiting = %d",
+//              settings.GenerateInterruptOnVBlank, vblankNmiAwaiting);
 
     // generate nmi trigger if we have one pending
     if (settings.GenerateInterruptOnVBlank) {
@@ -222,23 +241,26 @@ PPU::advanceRenderableScanline() {
         inHBlank = false;
         currentScanline++;
         scanlinePixel = -1;
-
-        // copy all horizontal scrolling information from temp to vram addy
-        if (settings.BackgroundVisible && settings.SpriteVisible) {
-            vramAddress14bit &= ~0x041F; // zero out position bits
-            vramAddress14bit |= (tempVRAMAddress & 0x041F); // copy over just the position bits
-            vramAddress14bit &= 0x7FFF; // ensure 15th bit is zero
-
-//            PrintInfo("Start of Scanline; vramAddress14bit = 0x%X / tempVRAMAddress = %s",
-//                      vramAddress14bit, std::bitset<16>(vramAddress14bit).to_string().c_str());
-        }
-
     }
 
     scanlinePixel++;
 }
 
 void PPU::onEnterHBlank() {
+    // copy all horizontal scrolling information from temp to vram addy
+    if (settings.BackgroundVisible && settings.SpriteVisible) {
+        vramAddress14bit &= ~0x041F; // zero out position bits
+        vramAddress14bit |= (tempVRAMAddress & 0x041F); // copy over just the position bits
+        vramAddress14bit &= 0x7FFF; // ensure 15th bit is zero
+
+        auto tileScrollOffset = vramAddress14bit & 0x0FFF;
+//        PrintInfo("on hblank; tile scroll x = %d", tileScrollOffset);
+
+//        PrintInfo("Scanline %d Pixel %d; vramAddress14bit = 0x%X; tempVRAMAddress = %s",
+//                  currentScanline, scanlinePixel,
+//                  vramAddress14bit, std::bitset<16>(vramAddress14bit).to_string().c_str());
+    }
+
     renderScanline(currentScanline);
 
     // scanline somewhere within sprite 0
@@ -248,28 +270,28 @@ void PPU::onEnterHBlank() {
         return;
     }
 
-    // check if this scanline hit sprite0
-    tCPU::byte Y = SPR_RAM[0] + 1;
-    tCPU::byte Tile = SPR_RAM[1];
-    tCPU::byte attributes = SPR_RAM[2];
-    tCPU::byte X = SPR_RAM[3];
+//    // check if this scanline hit sprite0
+//    tCPU::byte Y = SPR_RAM[0] + 1;
+//    tCPU::byte Tile = SPR_RAM[1];
+//    tCPU::byte attributes = SPR_RAM[2];
+//    tCPU::byte X = SPR_RAM[3];
+//
+//    // ignore sprite if Y is set to 249
+//    if (Y == 249) {
+//        return;
+//    }
+//
+//    if (Y >= 247) {
+//        return;
+//    }
 
-    // ignore sprite if Y is set to 249
-    if (Y == 249) {
-        return;
+//    if (currentScanline >= Y && currentScanline <= (Y + 8)) {
+    if (!sprite0HitInThisFrame && sprite0HitInThisScanline) {
+        statusRegister |= Bit<6>::Set(true);
+        sprite0HitInThisFrame = true;
+        sprite0HitInThisScanline = false;
     }
-
-    if (Y >= 247) {
-        return;
-    }
-
-    if (currentScanline >= Y && currentScanline <= (Y + 8)) {
-        if (!sprite0HitInThisFrame && sprite0HitInThisScanline) {
-            statusRegister |= Bit<6>::Set(true);
-            sprite0HitInThisFrame = true;
-            sprite0HitInThisScanline = false;
-        }
-    }
+//    }
 }
 
 void PPU::renderScanline(int Y) {
@@ -278,9 +300,6 @@ void PPU::renderScanline(int Y) {
 
     int reverseY = Y;
 
-    tCPU::byte UpperBits = 0;
-
-    //return (Y * Width + X) * 3;
     unsigned char *backgroundBufferPtr = raster->backgroundMask + (Y * 256);
     unsigned char *screenBufferPtr = raster->screenBuffer + (Y * 256) * 4;
 
@@ -297,90 +316,24 @@ void PPU::renderScanline(int Y) {
     // decode scanline
     // 256 pixels in 32 bytes, each byte a tile consisting of 8 pixels
 
-    int lastAttributeNumber = -1, lastTileNumber = -1;
-    tCPU::byte AttributeByte;
-    tCPU::byte *ppuRamBasePtr = PPU_RAM + settings.BackgroundPatternTableAddress + yOffset;
-
     tCPU::word NametableAddress = settings.NameTableAddress;
-    int NametableId = (NametableAddress - 0x2000) / 0x400;
 
-    if (horizontalScrollOrigin >= 255) {
-        if (NametableId == 0)
-            NametableAddress += 0x400;
-        else
-            NametableAddress -= 0x400;
-
-        NametableId = (NametableAddress - 0x2000) / 0x400;
-    }
-
-    int TileAddress = NametableAddress + j * 32 + horizontalScrollOrigin / 8;
-
-    tCPU::byte *tileRamBasePtr = PPU_RAM + TileAddress;
-
-    // only need to warp around once
-
-    static tCPU::byte TileCache[33];
-    static tCPU::byte AttributeByteCache[33];
-
-    // tiles are 8x8, so we can reuse a row of tiles for 8 scanlines
-    // and i think attributes for 16?
-    if ((Y % 8) == 0) {
-        // cache the next 8 scanlines worth of tiles!
-        for (i = 0; i < 33; i++) {
-            int ScrolledX = i * 8 + horizontalScrollOrigin;
-
-            // horizontal scrolled tile position
-            int ScrolledI = ScrolledX / 8;
-
-            // only need to wrap around once per scanline (i hope..)
-            if (ScrolledX >= 256) {
-                NametableAddress = settings.NameTableAddress;
-                NametableId = (NametableAddress - 0x2000) / 0x400;
-
-                if (NametableId == 0)
-                    NametableAddress += 0x400;
-                else
-                    NametableAddress -= 0x400;
-
-                ScrolledX %= 256;
-                ScrolledI = ScrolledX / 8;
-            }
+    int tileScrollOffset = 0;//vramAddress14bit & 0x0FFF;
+    auto attrScrollOffset = 0;//(vramAddress14bit & 0x0C00) | ((vramAddress14bit >> 4) & 0x38) | ((vramAddress14bit >> 2) & 0x07);
 
 
-            tCPU::byte Tile = PPU_RAM[NametableAddress + j * 32 + ScrolledI];
-
-            TileCache[i] = Tile;
-
-            int attributeX = ScrolledI / 4;
-
-            //if( lastAttributeNumber != attributeX)
-            {
-                lastAttributeNumber = attributeX;
-                AttributeByte = *(PPU_RAM + NametableAddress + 0x3C0 + attributeY * 8 + attributeX);
-                // upper bites will change every 8 pixels
-                UpperBits = (AttributeByte >> ((ScrolledI & 2) | ((j & 2) << 1))) & 3;
-            }
-
-            AttributeByteCache[i] = UpperBits * 4; // prescale them
-        }
-    }
-
-    tCPU::byte defaultPaletteId = PPU_RAM[0x3F00];
-
-    static tCPU::byte pixelPaletteStream[256];
-    int currentPixel = 0;
+    int *screenBufferPtr32bit = (int *) (raster->screenBuffer + (reverseY * 256) * 4);
 
     // only sequential access here :D
-    for (i = 0; i <= 32; i++) {
-        if (i == 32 && (horizontalScrollOrigin % 8) == 0)
-            break;
-
-        tCPU::byte Tile = TileCache[i];
-        tCPU::byte preScaledUpperBits = AttributeByteCache[i];
+    for (i = 0; i < 32; i++) {
+        tCPU::byte Tile = ReadInternalMemoryByte(NametableAddress + tileScrollOffset + j * 32 + i);
+        tCPU::byte preScaledUpperBits = ReadInternalMemoryByte(NametableAddress + attrScrollOffset + 0x3C0 + attributeY * 8 + i / 4);
+        preScaledUpperBits = (preScaledUpperBits >> ((i & 2) | ((j & 2) << 1))) & 3;
+        preScaledUpperBits *= 4;
 
         // 8-pixel row within the tile (Y%8)
-        tCPU::byte PatternByte0 = PPU_RAM[settings.BackgroundPatternTableAddress + Tile * 16 + 8 * 0 + yOffset];
-        tCPU::byte PatternByte1 = PPU_RAM[settings.BackgroundPatternTableAddress + Tile * 16 + 8 * 1 + yOffset];
+        tCPU::byte PatternByte0 = ReadInternalMemoryByte(settings.BackgroundPatternTableAddress + Tile * 16 + 8 * 0 + yOffset);
+        tCPU::byte PatternByte1 = ReadInternalMemoryByte(settings.BackgroundPatternTableAddress + Tile * 16 + 8 * 1 + yOffset);
 
         int startX = 0;
         int endX = 8;
@@ -389,9 +342,6 @@ void PPU::renderScanline(int Y) {
             startX = horizontalScrollOrigin % 8;
         if (i == 32)
             endX = horizontalScrollOrigin % 8;
-
-        tCPU::byte shiftedPattern0 = PatternByte0;
-        tCPU::byte shiftedPattern1 = PatternByte1;
 
         // no more inner loop branches! -20k cycles per scanline
         for (X = startX; X < endX; X++) {
@@ -403,11 +353,12 @@ void PPU::renderScanline(int Y) {
 
             tCPU::byte ColorId = PixelBit0 | (PixelBit1 << 1);
 
-            pixelPaletteStream[currentPixel++] = ColorId == 0 ? 0 : ColorId + preScaledUpperBits;
+//            *(backgroundBufferPtr++) = ColorId;
 
-            *(backgroundBufferPtr++) = ColorId;
-//            *screenBufferPtr = ColorId;
-//            screenBufferPtr += 4;
+            tCPU::byte PaletteId = ReadInternalMemoryByte(0x3F00 + ColorId + preScaledUpperBits);
+            tPaletteEntry &RGBColor = colorPalette[PaletteId];
+            auto rgba = 0xFF << 24 | RGBColor.R << 16 | RGBColor.G << 8 | RGBColor.B;
+            *(screenBufferPtr32bit++) = rgba;
         }
     }
 
@@ -416,18 +367,8 @@ void PPU::renderScanline(int Y) {
 
     // do it backwards to make bitblts more native
 
-    int *screenBufferPtr32bit = (int *) (raster->screenBuffer + (reverseY * 256) * 4);
-
-    for (i = 0; i < 256; i++) {
-        tCPU::byte PaletteId = PPU_RAM[0x3F00 + pixelPaletteStream[i]];
-
-        tPaletteEntry &RGBColor = colorPalette[PaletteId];
-        *(screenBufferPtr32bit++) = 0xFF << 24 | RGBColor.R << 16 | RGBColor.G << 8 | RGBColor.B;
-    }
-
     //tCPU::byte* spriteRamStream = SPR_RAM;
     tCPU::dword *spriteRamStream32bit = (tCPU::dword *) SPR_RAM;
-    tCPU::word *ppuRamPatternBase = (tCPU::word *) PPU_RAM;
 
     // 64 possible sprites, can only draw 8 of them per scanline
     int numSpritesDrawn = 0;
@@ -449,10 +390,13 @@ void PPU::renderScanline(int Y) {
         tCPU::byte Attr = (spriteEntry >> 16) & 0xff;
         tCPU::byte SpriteX = (spriteEntry >> 24) & 0xff;
 
+
         if (SpriteY > 238 || SpriteX > 248) {
             // not so properly ignored
             continue;
         }
+
+//        PrintInfo("i=%d tile=%d SpriteX=%d and Y=%d", i, Tile, SpriteX, SpriteY);
 
         numSpritesDrawn++;
 
@@ -468,8 +412,8 @@ void PPU::renderScanline(int Y) {
             j = Y - SpriteY;
             int ProperY = VerticalFlip ? (7 - j) : j;
 
-            tCPU::byte PatternBit0 = PPU_RAM[settings.SpritePatternTableAddress + Tile * 16 + ProperY + 8 * 0];
-            tCPU::byte PatternBit1 = PPU_RAM[settings.SpritePatternTableAddress + Tile * 16 + ProperY + 8 * 1];
+            tCPU::byte PatternBit0 = ReadInternalMemoryByte(settings.SpritePatternTableAddress + Tile * 16 + ProperY + 8 * 0);
+            tCPU::byte PatternBit1 = ReadInternalMemoryByte(settings.SpritePatternTableAddress + Tile * 16 + ProperY + 8 * 1);
 
             for (X = SpriteX; X < SpriteX + 8; X++) {
                 int l = X - SpriteX;
@@ -491,7 +435,7 @@ void PPU::renderScanline(int Y) {
 
                 //tPaletteEntry& RGBColor = g_ColorPalette[Chrominance + Luminance * 16];
 
-                raster->spriteMask[Y * 256 + X] = Color;
+//                raster->spriteMask[Y * 256 + X] = Color;
 
                 // FIXME: add support for sprite priorities
 
@@ -500,7 +444,7 @@ void PPU::renderScanline(int Y) {
 
                     tPaletteEntry &RGBColor = colorPalette[Chrominance + Luminance * 16];
 
-                    *(screenBufferPtr32bit) = 0xffffffff;// RGBColor.B | RGBColor.G << 8 | RGBColor.R << 16 | 0xff000000;
+                    *(screenBufferPtr32bit) = RGBColor.B | RGBColor.G << 8 | RGBColor.R << 16 | 0xff000000;
 //                    PrintInfo("Wrote %X into %0X", *(screenBufferPtr32bit), (reverseY * 256) * 4 + X * 4);
                     //*(screenBufferPtr32bit) = g_ColorPalette[Chrominance + Luminance * 16].ColorValue;
                     //screenBufferPtr32bit++;
@@ -510,6 +454,7 @@ void PPU::renderScanline(int Y) {
                     // if we got a sprite0 color pixel over a non-transparent background pixel
                     if (raster->backgroundMask[Y * 256 + X] == Color) {
                         sprite0HitInThisScanline = true;
+//                        PrintInfo("hit sprite0 on scanline = %d and pixel = %d", currentScanline, scanlinePixel);
                     }
                 }
             }
@@ -570,6 +515,8 @@ PPU::setControlRegister1(tCPU::byte value) {
 
     settings.SpriteSize = bits.test(5) ? SPRITE_SIZE_8x16 : SPRITE_SIZE_8x8;
 
+//    PrintInfo("Set control register 1; value = %X", value);
+
     settings.GenerateInterruptOnSprite = bits.test(6);
     settings.GenerateInterruptOnVBlank = bits.test(7);
 
@@ -579,7 +526,7 @@ PPU::setControlRegister1(tCPU::byte value) {
 //    PrintInfo("Set base nametable address to %X", settings.NameTableAddress);
 //    PrintInfo("Set base background pattern table address to %X", settings.BackgroundPatternTableAddress);
 //    PrintInfo("Set base sprite pattern table address to %X", settings.SpritePatternTableAddress);
-    PrintPpu("Generate an NMI at start of vertical blanking interval: %d", settings.GenerateInterruptOnVBlank);
+//    PrintInfo("Generate an NMI at start of vertical blanking interval: %d", settings.GenerateInterruptOnVBlank);
 }
 
 void
@@ -596,16 +543,17 @@ PPU::setControlRegister2(tCPU::byte value) {
 /**
  * This function gets called twice to fill out a 16-bit address
  * once for each byte. so we have to track whether we are writing byte 1 or 2.
+ * $2006
  */
 void
 PPU::setVRamAddressRegister2(tCPU::byte value) {
-    if (firstWriteToSFF) {
+    if (firstWriteToSFF2) {
         // first write -- high byte
         latchedVRAMByte = value;
         tempVRAMAddress &= 0x80FF;
         tempVRAMAddress |= (value & 0x3F) << 8; // 6 bits to high byte
 
-        PrintInfo("tempVRAMAddress first part = 0x%X (0x%X)", tempVRAMAddress, value);
+//        PrintInfo("tempVRAMAddress first part = 0x%X (0x%X)", tempVRAMAddress, value);
     } else {
         // second write -- low byte
 //        vramAddress14bit = ((tCPU::word) latchedVRAMByte) << 8;
@@ -616,11 +564,15 @@ PPU::setVRamAddressRegister2(tCPU::byte value) {
         vramAddress14bit = tempVRAMAddress;
 //        vramAddress14bit &= 0x7FFF; // clear highest bit
 
-        PrintInfo("vramAddress14bit = 0x%X (0x%X)", vramAddress14bit, value);
+//        PrintInfo("2nd write to $2006 @ scanline = %d & pixel = %d : vramAddress14bit = 0x%X",
+//                  currentScanline, scanlinePixel, vramAddress14bit);
+
+        auto tileScrollOffset = vramAddress14bit & 0x0FFF;
+        PrintInfo("$2006; tile scroll x = %d", tileScrollOffset);
     }
 
     // flip
-    firstWriteToSFF = !firstWriteToSFF;
+    firstWriteToSFF2 = !firstWriteToSFF2;
 }
 
 tCPU::byte
@@ -630,10 +582,10 @@ PPU::readFromVRam() {
     if (vramAddress14bit % 0x4000 <= 0x3EFF) {    // latch value, return old
         value = latchedVRAMByte;
         latchedVRAMByte = ReadInternalMemoryByte(vramAddress14bit);
-        PrintDbg("New Latch = 0x%02X; Returning Old Latch value 0x%02X", (int) latchedVRAMByte, (int) value);
+        PrintInfo("New Latch = 0x%02X; Returning Old Latch value 0x%02X", (int) latchedVRAMByte, (int) value);
     } else {
         value = ReadInternalMemoryByte(vramAddress14bit);
-        PrintDbg("Returning Direct (Non-Latched) VRAM value: 0x%02X", (int) value);
+        PrintInfo("Returning Direct (Non-Latched) VRAM value: 0x%02X", (int) value);
     }
 
     AutoIncrementVRAMAddress();
@@ -651,19 +603,70 @@ tCPU::word
 PPU::GetEffectiveAddress(tCPU::word address) {
     if (address < 0x2000) {
         // pattern table chr-rom page
-        PrintDbg("Address is < 0x2000; Referencing CHR-ROM @ $%04X", (int) (address));
+//        PrintInfo("Address is < 0x2000; Referencing CHR-ROM @ $%04X", (int) (address));
+    }
+
+    // PPU
+//    if (address >= 0x2008 && address <= 0x3FFF) {
+//        // mirror [$2000,$2007] on repeat
+//        auto mirrored = address - 0x2008 % 8;
+//        PrintInfo("Address in range: (0x2008-0x3FFF); Mirror of $%04X", mirrored);
+//    }
+
+    if(address >= 0x2000 && address < 0x3000) {
+        /*
+         *        (0,0)     (256,0)     (511,0)
+         *          +-----------+-----------+
+         *          |           |           |
+         *          |           |           |
+         *          |   $2000   |   $2400   |
+         *          |     #0    |     #1    |
+         *          |           |           |
+         *   (0,240)+-----------+-----------+(511,240)
+         *          |           |           |
+         *          |           |           |
+         *          |   $2800   |   $2C00   |
+         *          |     #2    |     #3    |
+         *          |           |           |
+         *          +-----------+-----------+
+         *        (0,479)   (256,479)   (511,479)
+         */
+        int nametableId = floor((address - 0x2000) / 0x400);
+        int offset = address % 0x400;
+
+        // nametables mirroring
+        if(settings.mirroring == VERTICAL_MIRRORING) {
+            if(nametableId == 2)
+                nametableId = 0;
+            if(nametableId == 3)
+                nametableId = 1;
+        }
+
+        if(settings.mirroring == HORIZONTAL_MIRRORING) {
+            if(nametableId == 1)
+                nametableId = 0;
+            if(nametableId == 3)
+                nametableId = 2;
+        }
+
+        address = nametableId * 0x400 + 0x2000 + offset;
+
+//        PrintInfo("Mirrored 0x%X to 0x%X (nametableId=%d)", address, mirrored, nametableId);
+//        address = mirrored;
     }
 
     if (address >= 0x3000 && address <= 0x3EFF) {
         // mirror of 2000h-2EFFh
-        PrintDbg("Address in range: (0x3000-0x3EFF); Mirror of $%04X", (int) (address - 0x1000));
-        address -= 0x1000;
+        auto mirror = address - 0x1000;
+        PrintInfo("Address in range: (0x3000-0x3EFF); Mirror of $%04X", mirror);
+        address = mirror;
     }
+
     if (address >= 0x3F20 && address <= 0x3FFF) {
         // 7 mirrors of 3F00h-3F1Fh :(
-        PrintDbg("Hit 7 Mirror Address: 0x%X", (int) address);
+        PrintInfo("Hit 7 Mirror Address: 0x%X", (int) address);
         address -= ((address - 0x3F20) % 0x1F) * 0x1F;
-        PrintDbg("-> Resolved it to: 0x%X", (int) address);
+        PrintInfo("-> Resolved it to: 0x%X", (int) address);
     }
 
     // mirrors 3F10h,3F14h,3F18h,3F1Ch -> 3F00h,3F04h,3F08h,3F0Ch
@@ -677,8 +680,8 @@ PPU::GetEffectiveAddress(tCPU::word address) {
     }
 
     if (address >= 0x4000) {
-        PrintDbg("Address in range: (0x4000-0x10000); Mirror of $%04X", address % 0x4000);
-        address = address % 0x4000;
+        PrintInfo("Address in range: (0x4000-0x10000); Mirror of $%04X? (FIXME: writing through)", address % 0x4000);
+//        address = address % 0x4000;
     }
 
     return address;
@@ -688,7 +691,7 @@ tCPU::byte
 PPU::ReadInternalMemoryByte(tCPU::word Address) {
     tCPU::word EffectiveAddress = GetEffectiveAddress(Address);
     tCPU::byte Value = PPU_RAM[EffectiveAddress];
-    PrintPpu("Read 0x%02X from PPU RAM @ 0x%04X", (int) Value, (int) EffectiveAddress);
+//    PrintPpu("Read 0x%02X from PPU RAM @ 0x%04X", (int) Value, (int) EffectiveAddress);
     return Value;
 }
 
@@ -696,8 +699,9 @@ bool
 PPU::WriteInternalMemoryByte(tCPU::word Address, tCPU::byte Value) {
     tCPU::word EffectiveAddress = GetEffectiveAddress(Address);
     PPU_RAM[EffectiveAddress] = Value;
+    PrintDbg("Wrote 0x%02X to PPU RAM @ 0x%04X (0x%04X)", Value, EffectiveAddress, Address);
     if (EffectiveAddress >= 0x3f00 && EffectiveAddress < 0x4000) {
-        PrintDbg("Wrote 0x%02X to PPU RAM @ 0x%04X (0x%04X)", (int) Value, (int) EffectiveAddress, Address);
+        PrintDbg("Wrote 0x%02X to PPU RAM @ 0x%04X (0x%04X)", Value, EffectiveAddress, Address);
     }
     return true;
 }
@@ -721,18 +725,13 @@ PPU::setVRamAddressRegister1(tCPU::byte value) {
 
     if (firstWriteToSFF) {
         // first write
-        horizontalScrollOrigin = value;
+        horizontalScrollOrigin = value & 0x7;
 
         tempVRAMAddress &= 0xFFE0;
         tempVRAMAddress |= value >> 3;
 
-        tileXOffset = value & 0x07;
-
-        if (horizontalScrollOrigin) {
-            auto x = vramAddress14bit & 0x001F;
-            PrintInfo("course x = %d / fine x = %d / tileXOffset = %d", x, horizontalScrollOrigin, tileXOffset);
-        }
-//        PrintInfo("tempVRAMAddress = 0x%04X first write", (int) tempVRAMAddress);
+        auto coarseX = tempVRAMAddress & 0x001F;
+//        PrintInfo("coarse x = %d / fine x = %d", coarseX, horizontalScrollOrigin);
     } else {
         // second write
         verticalScrollOrigin = value;
@@ -744,7 +743,11 @@ PPU::setVRamAddressRegister1(tCPU::byte value) {
 
 
 //        PrintInfo("tempVRAMAddress = 0x%04X second", (int) tempVRAMAddress);
-        PrintInfo("verticalScrollOrigin = %d", verticalScrollOrigin);
+//        PrintInfo("scanline = %d / pixel = %d / verticalScrollOrigin = %d / tempVRAMAddress = 0x%X",
+//                  currentScanline, scanlinePixel, verticalScrollOrigin, tempVRAMAddress);
+
+//        auto tileScrollOffset = vramAddress14bit & 0x0FFF;
+//        PrintInfo("$2005; tile scroll x = %d", tileScrollOffset);
     }
 
 
@@ -833,8 +836,8 @@ void PPU::renderDebug() {
 //    RenderBackgroundTiles();
 //    RenderSpriteTiles();
 
-    RenderDebugNametables();
-//    RenderDebugAttributes(NametableAddress);
+//    RenderDebugNametables();
+//    RenderDebugAttributes(settings.NameTableAddress);
 //    RenderDebugPatternTables();
 //    RenderDebugColorPalette();
 }
@@ -852,7 +855,7 @@ void PPU::RenderSpriteTiles() {
         auto attributes = SPR_RAM[addr + 2];
         auto x = SPR_RAM[addr + 3];
 
-        auto upperBits = Bits<1,2>::Get(attributes);
+        auto upperBits = Bits<1, 2>::Get(attributes);
 
         // render 8x8 block
 
@@ -907,6 +910,9 @@ void PPU::RenderSpriteTiles() {
     }
 }
 
+/**
+ * Render background tiles onto final output
+ */
 void PPU::RenderBackgroundTiles() {
     tCPU::word NametableAddress = settings.NameTableAddress;
 //    int NametableId = (NametableAddress - 0x2000) / 0x400;
@@ -925,9 +931,8 @@ void PPU::RenderBackgroundTiles() {
 //        PrintInfo("%d = %X", i, PPU_RAM[0x3F00 + i]);
 //    }
 
-    /**
-     * Render background tiles onto final output
-     */
+    auto tileScrollOffset = 0;// vramAddress14bit & 0x0FFF;
+    auto attrScrollOffset = 0;//(vramAddress14bit & 0x0C00) | ((vramAddress14bit >> 4) & 0x38) | ((vramAddress14bit >> 2) & 0x07);
 
     // rows (240 pixels vertically)
     for (unsigned int i = 0; i < 30; i++) {
@@ -935,7 +940,7 @@ void PPU::RenderBackgroundTiles() {
         for (unsigned int j = 0; j < 32; j++) {
             // 8x8 tile number
             // first 960 bytes contain tiles
-            tCPU::byte tileNumber = PPU_RAM[NametableAddress + i * 32 + j];
+            tCPU::byte tileNumber = PPU_RAM[NametableAddress + tileScrollOffset + i * 32 + j];
             int offsetY = i * 8 * 256 * 4;
             int offsetX = j * 8 * 4;
 
@@ -943,7 +948,7 @@ void PPU::RenderBackgroundTiles() {
             auto AttrJ = (int) floor(i / 4.0);
 
             // after tiles, we have two scanlines for attributes
-            tCPU::byte attribute = PPU_RAM[NametableAddress + 0x3C0 + AttrJ * 8 + AttrI];
+            tCPU::byte attribute = PPU_RAM[NametableAddress + attrScrollOffset + 0x3C0 + AttrJ * 8 + AttrI];
 
             int offsetI = (j / 2) % 2;
             int offsetJ = (i / 2) % 2;
@@ -984,7 +989,7 @@ void PPU::RenderBackgroundTiles() {
                     int offsetBlockY = offsetY + offsetX + k * 256 * 4;
                     int offsetBytes = offsetBlockY + (7 - l) * 4;
 
-//                    raster->backgroundMask[offsetBytes / 4] = lowerBits ? 0x90 : 0x00;
+                    raster->backgroundMask[offsetBytes / 4] = lowerBits ? 0x90 : 0x00;
 
                     // write 4 bytes BGRA
                     raster->screenBuffer[offsetBytes + 0] = color.B; // b
@@ -1071,12 +1076,14 @@ void PPU::RenderDebugAttributes(tCPU::word NametableAddress) const {
         }
     }
 
+    auto attrScrollOffset = 0;//(vramAddress14bit & 0x0C00) | ((vramAddress14bit >> 4) & 0x38) | ((vramAddress14bit >> 2) & 0x07);
+
     // rows
     for (int i = 0; i < 8; i++) {
         // columns
         for (int j = 0; j < 8; j++) {
             // 32x32 tile attributes, 2 bits for each 16x16 sub-tile (which in effect is 4 pattern tiles)
-            tCPU::byte attribute = PPU_RAM[NametableAddress + 0x3C0 + i * 8 + j];
+            tCPU::byte attribute = PPU_RAM[NametableAddress + attrScrollOffset + 0x3C0 + i * 8 + j];
 
             tCPU::byte upperLeft = Bits<0, 1>::Get(attribute);
             tCPU::byte upperRight = Bits<2, 3>::Get(attribute);
@@ -1180,25 +1187,6 @@ void PPU::RenderDebugNametables() {
                     // 8x8 tile number
                     // first 960 bytes contain tiles
 
-//                    int ScrolledX = i * 8 + horizontalScrollOrigin;
-//
-//                    // horizontal scrolled tile position
-//                    int ScrolledI = ScrolledX / 8;
-//
-//                    // only need to wrap around once per scanline (i hope..)
-//                    if (ScrolledX >= 256) {
-//                        NametableAddress = settings.NameTableAddress;
-//                        NametableId = (NametableAddress - 0x2000) / 0x400;
-//
-//                        if (NametableId == 0)
-//                            NametableAddress += 0x400;
-//                        else
-//                            NametableAddress -= 0x400;
-//
-//                        ScrolledX %= 256;
-//                        ScrolledI = ScrolledX / 8;
-//                    }
-
                     auto nametableAddress = settings.NameTableAddress + a * 2048 + b * 1024;
 
                     tCPU::byte tileNumber = PPU_RAM[nametableAddress + i * 32 + j];
@@ -1265,6 +1253,8 @@ void PPU::RenderDebugNametables() {
 
             // render viewport scrolling
 
+
+
             // rows
             for (auto i = 0; i < 256; i++) {
                 auto offsetBytes = i * 512 * 4 + (horizontalScrollOrigin) * 4;
@@ -1302,6 +1292,8 @@ PPU::loadRom(Cartridge &rom) {
     for (uint8_t i = 0; i < rom.header.numChrPages; i++) {
         writeChrPage(rom.characterDataPages[i].buffer);
     }
+
+    settings.mirroring = rom.info.mirroring;
 }
 
 /**
