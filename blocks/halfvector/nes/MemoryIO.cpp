@@ -179,7 +179,7 @@ struct MemoryIOHandler<0x4015> {
 template<>
 struct MemoryIOHandler<0x4014> {
     static void write(PPU *ppu, Memory *memory, tCPU::byte value) {
-        PrintApu("Writing 0x%02X to port $2006 - VRAM Sprite DMA Xfer", (int) value);
+        PrintPpu("Writing 0x%02X to port $2006 - VRAM Sprite DMA Xfer", (int) value);
         ppu->StartSpriteXferDMA(memory, value);
     }
 };

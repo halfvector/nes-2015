@@ -101,9 +101,11 @@ public:
     void writeToVRam(tCPU::byte value);
     tCPU::byte readFromVRam();
 
-    tCPU::word GetEffectiveAddress(tCPU::word address);
-    tCPU::byte ReadInternalMemoryByte(tCPU::word Address);
-    bool WriteInternalMemoryByte(tCPU::word Address, tCPU::byte Value);
+    // calculate memory address in PPU ram, taking into account mirroring
+    inline tCPU::word GetEffectiveAddress(tCPU::word address);
+
+    inline tCPU::byte ReadByteFromPPU(tCPU::word Address);
+    bool WriteByToPPU(tCPU::word Address, tCPU::byte Value);
     void AutoIncrementVRAMAddress();
 
     void setVRamAddressRegister1(tCPU::byte value);
@@ -149,9 +151,9 @@ protected:
     void advanceRenderableScanline();
     void advanceBlankScanline();
     void onEnterHBlank();
-    void renderScanline(int scanline);
+    void renderScanline(const tCPU::word scanline);
 
-    tCPU::byte GetColorFromPalette(int PaletteType, int NameTableId, int ColorId);
+    tCPU::byte GetColorFromPalette(int paletteType, int upperBits, int lowerBits);
     /*
      * PPU Settings
      */

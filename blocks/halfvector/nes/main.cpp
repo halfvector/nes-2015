@@ -31,9 +31,9 @@ int main(int argc, char **argv) {
 //    Cartridge rom = loader.loadCartridge("../roms/stars.nes"); // draws tiles instead of stars
 //    Cartridge rom = loader.loadCartridge("../roms/scanline.nes"); // unstable, scrolls
 //    Cartridge rom = loader.loadCartridge("../roms/scroll.nes"); // doesn't work at all
-//    Cartridge rom = loader.loadCartridge("../roms/gradius.nes"); // scrolling intro almost works
+    Cartridge rom = loader.loadCartridge("../roms/gradius.nes"); // scrolling intro almost works
 //    Cartridge rom = loader.loadCartridge("../roms/megaman1.nes");
-    Cartridge rom = loader.loadCartridge("../roms/donkey_kong.nes"); // draws zeroes instead of sprites
+//    Cartridge rom = loader.loadCartridge("../roms/donkey_kong.nes"); // draws zeroes instead of sprites
 //    Cartridge rom = loader.loadCartridge("../roms/apu_mixer/square.nes");
 
 

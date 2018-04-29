@@ -21,19 +21,21 @@ struct Loggy {
     void println(const char *fmt, ...);
 };
 
-// universal
-#define Logging                true
+#define LOG_DBG false
+#define LOG_INFO true
+#define LOG_WARNING true
+#define LOG_ERROR true
 
-#define PrintDbg               if(Logging) Loggy::log(__PRETTY_FUNCTION__, Loggy::DEBUG).println
-#define PrintInfo              if(Logging) Loggy::log(__PRETTY_FUNCTION__, Loggy::INFO).println
-#define PrintWarning           if(Logging) Loggy::log(__PRETTY_FUNCTION__, Loggy::WARNING).println
-#define PrintError             if(Logging) Loggy::log(__PRETTY_FUNCTION__, Loggy::ERROR).println
-#define PrintCpu               if(Logging) Loggy::log(__PRETTY_FUNCTION__, Loggy::DEBUG).println
-#define PrintMemory            if(Logging) Loggy::log(__PRETTY_FUNCTION__, Loggy::DEBUG).println
-#define PrintMemoryIO          if(Logging) Loggy::log(__PRETTY_FUNCTION__, Loggy::DEBUG).println
-#define PrintPpu               if(Logging) Loggy::log(__PRETTY_FUNCTION__, Loggy::DEBUG).println
-#define PrintApu               if(Logging) Loggy::log(__PRETTY_FUNCTION__, Loggy::DEBUG).println
-#define PrintUnimplementedIO   if(Logging) Loggy::log(__PRETTY_FUNCTION__, Loggy::INFO).println
+#define PrintDbg               if(LOG_DBG) Loggy::log(__PRETTY_FUNCTION__, Loggy::DEBUG).println
+#define PrintInfo              if(LOG_INFO) Loggy::log(__PRETTY_FUNCTION__, Loggy::INFO).println
+#define PrintWarning           if(LOG_WARNING) Loggy::log(__PRETTY_FUNCTION__, Loggy::WARNING).println
+#define PrintError             if(LOG_ERROR) Loggy::log(__PRETTY_FUNCTION__, Loggy::ERROR).println
+#define PrintCpu               if(LOG_DBG) Loggy::log(__PRETTY_FUNCTION__, Loggy::DEBUG).println
+#define PrintMemory            if(LOG_DBG) Loggy::log(__PRETTY_FUNCTION__, Loggy::DEBUG).println
+#define PrintMemoryIO          if(LOG_DBG) Loggy::log(__PRETTY_FUNCTION__, Loggy::DEBUG).println
+#define PrintPpu               if(LOG_DBG) Loggy::log(__PRETTY_FUNCTION__, Loggy::DEBUG).println
+#define PrintApu               if(LOG_DBG) Loggy::log(__PRETTY_FUNCTION__, Loggy::DEBUG).println
+#define PrintUnimplementedIO   if(LOG_INFO) Loggy::log(__PRETTY_FUNCTION__, Loggy::INFO).println
 
 
 static std::string boostFormatWrapper(boost::format &f) {
