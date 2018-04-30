@@ -26,15 +26,21 @@ int main(int argc, char **argv) {
     Backtrace::install();
 
     CartridgeLoader loader;
-//    Cartridge rom = loader.loadCartridge("../roms/supermariobros.nes"); // intro works, cannot tile scroll
-//    Cartridge rom = loader.loadCartridge("../roms/SuperMarioClouds.nes"); // draws zeroes instead of clouds
+    Cartridge rom = loader.loadCartridge("../roms/supermariobros.nes"); // intro works, cannot tile scroll
+//    Cartridge rom = loader.loadCartridge("../roms/SuperMarioClouds.nes"); // draws zeroes instead of clouds, almost scrolls
 //    Cartridge rom = loader.loadCartridge("../roms/stars.nes"); // draws tiles instead of stars
-//    Cartridge rom = loader.loadCartridge("../roms/scanline.nes"); // unstable, scrolls
+//    Cartridge rom = loader.loadCartridge("../roms/scanline.nes"); // stabler
 //    Cartridge rom = loader.loadCartridge("../roms/scroll.nes"); // doesn't work at all
-    Cartridge rom = loader.loadCartridge("../roms/gradius.nes"); // scrolling intro almost works
+//    Cartridge rom = loader.loadCartridge("../roms/color_test.nes"); // doesn't work at all
+//    Cartridge rom = loader.loadCartridge("../roms/nestest.nes");
+//    Cartridge rom = loader.loadCartridge("../roms/gradius.nes"); // scrolling intro almost works
 //    Cartridge rom = loader.loadCartridge("../roms/megaman1.nes");
 //    Cartridge rom = loader.loadCartridge("../roms/donkey_kong.nes"); // draws zeroes instead of sprites
 //    Cartridge rom = loader.loadCartridge("../roms/apu_mixer/square.nes");
+
+//    Cartridge rom = loader.loadCartridge("../roms/Karateka (J) [p1].nes");
+//    Cartridge rom = loader.loadCartridge("../roms/Defender 2 (U).nes");
+//    Cartridge rom = loader.loadCartridge("../roms/all/nrom/Slalom (U).nes");
 
 
     // raster output
@@ -71,6 +77,8 @@ int main(int argc, char **argv) {
     // https://www.pagetable.com/?p=410
     auto doVblankNMI = [&]() {
 //        PrintInfo("Doing VBlank NMI (pushes to stack)");
+        // clear break flag
+        registers->P.B = 0;
         stack->pushStackWord(registers->PC);
         stack->pushStackByte(registers->P.asByte());
 

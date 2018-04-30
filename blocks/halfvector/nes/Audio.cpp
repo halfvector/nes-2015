@@ -2,6 +2,8 @@
 #include "Audio.h"
 #include "Logging.h"
 
+#define AUDIO_ENABLED false
+
 /**
  * References:
  * https://nesdoug.com/2015/12/02/14-intro-to-sound/
@@ -59,19 +61,23 @@ Audio::Audio() {
             .userdata = this,
     };
 
+#if AUDIO_ENABLED
     if (SDL_OpenAudio(&spec, NULL) < 0) {
         PrintError("Failed to open audio: %s", SDL_GetError());
         exit(1);
     }
+#endif
 }
 
 void
 Audio::close() {
+#if AUDIO_ENABLED
     /* Then turn it off again */
     SDL_PauseAudio(1);
 
     /* Close audio channel */
     SDL_CloseAudio();
+#endif
 }
 
 void
@@ -87,11 +93,13 @@ Audio::setChannelStatus(tCPU::byte status) {
     PrintApu("Set channels: Square 1 = %d / Square 2 = %d / Triangle = %d / Noise = %d / DMC = %d",
              square1, square2, triangle, noise, dmc);
 
+#if AUDIO_ENABLED
     if (square1) {
         SDL_PauseAudio(0);
     } else {
         SDL_PauseAudio(1);
     }
+#endif
 }
 
 tCPU::byte

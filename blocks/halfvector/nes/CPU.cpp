@@ -116,15 +116,16 @@ CPU::executeOpcode(int code) {
                        % mnemonic % (int) highByte % (int) lowByte).str();
     }
 
-    auto cpuState = boost::format("A:%02X X:%02X Y:%02X P:%02X SP:%02X CYCLE:%05d")
-                    % (int) ctx->registers->A
-                    % (int) ctx->registers->X
-                    % (int) ctx->registers->Y
-                    % (int) ctx->registers->P.asByte()      // processor status summary
-                    % (int) ctx->registers->S               // stack pointer
-                    % (int) numCycles;
+    char cpuState[200];
 
-    PrintCpu("%-45s %s", instruction.c_str(), cpuState.str().c_str());
+    sprintf(cpuState, "A:%02X X:%02X Y:%02X P:%02X SP:%02X CYCLE:%05d",
+            (int) ctx->registers->A, (int) ctx->registers->X, (int) ctx->registers->Y,
+            (int) ctx->registers->P.asByte(),      // processor status summary
+            (int) ctx->registers->S,             // stack pointer
+            (int) numCycles
+    );
+
+    PrintInfo("%-45s %s", instruction.c_str(), cpuState);
 #endif
 
     // update program counter
