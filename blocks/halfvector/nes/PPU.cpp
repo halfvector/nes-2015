@@ -566,7 +566,7 @@ PPU::GetColorFromPalette(int paletteType, int upperBits, int lowerBits) {
 
     // address is 5 bits long
     if (lowerBits <= 3) {
-        Color = ReadByteFromPPU(0x3F00 | paletteType << 5 | upperBits << 2 | lowerBits);
+        Color = ReadByteFromPPU(0x3F00 | paletteType << 4 | upperBits << 2 | lowerBits);
     } else {
         PrintError("PPU::GetColorFromPalette(%d, %d); Invalid Color Id", upperBits, lowerBits);
         throw std::runtime_error("Unexpected error");
