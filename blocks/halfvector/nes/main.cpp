@@ -166,8 +166,29 @@ int main(int argc, char **argv) {
                     } break;
                     case SDL_KEYUP: {
                         switch (e.key.keysym.sym) {
+                            case SDLK_SPACE:
+                                joypad->buttonUp(JoypadButtons::Select);
+                                break;
+                            case SDLK_c:
+                                joypad->buttonUp(JoypadButtons::Start);
+                                break;
                             case SDLK_RIGHT:
                                 joypad->buttonUp(JoypadButtons::Right);
+                                break;
+                            case SDLK_LEFT:
+                                joypad->buttonUp(JoypadButtons::Left);
+                                break;
+                            case SDLK_UP:
+                                joypad->buttonUp(JoypadButtons::Up);
+                                break;
+                            case SDLK_DOWN:
+                                joypad->buttonUp(JoypadButtons::Down);
+                                break;
+                            case SDLK_a:
+                                joypad->buttonUp(JoypadButtons::A);
+                                break;
+                            case SDLK_b:
+                                joypad->buttonUp(JoypadButtons::B);
                                 break;
                         }
                     } break;
