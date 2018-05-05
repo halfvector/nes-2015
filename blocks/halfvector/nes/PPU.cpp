@@ -332,25 +332,24 @@ void PPU::renderScanline(const tCPU::word Y) {
     ushort numTiles = 32; // 32 tiles per scanline
     ushort numAttributes = 8; // 8 attributes per scanline (4 per tile)
 
-    ushort nametableAttributeOffset = nametableAddy + 0x3C0;
-
     if(settings.BackgroundVisible)
     for (ushort i = 0; i < numTiles; i++) {
-        auto tileX = i + tileScroll;
         auto nametable = nametableAddy;
+        auto nametableAttributeOffset = nametableAddy + 0x3C0;
 
-        if(tileX >= 32) {
+        if(i + tileScroll >= 32) {
             // read from nametable on the right when doing horizontal scrolling
             nametable += 0x400;
+            nametableAttributeOffset += 0x400;
         }
 
-        auto tileIdx = ReadByteFromPPU(nametable + tileScroll + tileY * numTiles + i);
+        auto tileIdx = ReadByteFromPPU(nametable + tileY * numTiles + (i + tileScroll) % 32);
 
         // each attribute block is 32x32 pixels
         // there are 8 attribute blocks per scanline
         // each attribute block covers 4 tiles
         ushort attributeBase = nametableAttributeOffset + attributeScroll;
-        ushort attributeX = ((i + tileScroll) >> 2); // new attribute block every 4 tiles
+        ushort attributeX = (((i + tileScroll) % 32) >> 2); // new attribute block every 4 tiles
         auto attribute = ReadByteFromPPU(attributeBase + attributeY * numAttributes + attributeX);
 //        auto preScaledUpperBits = (attribute >> ((i & 2) | ((tileY & 2) << 1))) & 3;
 //        preScaledUpperBits *= 4;
@@ -391,8 +390,8 @@ void PPU::renderScanline(const tCPU::word Y) {
         // ie only render last 3 pixels from tile 1 means succeeding tiles will be rendered at an offset
         if (i == 0)
             startX = horizontalScrollOrigin % 8;
-        if (i == 31)
-            endX = horizontalScrollOrigin % 8;
+//        if (i == 31)
+//            endX = horizontalScrollOrigin % 8;
 
         // no more inner loop branches! -20k cycles per scanline
 //        for (auto column = startX; column < endX; column++) {
@@ -409,16 +408,16 @@ void PPU::renderScanline(const tCPU::word Y) {
             tPaletteEntry &color = colorPalette[paletteId];
 
             // tile scroll debugging
-//            auto rgba = 0xFF << 24 | (Y) << 16 | (((i+tileScroll) % 32 * 8 + column)) << 8 | 0;
+//            auto bgra = 0xFF << 24 | (Y) << 16 | (((i+tileScroll) % 32 * 8 + column)) << 8 | 0;
 
             // attribute scroll debug
-//            auto rgba = 0xFF << 24 | (attributeX * 32) << 16 | (attributeY * 32) << 8 | 0;
+//            auto bgra = 0xFF << 24 | (attributeX * 32) << 16 | (attributeY * 32) << 8 | 0;
 
             // red = upper-bits
             // green = lower-bits
-//            auto rgba = 0xFF << 24 | (upperBits * 64) << 16 | (lowerBits * 64) << 8 | 0;
+//            auto bgra = 0xFF << 24 | (upperBits * 64) << 16 | (lowerBits * 64) << 8 | 0;
 
-//            auto rgba = 0xFF << 24 | (tileIdx) << 16;
+//            auto bgra = 0xFF << 24 | (tileIdx) << 16;
 
             // render tile
             int bgra = 0xFF << 24 | color.R << 16 | color.G << 8 | color.B;
@@ -445,7 +444,7 @@ void PPU::renderScanline(const tCPU::word Y) {
     // iterate through all sprites and find ones that need to be rendered on this scanline
     if(settings.SpriteVisible)
     for (auto i = 0; i < 256; i += 4) {
-        auto spriteY = SPR_RAM[i];
+        auto spriteY = SPR_RAM[i] + 1;
 
         if (spriteY == 249) {    // sprite wants to be ignored
             continue;
