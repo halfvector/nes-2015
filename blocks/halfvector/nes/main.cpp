@@ -162,6 +162,14 @@ int main(int argc, char **argv) {
                             case SDLK_q:
                                 alive = false;
                                 break;
+                            case SDLK_d:
+                                if(Loggy::Enabled == Loggy::INFO) {
+                                    printf("Debug output enabled\n");
+                                    Loggy::Enabled = Loggy::DEBUG;
+                                } else {
+                                    printf("Debug output disabled\n");
+                                    Loggy::Enabled = Loggy::INFO;
+                                }
                         }
                     } break;
                     case SDL_KEYUP: {

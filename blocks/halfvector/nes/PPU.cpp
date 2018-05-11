@@ -110,8 +110,10 @@ tCPU::byte
 PPU::getStatusRegister() {
     tCPU::byte returnValue = statusRegister;
 
-    PrintPpu("PPU; Status register: %s", std::bitset<8>(statusRegister).to_string().c_str());
-    PrintPpu("PPU; -> Scanline: %d, HBlank: %d, Pixel: %d", currentScanline, inHBlank, scanlinePixel);
+    if(Loggy::Enabled == Loggy::DEBUG) {
+        PrintInfo("PPU; Status register: %s", std::bitset<8>(statusRegister).to_string().c_str());
+        PrintInfo("PPU; -> Scanline: %d, HBlank: %d, Pixel: %d", currentScanline, inHBlank, scanlinePixel);
+    }
 
     // reset vblank on register read
     statusRegister &= ~(1 << 7);
@@ -312,7 +314,7 @@ void PPU::renderScanline(const tCPU::word Y) {
 
     tCPU::word nametableAddy = settings.NameTableAddress;
 
-    ushort tileScroll = ushort(vramAddress14bit & 0x0FFF);
+    ushort tileScroll = ushort(vramAddress14bit & 0xFF);
     ushort attributeScroll = ushort(vramAddress14bit & 0x0C00)
                              | ushort((vramAddress14bit >> 4) & 0x38)
                              | ushort((vramAddress14bit >> 2) & 0x07);
@@ -328,6 +330,10 @@ void PPU::renderScanline(const tCPU::word Y) {
      * Render background tiles.
      * 32 tiles per scanline
      */
+
+//    if(Loggy::Enabled == Loggy::DEBUG) {
+        PrintInfo("Nametable = 0x%X and tileScroll = %d (scanline = %d)", nametableAddy, tileScroll, currentScanline);
+//    }
 
     ushort numTiles = 32; // 32 tiles per scanline
     ushort numAttributes = 8; // 8 attributes per scanline (4 per tile)
@@ -584,8 +590,10 @@ PPU::setControlRegister1(tCPU::byte value) {
     std::bitset<8> bits(value);
     controlRegister1 = value;
 
-    tCPU::byte nameTableIdx = bits.test(0) + bits.test(1);
+    tCPU::byte nameTableIdx = value & 0x3; // bits 0 + 1
     settings.NameTableAddress = 0x2000 + nameTableIdx * 0x400;
+
+    PrintInfo("Setting nametable address to 0x%X", settings.NameTableAddress);
 
     // increment vram address (on port $2007 activity) by 1 (horizontal) or 32 (vertical) bytes
     settings.DoVerticalWrites = bits.test(2);
@@ -904,7 +912,14 @@ void PPU::clear() {
         }
     }
 
-    // clear sprite mask debug view (256x256@32bit)
+    // clear sprite mask debug view (256x256@8bit)
+    for (int x = 0; x < 256; x++) {
+        for (int y = 0; y < 256; y++) {
+            raster->spriteMask[y * 256 + x + 0] = 0; // single byte packed format
+        }
+    }
+
+    // clear background mask debug view (256x256@8bit)
     for (int x = 0; x < 256; x++) {
         for (int y = 0; y < 256; y++) {
             raster->spriteMask[y * 256 + x + 0] = 0; // single byte packed format
@@ -917,9 +932,9 @@ void PPU::renderDebug() {
 //    RenderSpriteTiles();
 
     RenderDebugNametables();
-    RenderDebugAttributes(settings.NameTableAddress);
-    RenderDebugPatternTables();
-    RenderDebugColorPalette();
+//    RenderDebugAttributes(settings.NameTableAddress);
+//    RenderDebugPatternTables();
+//    RenderDebugColorPalette();
 }
 
 /**
@@ -1307,7 +1322,7 @@ void PPU::RenderDebugNametables() {
                     // 8x8 tile number
                     // first 960 bytes contain tiles
 
-                    auto nametableAddress = settings.NameTableAddress + a * 2048 + b * 1024;
+                    auto nametableAddress = 0x2000 + a * 2048 + b * 1024;
 
                     tCPU::byte tileNumber = PPU_RAM[nametableAddress + i * 32 + j];
 
@@ -1345,8 +1360,7 @@ void PPU::RenderDebugNametables() {
                     for (unsigned short k = 0; k < 8; k++) {
                         // lookup row byte pattern
                         tCPU::byte PatternByte0 = PPU_RAM[settings.BackgroundPatternTableAddress + tileNumber * 16 + k];
-                        tCPU::byte PatternByte1 = PPU_RAM[settings.BackgroundPatternTableAddress + tileNumber * 16 + k +
-                                                          8];
+                        tCPU::byte PatternByte1 = PPU_RAM[settings.BackgroundPatternTableAddress + tileNumber * 16 + k + 8];
 
                         // column
                         for (short l = 0; l < 8; l++) {
@@ -1374,35 +1388,38 @@ void PPU::RenderDebugNametables() {
             // render viewport scrolling
 
             ushort tileScroll = ushort(vramAddress14bit & 0x0FFF);
-            ushort tileScrollBytes = tileScroll * 8 * 4;
+            ushort tileScrollPixels = tileScroll * 8;
 
             // rows
+                    if(0)
             for (auto i = 0; i < 256; i++) {
-                auto offsetBytes = i * 512 * 4 + (horizontalScrollOrigin) * 4 + tileScrollBytes;
+                // left vertical line
+                auto offsetBytes = (i * 512 + (horizontalScrollOrigin + tileScrollPixels) % 256) * 4;
                 raster->nametables[offsetBytes + 0] = 0x33; // b
                 raster->nametables[offsetBytes + 1] = 0x66; // g
                 raster->nametables[offsetBytes + 2] = 0x99; // r
                 raster->nametables[offsetBytes + 3] = 0xff; // alpha
 
-                offsetBytes = i * 512 * 4 + (horizontalScrollOrigin) * 4 + 256 * 4+ tileScrollBytes;
+                // right vertical line
+                offsetBytes = (i * 512 + (horizontalScrollOrigin + tileScrollPixels + 256) % 256) * 4;
                 raster->nametables[offsetBytes + 0] = 0x33; // b
                 raster->nametables[offsetBytes + 1] = 0x66; // g
                 raster->nametables[offsetBytes + 2] = 0x99; // r
                 raster->nametables[offsetBytes + 3] = 0xff; // alpha
 
                 // top line
-                offsetBytes = (horizontalScrollOrigin) * 4 + i * 4+ tileScrollBytes;
+                offsetBytes = ((horizontalScrollOrigin + tileScrollPixels) % 256) * 4 + i * 4;
                 raster->nametables[offsetBytes + 0] = 0x33; // b
                 raster->nametables[offsetBytes + 1] = 0x66; // g
                 raster->nametables[offsetBytes + 2] = 0x99; // r
                 raster->nametables[offsetBytes + 3] = 0xff; // alpha
-
-                // bottom line
-                offsetBytes = 256 * 512 * 4 + (horizontalScrollOrigin) * 4 + i * 4+ tileScrollBytes;
-                raster->nametables[offsetBytes + 0] = 0x33; // b
-                raster->nametables[offsetBytes + 1] = 0x66; // g
-                raster->nametables[offsetBytes + 2] = 0x99; // r
-                raster->nametables[offsetBytes + 3] = 0xff; // alpha
+//
+//                // bottom line
+//                offsetBytes = 256 * 512 * 4 + (horizontalScrollOrigin) * 4 + i * 4+ tileScrollBytes;
+//                raster->nametables[offsetBytes + 0] = 0x33; // b
+//                raster->nametables[offsetBytes + 1] = 0x66; // g
+//                raster->nametables[offsetBytes + 2] = 0x99; // r
+//                raster->nametables[offsetBytes + 3] = 0xff; // alpha
             }
         }
     }

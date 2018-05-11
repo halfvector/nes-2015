@@ -85,48 +85,48 @@ int
 CPU::executeOpcode(int code) {
     unsigned char opcodeSize = opcodes[code].Bytes;
 
-#if false
-    AddressMode mode = opcodes[code].AddressMode;
-    const char *mnemonic = opcodes[code].Mnemonic;
-    const char *title = AddressModeTitle[static_cast<uint8_t>(mode)];
+    if(Loggy::Enabled == Loggy::DEBUG) {
+        AddressMode mode = opcodes[code].AddressMode;
+        const char *mnemonic = opcodes[code].Mnemonic;
+        const char *title = AddressModeTitle[static_cast<uint8_t>(mode)];
 
-//    sprintf( StatusBuffer, "C:%d Z:%d V:%d N:%d I:%d B:%d S:%d | A:$%02X X:$%02X Y:$%02X",
-//             g_Registers.P.C, g_Registers.P.Z, g_Registers.P.V, g_Registers.P.N, g_Registers.P.I, g_Registers.P.B, g_Registers.A, g_Registers.X, g_Registers.Y, g_Registers.S );
+    //    sprintf( StatusBuffer, "C:%d Z:%d V:%d N:%d I:%d B:%d S:%d | A:$%02X X:$%02X Y:$%02X",
+    //             g_Registers.P.C, g_Registers.P.Z, g_Registers.P.V, g_Registers.P.N, g_Registers.P.I, g_Registers.P.B, g_Registers.A, g_Registers.X, g_Registers.Y, g_Registers.S );
 
-    std::string instruction;
+        std::string instruction;
 
-    if (opcodeSize == 1) {
+        if (opcodeSize == 1) {
 
-        instruction = (boost::format("%08X: %02X          %s " + modes[mode].addressLine)
-                       % (int) registers->PC
-                       % code
-                       % mnemonic).str();
-    } else if (opcodeSize == 2) {
-        unsigned char data1 = memory->readByte(registers->PC + 1);
-        instruction = (boost::format("%08X: %02X %02X       %s " + modes[mode].addressLine)
-                       % (int) registers->PC
-                       % code % (int) data1
-                       % mnemonic % (int) data1).str();
-    } else if (opcodeSize == 3) {
-        unsigned char lowByte = memory->readByte(registers->PC + 1);
-        unsigned char highByte = memory->readByte(registers->PC + 2);
-        instruction = (boost::format("%08X: %02X %02X %02X    %s " + modes[mode].addressLine)
-                       % (int) registers->PC
-                       % code % (int) lowByte % (int) highByte
-                       % mnemonic % (int) highByte % (int) lowByte).str();
+            instruction = (boost::format("%08X: %02X          %s " + modes[mode].addressLine)
+                           % (int) registers->PC
+                           % code
+                           % mnemonic).str();
+        } else if (opcodeSize == 2) {
+            unsigned char data1 = memory->readByte(registers->PC + 1);
+            instruction = (boost::format("%08X: %02X %02X       %s " + modes[mode].addressLine)
+                           % (int) registers->PC
+                           % code % (int) data1
+                           % mnemonic % (int) data1).str();
+        } else if (opcodeSize == 3) {
+            unsigned char lowByte = memory->readByte(registers->PC + 1);
+            unsigned char highByte = memory->readByte(registers->PC + 2);
+            instruction = (boost::format("%08X: %02X %02X %02X    %s " + modes[mode].addressLine)
+                           % (int) registers->PC
+                           % code % (int) lowByte % (int) highByte
+                           % mnemonic % (int) highByte % (int) lowByte).str();
+        }
+
+        char cpuState[200];
+
+        sprintf(cpuState, "A:%02X X:%02X Y:%02X P:%02X SP:%02X CYCLE:%05d",
+                (int) ctx->registers->A, (int) ctx->registers->X, (int) ctx->registers->Y,
+                (int) ctx->registers->P.asByte(),      // processor status summary
+                (int) ctx->registers->S,             // stack pointer
+                (int) numCycles
+        );
+
+        PrintInfo("%-45s %s", instruction.c_str(), cpuState);
     }
-
-    char cpuState[200];
-
-    sprintf(cpuState, "A:%02X X:%02X Y:%02X P:%02X SP:%02X CYCLE:%05d",
-            (int) ctx->registers->A, (int) ctx->registers->X, (int) ctx->registers->Y,
-            (int) ctx->registers->P.asByte(),      // processor status summary
-            (int) ctx->registers->S,             // stack pointer
-            (int) numCycles
-    );
-
-    PrintInfo("%-45s %s", instruction.c_str(), cpuState);
-#endif
 
     // update program counter
     registers->LastPC = registers->PC;
