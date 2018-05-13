@@ -334,10 +334,6 @@ void PPU::renderScanline(const tCPU::word Y) {
      * 32 tiles per scanline
      */
 
-//    if(Loggy::Enabled == Loggy::DEBUG) {
-        PrintInfo("Nametable = 0x%X and tileScroll = %d (scanline = %d)", nametableAddy, tileScroll, currentScanline);
-//    }
-
     ushort numTiles = 32; // 32 tiles per scanline
     ushort numAttributes = 8; // 8 attributes per scanline (4 per tile)
 
@@ -596,7 +592,7 @@ PPU::setControlRegister1(tCPU::byte value) {
     tCPU::byte nameTableIdx = value & 0x3; // bits 0 + 1
     settings.NameTableAddress = 0x2000 + nameTableIdx * 0x400;
 
-    PrintInfo("Setting nametable address to 0x%X", settings.NameTableAddress);
+//    PrintInfo("Setting nametable address to 0x%X", settings.NameTableAddress);
 
     // increment vram address (on port $2007 activity) by 1 (horizontal) or 32 (vertical) bytes
     settings.DoVerticalWrites = bits.test(2);
@@ -1387,44 +1383,44 @@ void PPU::RenderDebugNametables() {
                     }
                 }
             }
-
-            // render viewport scrolling
-
-            ushort tileScroll = ushort(vramAddress14bit & 0x0FFF);
-            ushort tileScrollPixels = tileScroll * 8;
-
-            // rows
-                    if(0)
-            for (auto i = 0; i < 256; i++) {
-                // left vertical line
-                auto offsetBytes = (i * 512 + (horizontalScrollOrigin + tileScrollPixels) % 256) * 4;
-                raster->nametables[offsetBytes + 0] = 0x33; // b
-                raster->nametables[offsetBytes + 1] = 0x66; // g
-                raster->nametables[offsetBytes + 2] = 0x99; // r
-                raster->nametables[offsetBytes + 3] = 0xff; // alpha
-
-                // right vertical line
-                offsetBytes = (i * 512 + (horizontalScrollOrigin + tileScrollPixels + 256) % 256) * 4;
-                raster->nametables[offsetBytes + 0] = 0x33; // b
-                raster->nametables[offsetBytes + 1] = 0x66; // g
-                raster->nametables[offsetBytes + 2] = 0x99; // r
-                raster->nametables[offsetBytes + 3] = 0xff; // alpha
-
-                // top line
-                offsetBytes = ((horizontalScrollOrigin + tileScrollPixels) % 256) * 4 + i * 4;
-                raster->nametables[offsetBytes + 0] = 0x33; // b
-                raster->nametables[offsetBytes + 1] = 0x66; // g
-                raster->nametables[offsetBytes + 2] = 0x99; // r
-                raster->nametables[offsetBytes + 3] = 0xff; // alpha
-//
-//                // bottom line
-//                offsetBytes = 256 * 512 * 4 + (horizontalScrollOrigin) * 4 + i * 4+ tileScrollBytes;
-//                raster->nametables[offsetBytes + 0] = 0x33; // b
-//                raster->nametables[offsetBytes + 1] = 0x66; // g
-//                raster->nametables[offsetBytes + 2] = 0x99; // r
-//                raster->nametables[offsetBytes + 3] = 0xff; // alpha
-            }
         }
+    }
+
+    // render viewport scrolling
+    ushort tileScroll = ushort(vramAddress14bit & 0x0FFF);
+    ushort tileScrollPixels = tileScroll * 8;
+    ushort nametableOffsetX = ((settings.NameTableAddress - 0x2000) / 0x400) * 256;
+    ushort horizontalScrollPixels = nametableOffsetX + horizontalScrollOrigin + tileScrollPixels;
+
+    // rows
+    for (auto i = 0; i < 256; i++) {
+        // left vertical line
+        auto offsetBytes = (i * 512 + (horizontalScrollPixels) % 512) * 4;
+        raster->nametables[offsetBytes + 0] = 0xff; // b
+        raster->nametables[offsetBytes + 1] = 0xff; // g
+        raster->nametables[offsetBytes + 2] = 0xff; // r
+        raster->nametables[offsetBytes + 3] = 0xff; // alpha
+
+        // right vertical line
+        offsetBytes = (i * 512 + (horizontalScrollPixels + 255) % 512) * 4;
+        raster->nametables[offsetBytes + 0] = 0xff; // b
+        raster->nametables[offsetBytes + 1] = 0xff; // g
+        raster->nametables[offsetBytes + 2] = 0xff; // r
+        raster->nametables[offsetBytes + 3] = 0xff; // alpha
+
+        // top line
+        offsetBytes = ((i + horizontalScrollPixels) % 512) * 4;
+        raster->nametables[offsetBytes + 0] = 0xff; // b
+        raster->nametables[offsetBytes + 1] = 0xff; // g
+        raster->nametables[offsetBytes + 2] = 0xff; // r
+        raster->nametables[offsetBytes + 3] = 0xff; // alpha
+
+        // bottom line
+        offsetBytes = (255 * 512 + (i + horizontalScrollPixels) % 512) * 4;
+        raster->nametables[offsetBytes + 0] = 0xff; // b
+        raster->nametables[offsetBytes + 1] = 0xff; // g
+        raster->nametables[offsetBytes + 2] = 0xff; // r
+        raster->nametables[offsetBytes + 3] = 0xff; // alpha
     }
 }
 
