@@ -185,6 +185,9 @@ PPU::execute(int numCycles) {
 
             sprite0HitInThisFrame = false;
             sprite0HitInThisScanline = false;
+
+            // reset nametable
+            settings.NameTableAddress = 0x2000;
         }
     }
 }
