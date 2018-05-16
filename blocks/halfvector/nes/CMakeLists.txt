@@ -31,14 +31,22 @@ set(CMAKE_CXX_STANDARD 17)
 # enable all warnings by default
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -pedantic")
 
-# suppress some unwanted warnings
+# suppress unwanted warnings
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-function -Wno-unused-variable")
 
-# debug information
-#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -ftrap-function=abort -fsanitize=undefined-trap -fsanitize-undefined-trap-on-error")
+# generate complete debug type info, tune for GDB (-ggdb) or LLDB (-glldb)
+# enable address sanitization to easily catch buffer overflows and heap corruptions
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -glldb -fsanitize=address")
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -ggdb -fsanitize=address")
-#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
+# enable optimizations
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O1")
+
+# generate optimization report
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Rpass=inline -fsave-optimization-record")
+
+# improve template/type error messages
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fdiagnostics-show-template-tree -fno-elide-type")
+
 
 #set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -rdynamic -Wl,-stack_size -Wl,0x10000")
 
