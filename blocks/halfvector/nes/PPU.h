@@ -102,9 +102,9 @@ public:
     tCPU::byte readFromVRam();
 
     // calculate memory address in PPU ram, taking into account mirroring
-    inline tCPU::word GetEffectiveAddress(tCPU::word address);
+    tCPU::word GetEffectiveAddress(tCPU::word address);
 
-    inline tCPU::byte ReadByteFromPPU(tCPU::word Address);
+    tCPU::byte ReadByteFromPPU(tCPU::word Address);
     bool WriteByToPPU(tCPU::word Address, tCPU::byte Value);
     void AutoIncrementVRAMAddress();
 

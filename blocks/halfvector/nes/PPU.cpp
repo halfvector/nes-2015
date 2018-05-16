@@ -882,48 +882,20 @@ PPU::StartSpriteXferDMA(Memory *memory, tCPU::byte address) {
 
 void PPU::clear() {
     // clear final output (256x256@32bit)
-    for (int x = 0; x < 256; x++) {
-        for (int y = 0; y < 256; y++) {
-            raster->screenBuffer[y * 256 * 4 + x * 4 + 0] = 0x33; // b
-            raster->screenBuffer[y * 256 * 4 + x * 4 + 1] = 0x33; // g
-            raster->screenBuffer[y * 256 * 4 + x * 4 + 2] = 0x33; // r
-            raster->screenBuffer[y * 256 * 4 + x * 4 + 3] = 0xff; // alpha
-        }
-    }
+    uint32_t clearPattern = 0xff333333;
+    memset_pattern4(raster->screenBuffer, &clearPattern, 256 * 256 * 4);
 
     // clear pattern table debug view (128x256@32bit)
-    for (int x = 0; x < 128; x++) {
-        for (int y = 0; y < 256; y++) {
-            raster->patternTable[y * 128 * 4 + x * 4 + 0] = 0x33; // b
-            raster->patternTable[y * 128 * 4 + x * 4 + 1] = 0x33; // g
-            raster->patternTable[y * 128 * 4 + x * 4 + 2] = 0x33; // r
-            raster->patternTable[y * 128 * 4 + x * 4 + 3] = 0xff; // alpha
-        }
-    }
+    memset_pattern4(raster->patternTable, &clearPattern, 128 * 256 * 4);
 
     // clear palette table debug view (256x32@32bit)
-    for (int x = 0; x < 256; x++) {
-        for (int y = 0; y < 32; y++) {
-            raster->palette[y * 256 * 4 + x * 4 + 0] = 0x33; // b
-            raster->palette[y * 256 * 4 + x * 4 + 1] = 0x33; // g
-            raster->palette[y * 256 * 4 + x * 4 + 2] = 0x33; // r
-            raster->palette[y * 256 * 4 + x * 4 + 3] = 0xff; // alpha
-        }
-    }
+    memset_pattern4(raster->palette, &clearPattern, 256 * 32 * 4);
 
     // clear sprite mask debug view (256x256@8bit)
-    for (int x = 0; x < 256; x++) {
-        for (int y = 0; y < 256; y++) {
-            raster->spriteMask[y * 256 + x + 0] = 0; // single byte packed format
-        }
-    }
+    memset(raster->spriteMask, 0, 256 * 256);
 
     // clear background mask debug view (256x256@8bit)
-    for (int x = 0; x < 256; x++) {
-        for (int y = 0; y < 256; y++) {
-            raster->spriteMask[y * 256 + x + 0] = 0; // single byte packed format
-        }
-    }
+    memset(raster->backgroundMask, 0, 256 * 256);
 }
 
 void PPU::renderDebug() {
