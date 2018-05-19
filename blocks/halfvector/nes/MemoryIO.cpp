@@ -179,7 +179,7 @@ struct MemoryIOHandler<0x4015> {
 template<>
 struct MemoryIOHandler<0x4014> {
     static void write(PPU *ppu, Memory *memory, tCPU::byte value) {
-        PrintApu("Writing 0x%02X to port $2006 - VRAM Sprite DMA Xfer", (int) value);
+        PrintPpu("Writing 0x%02X to port $2006 - VRAM Sprite DMA Xfer", (int) value);
         ppu->StartSpriteXferDMA(memory, value);
     }
 };
@@ -193,6 +193,7 @@ struct MemoryIOHandler<0x4016> {
     }
 
     static void write(Joypad *joypad, tCPU::byte value) {
+        joypad->setStrobe(value);
 //        PrintMemoryIO("Writing 0x%02X to port 4016 - Configuring Joypad", (int) value);
     }
 };

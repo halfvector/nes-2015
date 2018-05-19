@@ -19,20 +19,32 @@
 #include <unistd.h>
 
 using namespace boost;
+using namespace std::chrono_literals;
 typedef std::chrono::high_resolution_clock clock_type;
 
+
+void collectInputEvents(Joypad *pJoypad, bool *pBoolean);
 
 int main(int argc, char **argv) {
     Backtrace::install();
 
     CartridgeLoader loader;
-    Cartridge rom = loader.loadCartridge("../roms/supermariobros.nes");
-//    Cartridge rom = loader.loadCartridge("../roms/donkey_kong.nes");
+    Cartridge rom = loader.loadCartridge("../roms/supermariobros.nes"); // intro works, cannot tile scroll
+//    Cartridge rom = loader.loadCartridge("../roms/SuperMarioClouds.nes"); // draws zeroes instead of clouds, almost scrolls
+//    Cartridge rom = loader.loadCartridge("../roms/stars.nes"); // draws tiles instead of stars
+//    Cartridge rom = loader.loadCartridge("../roms/scanline.nes"); // stabler
+//    Cartridge rom = loader.loadCartridge("../roms/scroll.nes"); // doesn't work at all
+//    Cartridge rom = loader.loadCartridge("../roms/color_test.nes"); // doesn't work at all
+//    Cartridge rom = loader.loadCartridge("../roms/nestest.nes");
+//    Cartridge rom = loader.loadCartridge("../roms/gradius.nes"); // scrolling intro almost works
+//    Cartridge rom = loader.loadCartridge("../roms/megaman1.nes");
+//    Cartridge rom = loader.loadCartridge("../roms/donkey_kong.nes"); // draws zeroes instead of sprites
 //    Cartridge rom = loader.loadCartridge("../roms/apu_mixer/square.nes");
 
-    auto onVblankNmiSet = []() {
+//    Cartridge rom = loader.loadCartridge("../roms/Karateka (J) [p1].nes");
+//    Cartridge rom = loader.loadCartridge("../roms/Defender 2 (U).nes");
+//    Cartridge rom = loader.loadCartridge("../roms/all/nrom/Slalom (U).nes");
 
-    };
 
     // raster output
     auto raster = new Raster();
@@ -58,14 +70,18 @@ int main(int argc, char **argv) {
     // cpu
     auto cpu = new CPU(registers, memory, stack);
     cpu->load(rom);
-    cpu->reset();
+    cpu->reset(); // read PC from RESET vector
+
+    gui->render();
 
 
     PrintDbg("Reset program-counter to 0x%X", registers->PC);
 
     // https://www.pagetable.com/?p=410
     auto doVblankNMI = [&]() {
-        PrintDbg("Doing VBlank NMI (pushes to stack)");
+//        PrintInfo("Doing VBlank NMI (pushes to stack)");
+        // clear break flag
+        registers->P.B = 0;
         stack->pushStackWord(registers->PC);
         stack->pushStackByte(registers->P.asByte());
 
@@ -84,11 +100,14 @@ int main(int argc, char **argv) {
     registers->S = 0xFD;
 
     gui->render();
+    SDL_Event e;
+    while (SDL_PollEvent(&e)) {}
 
     std::chrono::high_resolution_clock::now();
     std::chrono::high_resolution_clock::now();
 
     auto start = std::chrono::high_resolution_clock::now();
+    auto last = std::chrono::high_resolution_clock::now();
 
     bool alive = true;
     while (alive) {
@@ -113,43 +132,16 @@ int main(int argc, char **argv) {
             ppu->renderDebug();
             gui->render();
             ppu->clear();
+            collectInputEvents(joypad, &alive);
 
-            // pump the event loop to ensure window visibility
-            SDL_Event e;
-            while (SDL_PollEvent(&e)) {
-                switch (e.type) {
-                    case SDL_KEYDOWN: {
-                        switch (e.key.keysym.sym) {
-                            case SDLK_SPACE:
-                                joypad->buttonDown(JoypadButtons::Select);
-                                break;
-                            case SDLK_RETURN:
-                                joypad->buttonDown(JoypadButtons::Start);
-                                break;
-                            case SDLK_RIGHT:
-                                joypad->buttonDown(JoypadButtons::Right);
-                                break;
-                            case SDLK_LEFT:
-                                joypad->buttonDown(JoypadButtons::Left);
-                                break;
-                            case SDLK_UP:
-                                joypad->buttonDown(JoypadButtons::Up);
-                                break;
-                            case SDLK_DOWN:
-                                joypad->buttonDown(JoypadButtons::Down);
-                                break;
-                            case SDLK_a:
-                                joypad->buttonDown(JoypadButtons::A);
-                                break;
-                            case SDLK_b:
-                                joypad->buttonDown(JoypadButtons::B);
-                                break;
-                            case SDLK_q:
-                                alive = false;
-                                break;
-                        }
-                    } break;
-                }
+            // throttle execution after every screen render
+            auto now = std::chrono::high_resolution_clock::now();
+            auto span = now - last;
+            last = now;
+
+            // throttle to around 60fps
+            if(span < 13ms) {
+                std::this_thread::sleep_for(16ms - span);
             }
         }
     }
@@ -164,5 +156,82 @@ int main(int argc, char **argv) {
     delete gui;
 
     audio->close();
+}
+
+// pump the event loop to ensure window visibility
+// collect keyboard events and send them in as joypad events
+void collectInputEvents(Joypad *joypad, bool *alive) {
+    SDL_Event e;
+    while (SDL_PollEvent(&e)) {
+                switch (e.type) {
+                    case SDL_KEYDOWN: {
+                        switch (e.key.keysym.sym) {
+                            case SDLK_SPACE:
+                                joypad->buttonDown(Select);
+                                break;
+                            case SDLK_c:
+                                joypad->buttonDown(Start);
+                                break;
+                            case SDLK_RIGHT:
+                                joypad->buttonDown(Right);
+                                break;
+                            case SDLK_LEFT:
+                                joypad->buttonDown(Left);
+                                break;
+                            case SDLK_UP:
+                                joypad->buttonDown(Up);
+                                break;
+                            case SDLK_DOWN:
+                                joypad->buttonDown(Down);
+                                break;
+                            case SDLK_a:
+                                joypad->buttonDown(A);
+                                break;
+                            case SDLK_b:
+                                joypad->buttonDown(B);
+                                break;
+                            case SDLK_q:
+                                *alive = false;
+                                break;
+                            case SDLK_d:
+                                if(Loggy::Enabled == Loggy::INFO) {
+                                    printf("Debug output enabled\n");
+                                    Loggy::Enabled = Loggy::DEBUG;
+                                } else {
+                                    printf("Debug output disabled\n");
+                                    Loggy::Enabled = Loggy::INFO;
+                                }
+                        }
+                    } break;
+                    case SDL_KEYUP: {
+                        switch (e.key.keysym.sym) {
+                            case SDLK_SPACE:
+                                joypad->buttonUp(Select);
+                                break;
+                            case SDLK_c:
+                                joypad->buttonUp(Start);
+                                break;
+                            case SDLK_RIGHT:
+                                joypad->buttonUp(Right);
+                                break;
+                            case SDLK_LEFT:
+                                joypad->buttonUp(Left);
+                                break;
+                            case SDLK_UP:
+                                joypad->buttonUp(Up);
+                                break;
+                            case SDLK_DOWN:
+                                joypad->buttonUp(Down);
+                                break;
+                            case SDLK_a:
+                                joypad->buttonUp(A);
+                                break;
+                            case SDLK_b:
+                                joypad->buttonUp(B);
+                                break;
+                        }
+                    } break;
+                }
+            }
 }
 

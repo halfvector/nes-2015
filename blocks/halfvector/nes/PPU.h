@@ -39,6 +39,7 @@ struct PPU_Settings {
     bool SpriteClipping;
     bool BackgroundVisible = false;
     bool SpriteVisible = false;
+    eMirroringType mirroring;
 };
 
 class Raster {
@@ -76,7 +77,10 @@ public:
     void renderDebug();
 
     bool enteredVBlank() {
-        return currentScanline == 243 && scanlinePixel == 0;
+//        return currentScanline == 243 && scanlinePixel == 0;
+        auto wasInVBlank = inVBlank;
+        inVBlank = false;
+        return wasInVBlank;
     }
 
     /**
@@ -97,9 +101,11 @@ public:
     void writeToVRam(tCPU::byte value);
     tCPU::byte readFromVRam();
 
+    // calculate memory address in PPU ram, taking into account mirroring
     tCPU::word GetEffectiveAddress(tCPU::word address);
-    tCPU::byte ReadInternalMemoryByte(tCPU::word Address);
-    bool WriteInternalMemoryByte(tCPU::word Address, tCPU::byte Value);
+
+    tCPU::byte ReadByteFromPPU(tCPU::word Address);
+    bool WriteByToPPU(tCPU::word Address, tCPU::byte Value);
     void AutoIncrementVRAMAddress();
 
     void setVRamAddressRegister1(tCPU::byte value);
@@ -114,7 +120,6 @@ protected:
     tCPU::word cycles;
     tCPU::word vramAddress14bit;
     tCPU::word tempVRAMAddress;
-    tCPU::byte tileXOffset;
     tCPU::byte latchedVRAMByte;
 
     // states
@@ -132,9 +137,10 @@ protected:
 
     Raster *raster;
 
-    // shared flipflop by port 2005 and 2006 to maintain first-write bit
-    // reset by port 2002 reads
+    // separate flipflop bits for ports 2005 and 2006 to maintain first-write state
+    // reset by port 2002 reads. should this be shared?
     bool firstWriteToSFF = true;
+    bool firstWriteToSFF2 = true;
     tCPU::byte horizontalScrollOrigin;
     tCPU::byte verticalScrollOrigin;
 
@@ -145,9 +151,9 @@ protected:
     void advanceRenderableScanline();
     void advanceBlankScanline();
     void onEnterHBlank();
-    void renderScanline(int scanline);
+    void renderScanline(const tCPU::word scanline);
 
-    tCPU::byte GetColorFromPalette(int PaletteType, int NameTableId, int ColorId);
+    tCPU::byte GetColorFromPalette(int paletteType, int upperBits, int lowerBits);
     /*
      * PPU Settings
      */

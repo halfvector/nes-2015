@@ -23,8 +23,13 @@ public:
     void buttonDown(JoypadButtons jb);
     void reset();
 
+    void setStrobe(tCPU::byte value);
+
+    void buttonUp(JoypadButtons button);
+
 private:
-    int currentButton = 0;
+    int strobe = 0;
+    int currentButton = JoypadButtons::A;
     int buttonStates = 0;
 };
 

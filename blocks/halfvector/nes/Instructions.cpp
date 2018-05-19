@@ -247,6 +247,17 @@ void Instructions::configureOpcodes() {
     opcodes[0xB1].set("LDA", 2, 5, 1, "LDA (nn),Y", ADDR_MODE_INDIRECT_INDEXED);
     opcodes[0x08].set("PHP", 1, 3, 0, "PHP", ADDR_MODE_NONE);
     opcodes[0x8A].set("TXA", 1, 2, 0, "TXA", ADDR_MODE_NONE);
+
+    // Extra opcodes
+    opcodes[0xAF].set("LAX", 3, 4, 0, "LAX nnnn", ADDR_MODE_ABSOLUTE);
+    opcodes[0xBF].set("LAX", 3, 4, 0, "LAX nnnn,Y", ADDR_MODE_ABSOLUTE_INDEXED_Y);
+    opcodes[0xA7].set("LAX", 2, 3, 0, "LAX nn", ADDR_MODE_ZEROPAGE);
+    opcodes[0xB7].set("LAX", 2, 4, 0, "LAX nn,Y", ADDR_MODE_ZEROPAGE_INDEXED_Y);
+    opcodes[0xA3].set("LAX", 2, 6, 0, "LAX (nn,X)", ADDR_MODE_INDEXED_INDIRECT);
+    opcodes[0xB3].set("LAX", 2, 5, 0, "LAX (nn),Y", ADDR_MODE_INDIRECT_INDEXED);
+
+    opcodes[0x87].set("SAX", 2, 2, 0, "LAX #nn", ADDR_MODE_IMMEDIATE);
+    opcodes[0x83].set("SAX", 2, 2, 0, "LAX (nn,X)", ADDR_MODE_INDEXED_INDIRECT);
 }
 
 /**
@@ -408,6 +419,11 @@ Instructions::generateOpcodeVariants() {
     Unroll<TXA>::start(opcodes, modes, ADDR_MODE_NONE);
     Unroll<TXS>::start(opcodes, modes, ADDR_MODE_NONE);
     Unroll<TYA>::start(opcodes, modes, ADDR_MODE_NONE);
+
+    // Extra opcodes
+    Unroll<LAX>::start(opcodes, modes, ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X, ADDR_MODE_ZEROPAGE,
+                       ADDR_MODE_ZEROPAGE_INDEXED_Y, ADDR_MODE_INDEXED_INDIRECT, ADDR_MODE_INDIRECT_INDEXED);
+    Unroll<SAX>::start(opcodes, modes, ADDR_MODE_ABSOLUTE, ADDR_MODE_ZEROPAGE, ADDR_MODE_INDEXED_INDIRECT);
 }
 
 /**
@@ -453,9 +469,31 @@ DEFINE_OPCODE(CLV) {
     ctx->registers->P.V = 0;
 }
 
+DEFINE_OPCODE(SAX) {
+    auto value = MemoryOperation<mode>::readByte(ctx);
+    tCPU::byte a = RegisterOperation<ACCUMULATOR>::read(ctx);
+    tCPU::byte x = RegisterOperation<REGISTER_X>::read(ctx);
+
+    auto result = (a & x) - value;
+
+    ctx->registers->setZeroBit(result);
+    ctx->registers->setSignBit(result);
+
+    RegisterOperation<REGISTER_X>::write(ctx, result);
+}
+
 /**
  * Load and Store into registers
  */
+
+DEFINE_OPCODE(LAX) {
+    auto value = MemoryOperation<mode>::readByte(ctx);
+    RegisterOperation<ACCUMULATOR>::write(ctx, value);
+    RegisterOperation<REGISTER_X>::write(ctx, value);
+
+    ctx->registers->setZeroBit(ctx->registers->A);
+    ctx->registers->setSignBit(ctx->registers->A);
+}
 
 DEFINE_OPCODE(LDA) {
     RegisterOperation<ACCUMULATOR>::write(ctx, MemoryOperation<mode>::readByte(ctx));
@@ -511,7 +549,10 @@ DEFINE_OPCODE(PLA) {
 
 // processor status -> Stack
 DEFINE_OPCODE(PHP) {
+    // set break flag
+    ctx->registers->P.B = 1;
     ctx->stack->pushStackByte(ctx->registers->P.asByte());
+    ctx->registers->P.B = 0;
 }
 
 // processor status <- Stack
@@ -591,11 +632,10 @@ struct BranchIf {
 
         if (flagState == expectedState) {
             PrintCpu("-> Branch Taken");
-//            CPU::Singleton()->IncCycles();
 
             // add another cycle if branch goes to a diff page
             if ((jmpAddress & 0xF0) != (ctx->registers->PC & 0xF0)) {
-//                CPU::Singleton()->IncCycles();
+
             }
 
             ctx->registers->PC = jmpAddress;
@@ -742,6 +782,11 @@ DEFINE_OPCODE(JMP) {
 
     // special case: if address low byte is 0xff, wrap around and read upper byte
 
+    if (ctx->registers->LastPC == address) {
+//        PrintInfo("Infinite loop detected. Breaking.");
+//        exit(1);
+    }
+
 //    PrintCpu("Setting new PC to $%04X") % address;
     ctx->registers->PC = address;
 }
@@ -882,6 +927,9 @@ DEFINE_OPCODE(BRK) {
     ctx->registers->P.B = 1;
     // push status on stack
     ctx->stack->pushStackByte(ctx->registers->P.asByte());
+    // clear break flag as it only exists in the stack and not in the status register!
+    // http://wiki.nesdev.com/w/index.php/CPU_status_flag_behavior
+    ctx->registers->P.B = 0;
     // disable irq
     ctx->registers->P.I = 1;
 
@@ -900,15 +948,16 @@ DEFINE_OPCODE(BRK) {
 DEFINE_OPCODE(ADC) {
     tCPU::byte value = MemoryOperation<mode>::readByte(ctx);
     tCPU::byte accumulator = RegisterOperation<ACCUMULATOR>::read(ctx);
+    tCPU::byte carry = ctx->registers->P.C ? 1 : 0;
 
-    tCPU::word result = accumulator + value + (ctx->registers->P.C ? 1 : 0);
+    tCPU::word result = accumulator + value + carry;
 
-    tCPU::byte resultAsByte = static_cast<tCPU::byte>(result);
+    tCPU::byte resultAsByte = result & 0xff; // take lsb
 
     ctx->registers->setSignBit(resultAsByte);
     ctx->registers->setZeroBit(resultAsByte);
     ctx->registers->setOverflowFlag(~(accumulator ^ value) & (accumulator ^ resultAsByte) & 0x80);
-    ctx->registers->P.C = result > 256;
+    ctx->registers->P.C = result > 0xff;
 
     RegisterOperation<ACCUMULATOR>::write(ctx, resultAsByte);
 }
