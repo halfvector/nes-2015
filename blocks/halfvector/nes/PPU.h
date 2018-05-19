@@ -132,13 +132,13 @@ protected:
     // memory
     tCPU::byte *WRAM = new tCPU::byte[2000];
     tCPU::byte *VRAM = new tCPU::byte[2000];
-    tCPU::byte *PPU_RAM = new tCPU::byte[0x10000]; // should be 0x4000?
+    tCPU::byte *PPU_RAM = new tCPU::byte[0x4000];
     tCPU::byte *SPR_RAM = new tCPU::byte[0x100];
 
     Raster *raster;
 
-    // shared flipflop by port 2005 and 2006 to maintain first-write bit
-    // reset by port 2002 reads
+    // separate flipflop bits for ports 2005 and 2006 to maintain first-write state
+    // reset by port 2002 reads. should this be shared?
     bool firstWriteToSFF = true;
     bool firstWriteToSFF2 = true;
     tCPU::byte horizontalScrollOrigin;
