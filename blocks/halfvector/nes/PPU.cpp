@@ -338,7 +338,7 @@ void PPU::renderScanline(const tCPU::word Y) {
     ushort numAttributes = 8; // 8 attributes per scanline (4 per tile)
 
     if(settings.BackgroundVisible)
-    for (ushort i = 0; i < numTiles; i++) {
+    for (ushort i = 0; i <= numTiles; i++) {
         auto nametable = nametableAddy;
         auto nametableAttributeOffset = nametableAddy + 0x3C0;
 
