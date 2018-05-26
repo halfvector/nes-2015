@@ -63,12 +63,45 @@ public:
     tCPU::byte* nametables;
 };
 
+enum MemoryMappers {
+    MEMORY_MAPPER_NROM = 0,
+    MEMORY_MAPPER_UNROM = 2,
+    MEMORY_MAPPER_CNROM = 3,
+};
+
+class MemoryMapper {
+public:
+    MemoryMapper(tCPU::byte *ppuRam, tCPU::byte *cpuRam) {
+        this->PPU_RAM = ppuRam;
+        this->CPU_RAM = cpuRam;
+        this->PRG_BANKS = new tCPU::byte[0x20000]; // 128KiB (ie megaman1)
+        chrBank = 0;
+        prgBank = 0;
+    }
+
+    void loadRom(Cartridge &rom);
+
+    tCPU::word getEffectiveAddress(tCPU::word address);
+
+    void writeByte(tCPU::word address, tCPU::byte value);
+
+    tCPU::byte readByte(tCPU::word address);
+
+private:
+    tCPU::byte *PPU_RAM;
+    tCPU::byte *CPU_RAM;
+    tCPU::byte *PRG_BANKS;
+    int memoryMapperId;
+    int chrBank;
+    int prgBank;
+};
+
 class PPU {
 public:
     PPU(Raster *);
 
     void loadRom(Cartridge &rom);
-    void writeChrPage(uint8_t buffer[]);
+    void writeChrPage(uint16_t page, uint8_t buffer[]);
     void clear();
 
     void execute(int numCycles);
@@ -94,7 +127,7 @@ public:
 
     void setControlRegister1(tCPU::byte value);
     void setControlRegister2(tCPU::byte value);
-    
+
     tCPU::byte getControlRegister1();
 
     void setVRamAddressRegister2(tCPU::byte value);
@@ -114,6 +147,12 @@ public:
     tCPU::byte readSpriteMemory();
     void StartSpriteXferDMA(Memory* memory, tCPU::byte address);
 
+    tCPU::byte* getPpuRam() {
+        return PPU_RAM;
+    }
+
+    void useMemoryMapper(MemoryMapper *mapper);
+
 protected:
     tCPU::byte statusRegister;
     tCPU::byte controlRegister1;
@@ -132,7 +171,7 @@ protected:
     // memory
     tCPU::byte *WRAM = new tCPU::byte[2000];
     tCPU::byte *VRAM = new tCPU::byte[2000];
-    tCPU::byte *PPU_RAM = new tCPU::byte[0x4000];
+    tCPU::byte *PPU_RAM = new tCPU::byte[0x10000]; // 65KiB memory. can hold MMC roms.
     tCPU::byte *SPR_RAM = new tCPU::byte[0x100];
 
     Raster *raster;
@@ -175,4 +214,6 @@ protected:
     void RenderBackgroundTiles();
 
     void RenderSpriteTiles();
+
+    MemoryMapper *mapper;
 };

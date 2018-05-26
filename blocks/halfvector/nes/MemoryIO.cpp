@@ -181,6 +181,8 @@ struct MemoryIOHandler<0x4014> {
     static void write(PPU *ppu, Memory *memory, tCPU::byte value) {
         PrintPpu("Writing 0x%02X to port $2006 - VRAM Sprite DMA Xfer", (int) value);
         ppu->StartSpriteXferDMA(memory, value);
+
+        MemoryIO::cpuCyclesPenalty += 513;
     }
 };
 
@@ -216,6 +218,8 @@ public:
             : ExceptionBase(str) {}
 };
 
+int MemoryIO::cpuCyclesPenalty = 0;
+
 bool
 MemoryIO::write(tCPU::word address, tCPU::byte value) {
     switch (address) {
@@ -225,6 +229,10 @@ MemoryIO::write(tCPU::word address, tCPU::byte value) {
 
         case 0x2001:
             MemoryIOHandler<0x2001>::write(ppu, value);
+            break;
+
+        case 0x2002:
+            PrintDbg("Writing to 0x2002 is not supported. Ignoring.");
             break;
 
         case 0x2003:

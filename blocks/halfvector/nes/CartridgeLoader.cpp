@@ -29,17 +29,22 @@ void
 CartridgeLoader::readHeader(std::fstream &fh, Cartridge &rom) {
     fh.read((char *) &rom.header, sizeof(rom.header));
 
-    PrintInfo("signature: %d%d%d%d", rom.header.signature[0], rom.header.signature[1], rom.header.signature[2], rom.header.signature[3]);
-    PrintInfo("programData: %d", (int) rom.header.numPrgPages);
-    PrintInfo("characterData: %d", (int) rom.header.numChrPages);
+    PrintInfo("ROM Header size %d", sizeof(rom.header));
 
-    bool headerIsClean = true;
+    // signature should say 'NES'
+    PrintInfo("signature: %c%c%c", rom.header.signature[0], rom.header.signature[1], rom.header.signature[2]);
+    PrintInfo("number of PRG pages: %d", (int) rom.header.numPrgPages);
+    PrintInfo("number of CHR pages: %d", (int) rom.header.numChrPages);
+    PrintInfo("control bytes: 0x%02X 0x%02X", rom.header.CB1, rom.header.CB2);
+    PrintInfo("iNES 2.0 header? %d", ((rom.header.CB2 >> 2) & 0x3) == 0x3);
+
+    bool headerContainsReservedBits = false;
     for (signed char i : rom.header.reserved) {
-        headerIsClean |= i;
+        headerContainsReservedBits |= i;
     }
 
     // warn if header contains reserved bits (not supported)
-    if (!headerIsClean) {
+    if (headerContainsReservedBits) {
         PrintWarning("header is using reserved bits");
     }
 
@@ -68,8 +73,12 @@ CartridgeLoader::analyzeHeader(Cartridge &rom) {
     assert(rom.header.numChrPages < 10);
 
     // determine memory mapper type (256 possible variants)
-    int MapperId = ((rom.header.CB1 & 0xF0) >> 4) + ((rom.header.CB2 & 0xF0) >> 4);
-    PrintInfo("ROM requires Memory Mapper #%d", MapperId);
+    int mapperId = ((rom.header.CB1 & 0xF0) >> 4) | (rom.header.CB2 & 0xF0);
+    PrintInfo("ROM requires Memory Mapper #%d", mapperId);
+    PrintInfo("CB1: 0x%X", rom.header.CB1);
+    PrintInfo("CB2: 0x%X", rom.header.CB2);
+
+    rom.info.memoryMapperId = mapperId;
 
     if (rom.info.trainerPresent) {
         PrintInfo("512 Byte Trainer Present");

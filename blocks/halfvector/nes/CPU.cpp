@@ -39,20 +39,7 @@ CPU::load(Cartridge &rom) {
 void
 CPU::writePrgPage(int pageIdx, uint8_t buffer[]) {
     tCPU::dword pageAddress = 0x8000 + 0x4000 * pageIdx;
-    PrintCpu("Writing 16k PRG ROM to Page %d (@ 0x%08X)", pageIdx, (int) pageAddress);
-
-//    for(int j = 0; j < PRG_ROM_PAGE_SIZE; j+=8) {
-//        PrintDbg("%05X %02X %02X %02X %02X %02X %02X %02X %02X")
-//                % (int) (pageAddress + j)
-//                % (int) buffer[j+0]
-//                % (int) buffer[j+1]
-//                % (int) buffer[j+2]
-//                % (int) buffer[j+3]
-//                % (int) buffer[j+4]
-//                % (int) buffer[j+5]
-//                % (int) buffer[j+6]
-//                % (int) buffer[j+7];
-//    }
+    PrintInfo("Writing 16k PRG ROM to Page %d (@ 0x%08X)", pageIdx, (int) pageAddress);
 
     memcpy(memory->getByteArray() + pageAddress, buffer, 0x4000);
 }
@@ -118,11 +105,11 @@ CPU::executeOpcode(int code) {
 
         char cpuState[200];
 
-        sprintf(cpuState, "A:%02X X:%02X Y:%02X P:%02X SP:%02X CYCLE:%05d",
+        sprintf(cpuState, "A:%02X X:%02X Y:%02X P:%02X SP:%02X CYCLE:%05d C:%d",
                 (int) ctx->registers->A, (int) ctx->registers->X, (int) ctx->registers->Y,
                 (int) ctx->registers->P.asByte(),      // processor status summary
                 (int) ctx->registers->S,             // stack pointer
-                (int) numCycles
+                (int) numCycles, ctx->registers->P.C
         );
 
         PrintInfo("%-45s %s", instruction.c_str(), cpuState);
@@ -132,6 +119,9 @@ CPU::executeOpcode(int code) {
     registers->LastPC = registers->PC;
     registers->PC += opcodeSize;
 
+    MemoryAddressResolveBase::PageBoundaryCrossed = false;
+    MemoryIO::cpuCyclesPenalty = 0;
+
     instructions->execute(code, ctx);
 
     // opcode cycle count + any page boundary penalty
@@ -139,6 +129,17 @@ CPU::executeOpcode(int code) {
     if (opcodes[code].PageBoundaryCondition && MemoryAddressResolveBase::PageBoundaryCrossed) {
         cycles++;
     }
+
+    // add branch penalty
+    if (BranchState::BranchTaken) {
+        PrintDbg("detected a branch");
+        cycles++;
+    }
+
+    // TODO: add APU/PPU cpu delays
+//    cycles += MemoryIO::cpuCyclesPenalty;
+
+    // number of bytes read to execute opcode also counts as cycles
     numCycles += cycles;
 
     return cycles;

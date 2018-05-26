@@ -19,6 +19,9 @@ Instructions::initialize() {
 
 void
 Instructions::execute(int opcode, InstructionContext *ctx) {
+    if(opcodes[opcode].execute == nullptr) {
+        PrintError("Unsupported opcode=0x%X @ address=0x%04X", opcode, ctx->registers->PC);
+    }
     assert(opcodes[opcode].execute != nullptr);
     opcodes[opcode].execute(ctx);
 }
@@ -258,6 +261,8 @@ void Instructions::configureOpcodes() {
 
     opcodes[0x87].set("SAX", 2, 2, 0, "LAX #nn", ADDR_MODE_IMMEDIATE);
     opcodes[0x83].set("SAX", 2, 2, 0, "LAX (nn,X)", ADDR_MODE_INDEXED_INDIRECT);
+
+    opcodes[0x9C].set("SHY", 3, 5, 0, "SHY nnnn,X", ADDR_MODE_ABSOLUTE_INDEXED_X);
 }
 
 /**
@@ -424,6 +429,7 @@ Instructions::generateOpcodeVariants() {
     Unroll<LAX>::start(opcodes, modes, ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X, ADDR_MODE_ZEROPAGE,
                        ADDR_MODE_ZEROPAGE_INDEXED_Y, ADDR_MODE_INDEXED_INDIRECT, ADDR_MODE_INDIRECT_INDEXED);
     Unroll<SAX>::start(opcodes, modes, ADDR_MODE_ABSOLUTE, ADDR_MODE_ZEROPAGE, ADDR_MODE_INDEXED_INDIRECT);
+    Unroll<SHY>::start(opcodes, modes, ADDR_MODE_ABSOLUTE_INDEXED_X);
 }
 
 /**
@@ -480,6 +486,19 @@ DEFINE_OPCODE(SAX) {
     ctx->registers->setSignBit(result);
 
     RegisterOperation<REGISTER_X>::write(ctx, result);
+}
+
+DEFINE_OPCODE(0x9c) {
+    auto value = MemoryOperation<mode>::readWord(ctx);
+    tCPU::byte y = RegisterOperation<REGISTER_Y>::read(ctx);
+
+    auto byte = (value >> 8) & 0x0f;
+    auto result = y & byte;
+
+    ctx->registers->setZeroBit(result);
+    ctx->registers->setSignBit(result);
+
+    MemoryOperation<mode>::writeByte(ctx, result);
 }
 
 /**
@@ -619,28 +638,33 @@ DEFINE_OPCODE(TAY) {
  * provides implementation for various branch-on-cpu-status-flag
  */
 
+bool BranchState::BranchTaken = false;
+
 template<ProcessorStatusFlags Register>
-struct BranchIf {
-    static void is(InstructionContext *ctx, bool expectedState) {
-        // get signed offset value
-        signed char relativeOffset = ctx->mem->readByte(ctx->registers->LastPC + 1);
-        tCPU::word jmpAddress = ctx->registers->PC + relativeOffset;
-        bool flagState = ProcessorStatusFlag<Register>::getState(ctx);
+void BranchIf<Register>::is(InstructionContext *ctx, bool expectedState) {
+    // get signed offset value
+    signed char relativeOffset = ctx->mem->readByte(ctx->registers->LastPC + 1);
+    tCPU::word jmpAddress = ctx->registers->PC + relativeOffset;
+    bool flagState = ProcessorStatusFlag<Register>::getState(ctx);
 
-        PrintCpu("-> Status Register %s is %d; expected: %d; Relative offset: $%hhX; Calculated jump address = $%04X",
-                 ProcessorStatusFlagNames[Register], (int) flagState, expectedState, relativeOffset, jmpAddress);
+    PrintCpu("-> Status Register %s is %d; expected: %d; Relative offset: $%hhX; Calculated jump address = $%04X",
+             ProcessorStatusFlagNames[Register], (int) flagState, expectedState, relativeOffset, jmpAddress);
 
-        if (flagState == expectedState) {
-            PrintCpu("-> Branch Taken");
+    if (flagState == expectedState) {
+        // take note of branch, CPU will add an extra cycle onto op
+        BranchState::BranchTaken = true;
 
-            // add another cycle if branch goes to a diff page
-            if ((jmpAddress & 0xF0) != (ctx->registers->PC & 0xF0)) {
-
-            }
-
-            ctx->registers->PC = jmpAddress;
+        if ((jmpAddress & 0xFF00) != (ctx->registers->PC & 0xFF00)) {
+            // take note of page boundary crossing
+            // CPU will add another cycle if branch goes to a diff page
+            // and if the opcode has a boundry crossing penalty
+            MemoryAddressResolveBase::PageBoundaryCrossed = true;
         }
-    };
+
+        ctx->registers->PC = jmpAddress;
+    } else {
+        BranchState::BranchTaken = false;
+    }
 };
 
 /**

@@ -100,7 +100,7 @@ PPU::PPU(Raster *raster) : raster(raster) {
 
     // clear memory
     memset(SPR_RAM, 248, 256);
-    memset(PPU_RAM, 0, 0x4000);
+    memset(PPU_RAM, 0, 0x10000);
 }
 
 /**
@@ -424,11 +424,8 @@ void PPU::renderScanline(const tCPU::word Y) {
 
 //            auto bgra = 0xFF << 24 | (tileIdx) << 16;
 
-            // render tile
-            int bgra = 0xFF << 24 | color.R << 16 | color.G << 8 | color.B;
-
             // update final color output
-            *(backgroundRender++) = bgra;
+            *(backgroundRender++) = color.ColorValue;
 
             // update mask
             *(backgroundMask++) = lowerBits * 64;
@@ -528,25 +525,21 @@ void PPU::renderScanline(const tCPU::word Y) {
 
             if ((!spriteBehindBG || raster->backgroundMask[Y * 256 + screenX] == 0) && colorLowerBits) {
                 tPaletteEntry &color = colorPalette[paletteId];
-                int bgra = 0xFF << 24 | color.R << 16 | color.G << 8 | color.B;
-
-//                if(firstSprite) {
-//                    bgra = 0xffff0000;
-//                } else {
-//                    bgra = 0xffffffff;
-//                }
 
                 // write final color output
-                *((int *) raster->screenBuffer + Y * 256 + screenX) = bgra;
+                ((int *) raster->screenBuffer)[Y * 256 + screenX] = color.ColorValue;
                 // write mask
                 raster->spriteMask[Y * 256 + screenX] = colorLowerBits * 64;
+                raster->backgroundMask[Y * 256 + screenX] += 0xf0;
             }
 
             // test sprite-0 hit detection against background mask
             if (!sprite0HitInThisFrame && !sprite0HitInThisScanline && i == 0) {
                 // if we got a sprite0 color pixel over a non-transparent background pixel
-                if (raster->backgroundMask[Y * 256 + screenX] > 0 && colorLowerBits > 0) {
-                    sprite0HitInThisScanline = true;
+                // a transparent pixel has lower two bits = 0 (should do 'bg & 0x3')
+                if ((raster->backgroundMask[Y * 256 + screenX]) != 0 && colorLowerBits != 0) {
+//                    sprite0HitInThisScanline = true;
+//                    PrintInfo("Sprite-0 collision detected");
                 }
             }
         }
@@ -691,7 +684,16 @@ tCPU::word
 PPU::GetEffectiveAddress(tCPU::word address) {
     if (address < 0x2000) {
         // pattern table chr-rom page
-//        PrintInfo("Address is < 0x2000; Referencing CHR-ROM @ $%04X", (int) (address));
+
+        // use a memory mapper if one is available
+        if(mapper != nullptr) {
+           address = mapper->getEffectiveAddress(address);
+        }
+
+//        PrintInfo("Address is < 0x2000; Referencing CHR-ROM @ $%04X", address);
+
+        return address;
+
     }
 
     // PPU
@@ -786,7 +788,9 @@ bool
 PPU::WriteByToPPU(tCPU::word Address, tCPU::byte Value) {
     tCPU::word EffectiveAddress = GetEffectiveAddress(Address);
     PPU_RAM[EffectiveAddress] = Value;
-    PrintDbg("Wrote 0x%02X to PPU RAM @ 0x%04X (0x%04X)", Value, EffectiveAddress, Address);
+    if(Address >= 0x8000) {
+        PrintInfo("Wrote 0x%02X to PPU RAM @ 0x%04X (0x%04X)", Value, EffectiveAddress, Address);
+    }
     if (EffectiveAddress >= 0x3f00 && EffectiveAddress < 0x4000) {
         PrintDbg("Wrote 0x%02X to PPU RAM @ 0x%04X (0x%04X)", Value, EffectiveAddress, Address);
     }
@@ -1124,6 +1128,8 @@ void PPU::RenderDebugPatternTables() {// render two pattern tables
     // each pixel has two bits for four colors
     // renders into 128x128 target
 
+    int base = 0xA000;
+
     // rows
     for (auto i = 0; i < 32; i++) {
         // columns
@@ -1138,8 +1144,8 @@ void PPU::RenderDebugPatternTables() {// render two pattern tables
                 // 8 rows, each row takes two bytes
                 // each pixel in the byte is a color bit for a column
                 auto rowSrc = src + k;
-                auto pattern1 = PPU_RAM[rowSrc + 0];
-                auto pattern2 = PPU_RAM[rowSrc + 8];
+                auto pattern1 = PPU_RAM[base + rowSrc + 0];
+                auto pattern2 = PPU_RAM[base + rowSrc + 8];
 
                 // columns
                 for (auto l = 0; l < 8; l++) {
@@ -1326,8 +1332,8 @@ void PPU::RenderDebugNametables() {
                     // row
                     for (unsigned short k = 0; k < 8; k++) {
                         // lookup row byte pattern
-                        tCPU::byte PatternByte0 = PPU_RAM[settings.BackgroundPatternTableAddress + tileNumber * 16 + k];
-                        tCPU::byte PatternByte1 = PPU_RAM[settings.BackgroundPatternTableAddress + tileNumber * 16 + k + 8];
+                        tCPU::byte PatternByte0 = ReadByteFromPPU(settings.BackgroundPatternTableAddress + tileNumber * 16 + k);
+                        tCPU::byte PatternByte1 = ReadByteFromPPU(settings.BackgroundPatternTableAddress + tileNumber * 16 + k + 8);
 
                         // column
                         for (short l = 0; l < 8; l++) {
@@ -1391,25 +1397,173 @@ void PPU::RenderDebugNametables() {
 
 void
 PPU::loadRom(Cartridge &rom) {
-    for (uint8_t i = 0; i < rom.header.numChrPages; i++) {
-        writeChrPage(rom.characterDataPages[i].buffer);
-    }
+//    for (uint8_t i = 0; i < rom.header.numChrPages; i++) {
+//        writeChrPage(i, rom.characterDataPages[i].buffer);
+//    }
 
     settings.mirroring = rom.info.mirroring;
 }
 
 /**
- * Write 8kB chr-rom page to PPU memory
- * Populates the pattern table
+ * Write 8kB chr-rom pages to PPU memory
+ * Populates the pattern tables. MMC roms can bank switch from here.
  */
 void
-PPU::writeChrPage(uint8_t buffer[]) {
+PPU::writeChrPage(uint16_t page, uint8_t buffer[]) {
+//    memcpy(PPU_RAM + 0x8000 + CHR_ROM_PAGE_SIZE * page, buffer, CHR_ROM_PAGE_SIZE);
+}
 
-//    for (int j = 0; j < CHR_ROM_PAGE_SIZE; j += 8) {
-//        PrintInfo("%05X %02X %02X %02X %02X %02X %02X %02X %02X", (j), (int) buffer[j + 0], (int) buffer[j + 1],
-//                  (int) buffer[j + 2], (int) buffer[j + 3], (int) buffer[j + 4], (int) buffer[j + 5],
-//                  (int) buffer[j + 6], (int) buffer[j + 7]);
+void
+PPU::useMemoryMapper(MemoryMapper *mapper) {
+    this->mapper = mapper;
+
+}
+
+void
+MemoryMapper::loadRom(Cartridge &rom) {
+    PrintInfo("Memory mapper id = %d", rom.info.memoryMapperId);
+
+    for (uint8_t i = 0; i < rom.header.numChrPages; i++) {
+        memcpy(PPU_RAM + 0x8000 + CHR_ROM_PAGE_SIZE * i, rom.characterDataPages[i].buffer, CHR_ROM_PAGE_SIZE);
+    }
+
+    for (uint8_t i = 0; i < rom.header.numPrgPages; i++) {
+        PrintInfo("writing bank %d to 0x%X", i, 0x10000 + PRG_ROM_PAGE_SIZE * i);
+        memcpy(CPU_RAM + 0x10000 + PRG_ROM_PAGE_SIZE * i, rom.programDataPages[i].buffer, PRG_ROM_PAGE_SIZE);
+        memcpy(PRG_BANKS + PRG_ROM_PAGE_SIZE * i, rom.programDataPages[i].buffer, PRG_ROM_PAGE_SIZE);
+    }
+
+    memoryMapperId = rom.info.memoryMapperId;
+
+    switch(memoryMapperId) {
+        case MEMORY_MAPPER_UNROM:
+            // last bank into second PRG ROM position
+            PrintInfo("Loading last PRG ROM into 0xc000");
+            memcpy(CPU_RAM + 0xC000, rom.programDataPages[rom.header.numPrgPages-1].buffer, PRG_ROM_PAGE_SIZE);
+            prgBank = rom.header.numPrgPages-1;
+            break;
+    }
+}
+
+/**
+ * Calculate PPU_RAM address for pattern table using a memory mapper
+ */
+tCPU::word
+MemoryMapper::getEffectiveAddress(tCPU::word address) {
+    switch(memoryMapperId) {
+        case MEMORY_MAPPER_NROM:
+            // address is unchanged
+            break;
+
+        case MEMORY_MAPPER_UNROM: {
+            // switch between four 8KiB banks. capped at 32KiB of CHR.
+            address = address + 0x10000 + prgBank * PRG_ROM_PAGE_SIZE;
+        } break;
+
+        case MEMORY_MAPPER_CNROM: {
+            // switch between four 8KiB banks. capped at 32KiB of CHR.
+            address = address + 0x8000 + chrBank * CHR_ROM_PAGE_SIZE;
+        } break;
+
+        default: {
+            PrintInfo("Unsupported memory mapper %d", memoryMapperId);
+        } break;
+    }
+
+
+//    switch(address) {
+//        case 0x0000 ... 0x07ff:
+//            bank = CPU_RAM[0x8800] & 0x3;
+//            break;
+//        case 0x0800 ... 0x0fff:
+//            bank = CPU_RAM[0x9800] & 0x3;
+//            break;
+//        case 0x1000 ... 0x17ff:
+//            bank = CPU_RAM[0xA800] & 0x3;
+//            break;
+//        case 0x1800 ... 0x1fff:
+//            bank = CPU_RAM[0xB800] & 0x3;
+//            break;
+//        default:
+//            PrintInfo("Unhandled case: address=0x%X", address);
 //    }
 
-    memcpy(PPU_RAM, buffer, 0x2000);
+//    if (bank != 0) {
+//        PrintInfo("bank = %d", bank);
+//    }
+
+    // map into CHR-ROM banks in PPU-RAM
+    return address;
+}
+
+void
+MemoryMapper::writeByte(tCPU::word address, tCPU::byte value) {
+    // address must be in range [$4020-$FFFF]
+    // this is space the CPU can directly address (16 bit)
+    // and it belongs exclusively to the cartridge
+    // writes here will likely be mapper registers
+    CPU_RAM[address] = value;
+
+    switch(memoryMapperId) {
+        case MEMORY_MAPPER_NROM:
+            // do nothing
+            break;
+
+        case MEMORY_MAPPER_UNROM: {
+            if(address >= 0x8000 && address <= 0xFFFF) {
+                auto newBank = value & 0x3; // only lower 2 bits
+                if(newBank != prgBank) {
+                    PrintInfo("switching to PRG bank = %d", newBank);
+                }
+                prgBank = newBank;
+            }
+        } break;
+
+        case MEMORY_MAPPER_CNROM: {
+            if(address >= 0x8000 && address <= 0xFFFF) {
+                auto newBank = value & 0x3; // only lower 2 bits
+                if(newBank != chrBank) {
+                    PrintInfo("switching to CHR bank = %d", newBank);
+                }
+                chrBank = newBank;
+            }
+        } break;
+
+        default: {
+            PrintInfo("Unsupported memory mapper %d", memoryMapperId);
+        } break;
+    }
+}
+
+tCPU::byte
+MemoryMapper::readByte(tCPU::word address) {
+    switch(memoryMapperId) {
+        case MEMORY_MAPPER_NROM:
+            // address is unchanged
+            break;
+
+        case MEMORY_MAPPER_UNROM: {
+            // switch between four 16KiB PRG banks for the first ROM bank
+            if(address < 0xC000) {
+                auto relative = address - 0x8000;
+                auto adjusted = relative + 0x10000 + prgBank * PRG_ROM_PAGE_SIZE;
+                auto value = CPU_RAM[adjusted];
+//                PrintInfo("address 0x%X -> (prgBank=%d) 0x%X = 0x%X", address, prgBank, adjusted, value);
+                return value;
+            } else {
+                return CPU_RAM[address];
+            }
+        } break;
+
+        case MEMORY_MAPPER_CNROM: {
+            // switch between four 8KiB banks. capped at 32KiB of CHR.
+            address = address + 0x8000 + chrBank * CHR_ROM_PAGE_SIZE;
+        } break;
+
+        default: {
+            PrintInfo("Unsupported memory mapper %d", memoryMapperId);
+        } break;
+    }
+
+    return CPU_RAM[address];
 }

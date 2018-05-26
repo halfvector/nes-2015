@@ -5,14 +5,14 @@
 const unsigned int PRG_ROM_PAGE_SIZE = 0x4000;
 const unsigned int CHR_ROM_PAGE_SIZE = 0x2000;
 
-struct RomHeader {
+struct __attribute__((packed)) RomHeader {
     uint8_t signature[4];
     uint8_t numPrgPages;
     uint8_t numChrPages;
-    int8_t CB1;
-    int8_t CB2;
+    uint8_t CB1;
+    uint8_t CB2;
 
-    int8_t reserved[8];
+    uint8_t reserved[8];
 };
 
 enum eMirroringType {
@@ -20,6 +20,7 @@ enum eMirroringType {
 };
 
 struct RomInfo {
+    int memoryMapperId;
     eMirroringType mirroring;
     bool sramEnabled;
     bool trainerPresent;

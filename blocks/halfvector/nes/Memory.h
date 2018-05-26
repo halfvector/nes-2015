@@ -49,8 +49,11 @@ public:
 
     tCPU::byte* getByteArray();
 
+    void useMemoryMapper(MemoryMapper *mapper);
+
 protected:
     MemoryIO* MMIO;
     tCPU::byte* memory;
+    MemoryMapper *mapper;
 };
 

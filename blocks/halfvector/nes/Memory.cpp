@@ -46,6 +46,14 @@ tCPU::byte
 Memory::readByteDirectly(tCPU::word address) {
     //PrintMemory("Reading from memory address: 0x%08X without address resolution", address);
 
+    // $4020-$FFFF belongs to the cartridge (prg rom/ram and mapper registers)
+    if(address >= 0x8000) {
+        // bank switching on mapper 3
+        if(mapper != nullptr) {
+            return mapper->readByte(address);
+        }
+    }
+
     if ((address >= 0x2000 && address <= 0x2007) || (address >= 0x4000 && address <= 0x401F)) {
         // i/o registers
         PrintMemory("* Reading from Memory Mapped I/O Port (0x%04X)", (int) address);
@@ -82,29 +90,14 @@ bool
 Memory::writeByte(tCPU::word originalAddress, tCPU::byte value) {
     tCPU::word address = getRealMemoryAddress(originalAddress);
 
-//    if(address == 0x71c) {
-//        PrintInfo("Writing byte 0x%X to ScreenEdge_X_Pos", value);
-//    }
-//
-//    if(address == 0x86) {
-//        PrintInfo("Writing byte 0x%X to Player_X_Position", value);
-//    }
-//
-//    if(address == 0x57) {
-//        PrintInfo("Writing byte 0x%X to Player_X_Speed", value);
-//    }
-//
-//    if(address == 0x073f) {
-//        PrintInfo("Writing byte 0x%X to HorizontalScroll", value);
-//    }
-//
-//    if(address == 0x755) {
-//        PrintInfo("Writing byte 0x%X to Player_Pos_ForScroll", value);
-//    }
-//
-//    if(address == 0x6ff) {
-//        PrintInfo("Writing byte 0x%X to Player_X_Scroll", value);
-//    }
+    // $4020-$FFFF belongs to the cartridge (prg rom/ram and mapper registers)
+    if(address >= 0x4020) {
+        // bank switching on mapper 3
+        if(mapper != nullptr) {
+            mapper->writeByte(address, value);
+            return true;
+        }
+    }
 
     if ((address >= 0x2000 && address <= 0x2007) || (address >= 0x4000 && address <= 0x401F)) {
         // i/o registers
@@ -168,4 +161,9 @@ Memory::writeToIOPort(const tCPU::word address, tCPU::byte value) {
 tCPU::byte*
 Memory::getByteArray() {
     return memory;
+}
+
+void Memory::useMemoryMapper(MemoryMapper *mapper) {
+    this->mapper = mapper;
+
 }
