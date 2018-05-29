@@ -112,14 +112,17 @@ struct Registers {
     // current instruction being executed
     tCPU::word LastPC;
 
+    // is bit 7 set
     void setSignBit(uint16_t value) {
-        P.N = static_cast<uint8_t>((value & 0x80) != 0);
+        P.N = (value >> 7) & 0x1;
     }
 
+    // value is zero
     void setZeroBit(uint16_t value) {
         P.Z = static_cast<uint8_t>(value == 0);
     }
 
+    // value is not zero
     void setOverflowFlag(uint16_t value) {
         P.V = static_cast<uint8_t>(value != 0);
     }

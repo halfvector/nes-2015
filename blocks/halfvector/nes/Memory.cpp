@@ -8,22 +8,18 @@
  */
 tCPU::word
 Memory::getRealMemoryAddress(tCPU::word address) {
-    // mirrors
+    // mirrors of $0000-$07FF
     if (address >= 0x0800 && address <= 0x0FFF) {
-        PrintMemory("Adjusting memory address for mirror");
         address -= 0x0800;
     } else if (address >= 0x1000 && address <= 0x17FF) {
-        PrintMemory("Adjusting memory address for mirror");
         address -= 0x1000;
     } else if (address >= 0x1800 && address <= 0x1FFF) {
-        PrintMemory("Adjusting memory address for mirror");
         address -= 0x1800;
     }
 
-    // repeating mirrors of the below i/o registers
-    if (address >= 0x2008 && address < 0x3FFF) {
+    // mirrors of $2000-$2007
+    if (address >= 0x2008 && address <= 0x3FFF) {
         address = 0x2000 + (address % 8);
-        PrintMemory("Adjusted Repeating I/O Mirror to 0x%04X", address);
     }
 
     return address;
@@ -47,10 +43,11 @@ Memory::readByteDirectly(tCPU::word address) {
     //PrintMemory("Reading from memory address: 0x%08X without address resolution", address);
 
     // $4020-$FFFF belongs to the cartridge (prg rom/ram and mapper registers)
+    // mapper #2 - bank switch on first PRG page
     if(address >= 0x8000) {
-        // bank switching on mapper 3
+        // bank switching on mapper 2
         if(mapper != nullptr) {
-            return mapper->readByte(address);
+            return mapper->readByteCPUMemory(address);
         }
     }
 
@@ -94,7 +91,7 @@ Memory::writeByte(tCPU::word originalAddress, tCPU::byte value) {
     if(address >= 0x4020) {
         // bank switching on mapper 3
         if(mapper != nullptr) {
-            mapper->writeByte(address, value);
+            mapper->writeByteCPUMemory(address, value);
             return true;
         }
     }
@@ -154,7 +151,6 @@ Memory::readFromIOPort(const tCPU::word address) {
 
 bool
 Memory::writeToIOPort(const tCPU::word address, tCPU::byte value) {
-    //return MemoryIO<static_cast<int>(address)>::write(value);
     return MMIO->write(address, value);
 }
 

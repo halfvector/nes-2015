@@ -52,8 +52,8 @@ public:
     void useMemoryMapper(MemoryMapper *mapper);
 
 protected:
-    MemoryIO* MMIO;
-    tCPU::byte* memory;
-    MemoryMapper *mapper;
+    MemoryIO* MMIO = nullptr;
+    tCPU::byte* memory = nullptr;
+    MemoryMapper *mapper = nullptr;
 };
 

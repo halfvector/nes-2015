@@ -105,11 +105,11 @@ CPU::executeOpcode(int code) {
 
         char cpuState[200];
 
-        sprintf(cpuState, "A:%02X X:%02X Y:%02X P:%02X SP:%02X CYCLE:%05d C:%d",
+        sprintf(cpuState, "A:%02X X:%02X Y:%02X P:%02X SP:%02X CYCLE:%05d (Carry:%d Zero:%d Sign:%d)",
                 (int) ctx->registers->A, (int) ctx->registers->X, (int) ctx->registers->Y,
                 (int) ctx->registers->P.asByte(),      // processor status summary
                 (int) ctx->registers->S,             // stack pointer
-                (int) numCycles, ctx->registers->P.C
+                (int) numCycles, ctx->registers->P.C, ctx->registers->P.Z, ctx->registers->P.N
         );
 
         PrintInfo("%-45s %s", instruction.c_str(), cpuState);
