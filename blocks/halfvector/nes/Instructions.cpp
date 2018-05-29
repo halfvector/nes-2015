@@ -262,7 +262,7 @@ void Instructions::configureOpcodes() {
     opcodes[0x87].set("SAX", 2, 2, 0, "LAX #nn", ADDR_MODE_IMMEDIATE);
     opcodes[0x83].set("SAX", 2, 2, 0, "LAX (nn,X)", ADDR_MODE_INDEXED_INDIRECT);
 
-    opcodes[0x9C].set("SHY", 3, 5, 0, "SHY nnnn,X", ADDR_MODE_ABSOLUTE_INDEXED_X);
+    //opcodes[0x9C].set("SHY", 3, 5, 0, "SHY nnnn,X", ADDR_MODE_ABSOLUTE_INDEXED_X);
 }
 
 /**
@@ -429,7 +429,7 @@ Instructions::generateOpcodeVariants() {
     Unroll<LAX>::start(opcodes, modes, ADDR_MODE_ABSOLUTE, ADDR_MODE_ABSOLUTE_INDEXED_X, ADDR_MODE_ZEROPAGE,
                        ADDR_MODE_ZEROPAGE_INDEXED_Y, ADDR_MODE_INDEXED_INDIRECT, ADDR_MODE_INDIRECT_INDEXED);
     Unroll<SAX>::start(opcodes, modes, ADDR_MODE_ABSOLUTE, ADDR_MODE_ZEROPAGE, ADDR_MODE_INDEXED_INDIRECT);
-    Unroll<SHY>::start(opcodes, modes, ADDR_MODE_ABSOLUTE_INDEXED_X);
+//    Unroll<SHY>::start(opcodes, modes, ADDR_MODE_ABSOLUTE_INDEXED_X);
 }
 
 /**
