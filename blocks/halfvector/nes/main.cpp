@@ -47,16 +47,25 @@ int main(int argc, char **argv) {
 //    Cartridge rom = loader.loadCartridge("../roms/supermariobros.nes"); // played through at least one level
 //    Cartridge rom = loader.loadCartridge("../roms/donkey_kong.nes"); // draws zeroes instead of sprites
 
-    // mapper=2 aka NROM
-    Cartridge rom = loader.loadCartridge("../roms/all-roms/USA/Contra (U).nes"); // claims to be mapper=64. scrambled tiles.
-
-
+    /////////////////////////////////////////////////
+    // mapper=2 aka UNROM
+    // 4 or 8 banks of PRG ROMs
+    Cartridge rom = loader.loadCartridge("../roms/all-roms/USA/Metal Gear (U).nes"); // works fine
+//    Cartridge rom = loader.loadCartridge("../roms/all-roms/USA/Contra (U).nes"); // sprite rendering glitch
+//    Cartridge rom = loader.loadCartridge("../roms/all-roms/USA/Duck Tales (U).nes"); // freezes on intro
+    // Mega Man
+    // claims to mapper=66 (override)
+    // intro rendering glitch, seems to be using wrong nametable, freezes on death
+//    Cartridge rom = loader.loadCartridge("../roms/all-roms/USA/Mega Man (U).nes");
+//    rom.info.memoryMapperId = 2;
 
     // mapper=3 aka CNROM
-//    Cartridge rom = loader.loadCartridge("../roms/donkey_kong_classics.nes"); // claims to be mapper=64. scrambled tiles.
+//    Cartridge rom = loader.loadCartridge("../roms/all-roms/USA/Donkey Kong Classics (U).nes"); // works but claims to be mapper=64.
 //    Cartridge rom = loader.loadCartridge("../roms/arkanoid.nes"); // works fine
-//    Cartridge rom = loader.loadCartridge("../roms/all-roms/USA/Gradius (U).nes"); // sprite-0 hit not working. needs bank-1 switching
+//    Cartridge rom = loader.loadCartridge("../roms/all-roms/USA/Gradius (U).nes"); // works fine
 //    Cartridge rom = loader.loadCartridge("../roms/all-roms/USA/Arkista's Ring (U) [!].nes"); // doesn't boot
+//    Cartridge rom = loader.loadCartridge("../roms/all-roms/USA/Cybernoid - The Fighting Machine (U).nes"); // claims to be mapper=67
+//    Cartridge rom = loader.loadCartridge("../roms/all-roms/USA/Bump'n'Jump (U).nes"); // doesn't boot
 //    Cartridge rom = loader.loadCartridge("../roms/mapper_3_no_bus_conflict_test.nes"); // doesn't work.
 
 
