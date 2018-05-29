@@ -538,7 +538,7 @@ void PPU::renderScanline(const tCPU::word Y) {
                 // if we got a sprite0 color pixel over a non-transparent background pixel
                 // a transparent pixel has lower two bits = 0 (should do 'bg & 0x3')
                 if ((raster->backgroundMask[Y * 256 + screenX]) != 0 && colorLowerBits != 0) {
-//                    sprite0HitInThisScanline = true;
+                    sprite0HitInThisScanline = true;
 //                    PrintInfo("Sprite-0 collision detected");
                 }
             }
@@ -676,7 +676,7 @@ PPU::readFromVRam() {
 
 void
 PPU::writeToVRam(tCPU::byte value) {
-    WriteByToPPU(vramAddress14bit, value);
+    WriteByteToPPU(vramAddress14bit, value);
     AutoIncrementVRAMAddress();
 }
 
@@ -687,7 +687,7 @@ PPU::GetEffectiveAddress(tCPU::word address) {
 
         // use a memory mapper if one is available
         if(mapper != nullptr) {
-           address = mapper->getEffectiveAddress(address);
+           address = mapper->getEffectivePPUAddress(address);
         }
 
 //        PrintInfo("Address is < 0x2000; Referencing CHR-ROM @ $%04X", address);
@@ -785,9 +785,10 @@ PPU::ReadByteFromPPU(tCPU::word Address) {
 }
 
 bool
-PPU::WriteByToPPU(tCPU::word Address, tCPU::byte Value) {
+PPU::WriteByteToPPU(tCPU::word Address, tCPU::byte Value) {
     tCPU::word EffectiveAddress = GetEffectiveAddress(Address);
     PPU_RAM[EffectiveAddress] = Value;
+
     if(Address >= 0x8000) {
         PrintInfo("Wrote 0x%02X to PPU RAM @ 0x%04X (0x%04X)", Value, EffectiveAddress, Address);
     }
@@ -1128,7 +1129,7 @@ void PPU::RenderDebugPatternTables() {// render two pattern tables
     // each pixel has two bits for four colors
     // renders into 128x128 target
 
-    int base = 0xA000;
+    int base = 0x0000;
 
     // rows
     for (auto i = 0; i < 32; i++) {
@@ -1144,8 +1145,8 @@ void PPU::RenderDebugPatternTables() {// render two pattern tables
                 // 8 rows, each row takes two bytes
                 // each pixel in the byte is a color bit for a column
                 auto rowSrc = src + k;
-                auto pattern1 = PPU_RAM[base + rowSrc + 0];
-                auto pattern2 = PPU_RAM[base + rowSrc + 8];
+                auto pattern1 = ReadByteFromPPU(base + rowSrc + 0);
+                auto pattern2 = ReadByteFromPPU(base + rowSrc + 8);
 
                 // columns
                 for (auto l = 0; l < 8; l++) {
@@ -1177,7 +1178,7 @@ void PPU::RenderDebugPatternTables() {// render two pattern tables
  * each super-tile covers 2x2 set of tiles (8x8 pixels each)
  * thus each attribute tile is made up of 4x4 pattern tiles
  */
-void PPU::RenderDebugAttributes(tCPU::word NametableAddress) const {
+void PPU::RenderDebugAttributes(tCPU::word NametableAddress) {
     // clear attribute table debug view (128x128@32bit)
     for (int x = 0; x < 128; x++) {
         for (int y = 0; y < 128; y++) {
@@ -1239,14 +1240,14 @@ void PPU::RenderDebugAttributes(tCPU::word NametableAddress) const {
     }
 }
 
-void PPU::RenderDebugColorPalette() const {// render color palette
+void PPU::RenderDebugColorPalette() {// render color palette
     // colors
     for (auto nametableId = 0; nametableId < 4; nametableId++) {
         for (auto p = 0; p < 32; p++) {
 
             auto size = 8;
             auto paletteType = 0; // 0 = background, 1 = sprite
-            auto paletteId = PPU_RAM[0x3F00 + paletteType * 16 + p + nametableId * 4];
+            auto paletteId = ReadByteFromPPU(0x3F00 + paletteType * 16 + p + nametableId * 4);
             auto pitch = 256;
             auto dst = nametableId * pitch * size + p * size;
 
@@ -1397,9 +1398,9 @@ void PPU::RenderDebugNametables() {
 
 void
 PPU::loadRom(Cartridge &rom) {
-//    for (uint8_t i = 0; i < rom.header.numChrPages; i++) {
-//        writeChrPage(i, rom.characterDataPages[i].buffer);
-//    }
+    for (uint8_t i = 0; i < rom.header.numChrPages; i++) {
+        writeChrPage(i, rom.characterDataPages[i].buffer);
+    }
 
     settings.mirroring = rom.info.mirroring;
 }
@@ -1410,7 +1411,7 @@ PPU::loadRom(Cartridge &rom) {
  */
 void
 PPU::writeChrPage(uint16_t page, uint8_t buffer[]) {
-//    memcpy(PPU_RAM + 0x8000 + CHR_ROM_PAGE_SIZE * page, buffer, CHR_ROM_PAGE_SIZE);
+    memcpy(PPU_RAM, buffer, CHR_ROM_PAGE_SIZE);
 }
 
 void
@@ -1421,27 +1422,45 @@ PPU::useMemoryMapper(MemoryMapper *mapper) {
 
 void
 MemoryMapper::loadRom(Cartridge &rom) {
-    PrintInfo("Memory mapper id = %d", rom.info.memoryMapperId);
+    PrintInfo("Initializing Memory Mapper #%d", rom.info.memoryMapperId);
 
     for (uint8_t i = 0; i < rom.header.numChrPages; i++) {
+        PrintInfo("  Writing chr page %d to CPU @ 0x%X", i, 0x8000 + CHR_ROM_PAGE_SIZE * i);
         memcpy(PPU_RAM + 0x8000 + CHR_ROM_PAGE_SIZE * i, rom.characterDataPages[i].buffer, CHR_ROM_PAGE_SIZE);
     }
 
     for (uint8_t i = 0; i < rom.header.numPrgPages; i++) {
-        PrintInfo("writing bank %d to 0x%X", i, 0x10000 + PRG_ROM_PAGE_SIZE * i);
+        PrintInfo("  Writing prg page %d to PPU @ 0x%X", i, 0x10000 + PRG_ROM_PAGE_SIZE * i);
         memcpy(CPU_RAM + 0x10000 + PRG_ROM_PAGE_SIZE * i, rom.programDataPages[i].buffer, PRG_ROM_PAGE_SIZE);
         memcpy(PRG_BANKS + PRG_ROM_PAGE_SIZE * i, rom.programDataPages[i].buffer, PRG_ROM_PAGE_SIZE);
     }
 
     memoryMapperId = rom.info.memoryMapperId;
 
+
     switch(memoryMapperId) {
-        case MEMORY_MAPPER_UNROM:
+        case MEMORY_MAPPER_UNROM: {
             // last bank into second PRG ROM position
-            PrintInfo("Loading last PRG ROM into 0xc000");
-            memcpy(CPU_RAM + 0xC000, rom.programDataPages[rom.header.numPrgPages-1].buffer, PRG_ROM_PAGE_SIZE);
-            prgBank = rom.header.numPrgPages-1;
-            break;
+            PrintInfo("Loading last PRG ROM into CPU 0xC000");
+            memcpy(CPU_RAM + 0xC000, rom.programDataPages[rom.header.numPrgPages - 1].buffer, PRG_ROM_PAGE_SIZE);
+            prgBank = rom.header.numPrgPages - 1;
+            // chose bank switching mask based on number of pages to switch
+            // use first 2 bits for switching between 4 pages
+            // use first 3 bits for switching between 7 pages (eg: Metal Gear)
+            prgBankMask = rom.header.numPrgPages > 4 ? 0x7 : 0x3;
+        } break;
+
+        case MEMORY_MAPPER_CNROM: {
+            // last bank into second CHR ROM position
+            PrintInfo("Loading last CHR ROM into PPU 0x0000");
+            memcpy(PPU_RAM, rom.characterDataPages[0].buffer, CHR_ROM_PAGE_SIZE);
+            chrBank = 0;
+        } break;
+
+
+        default: {
+            PrintInfo("Unsupported memory mapper %d", memoryMapperId);
+        } break;
     }
 }
 
@@ -1449,15 +1468,14 @@ MemoryMapper::loadRom(Cartridge &rom) {
  * Calculate PPU_RAM address for pattern table using a memory mapper
  */
 tCPU::word
-MemoryMapper::getEffectiveAddress(tCPU::word address) {
+MemoryMapper::getEffectivePPUAddress(tCPU::word address) {
     switch(memoryMapperId) {
-        case MEMORY_MAPPER_NROM:
+        case MEMORY_MAPPER_NROM: {
             // address is unchanged
-            break;
+        } break;
 
         case MEMORY_MAPPER_UNROM: {
-            // switch between four 8KiB banks. capped at 32KiB of CHR.
-            address = address + 0x10000 + prgBank * PRG_ROM_PAGE_SIZE;
+            // address is unchanged
         } break;
 
         case MEMORY_MAPPER_CNROM: {
@@ -1497,25 +1515,27 @@ MemoryMapper::getEffectiveAddress(tCPU::word address) {
 }
 
 void
-MemoryMapper::writeByte(tCPU::word address, tCPU::byte value) {
+MemoryMapper::writeByteCPUMemory(tCPU::word address, tCPU::byte value) {
     // address must be in range [$4020-$FFFF]
     // this is space the CPU can directly address (16 bit)
     // and it belongs exclusively to the cartridge
     // writes here will likely be mapper registers
-    CPU_RAM[address] = value;
 
     switch(memoryMapperId) {
         case MEMORY_MAPPER_NROM:
             // do nothing
+            CPU_RAM[address] = value;
             break;
 
         case MEMORY_MAPPER_UNROM: {
             if(address >= 0x8000 && address <= 0xFFFF) {
-                auto newBank = value & 0x3; // only lower 2 bits
+                auto newBank = value & prgBankMask; // grab lower 2 or 3 bits
                 if(newBank != prgBank) {
-                    PrintInfo("switching to PRG bank = %d", newBank);
+//                    PrintInfo("switching to PRG bank = %d", newBank);
                 }
                 prgBank = newBank;
+            } else {
+                CPU_RAM[address] = value;
             }
         } break;
 
@@ -1523,9 +1543,11 @@ MemoryMapper::writeByte(tCPU::word address, tCPU::byte value) {
             if(address >= 0x8000 && address <= 0xFFFF) {
                 auto newBank = value & 0x3; // only lower 2 bits
                 if(newBank != chrBank) {
-                    PrintInfo("switching to CHR bank = %d", newBank);
+//                    PrintInfo("switching to CHR bank = %d", newBank);
                 }
                 chrBank = newBank;
+            } else {
+                CPU_RAM[address] = value;
             }
         } break;
 
@@ -1536,7 +1558,7 @@ MemoryMapper::writeByte(tCPU::word address, tCPU::byte value) {
 }
 
 tCPU::byte
-MemoryMapper::readByte(tCPU::word address) {
+MemoryMapper::readByteCPUMemory(tCPU::word address) {
     switch(memoryMapperId) {
         case MEMORY_MAPPER_NROM:
             // address is unchanged
@@ -1556,8 +1578,7 @@ MemoryMapper::readByte(tCPU::word address) {
         } break;
 
         case MEMORY_MAPPER_CNROM: {
-            // switch between four 8KiB banks. capped at 32KiB of CHR.
-            address = address + 0x8000 + chrBank * CHR_ROM_PAGE_SIZE;
+            // address is unchanged
         } break;
 
         default: {

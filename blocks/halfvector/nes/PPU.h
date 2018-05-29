@@ -81,11 +81,11 @@ public:
 
     void loadRom(Cartridge &rom);
 
-    tCPU::word getEffectiveAddress(tCPU::word address);
+    tCPU::word getEffectivePPUAddress(tCPU::word address);
 
-    void writeByte(tCPU::word address, tCPU::byte value);
+    void writeByteCPUMemory(tCPU::word address, tCPU::byte value);
 
-    tCPU::byte readByte(tCPU::word address);
+    tCPU::byte readByteCPUMemory(tCPU::word address);
 
 private:
     tCPU::byte *PPU_RAM;
@@ -94,6 +94,7 @@ private:
     int memoryMapperId;
     int chrBank;
     int prgBank;
+    int prgBankMask;
 };
 
 class PPU {
@@ -138,7 +139,7 @@ public:
     tCPU::word GetEffectiveAddress(tCPU::word address);
 
     tCPU::byte ReadByteFromPPU(tCPU::word Address);
-    bool WriteByToPPU(tCPU::word Address, tCPU::byte Value);
+    bool WriteByteToPPU(tCPU::word Address, tCPU::byte Value);
     void AutoIncrementVRAMAddress();
 
     void setVRamAddressRegister1(tCPU::byte value);
@@ -205,9 +206,9 @@ protected:
 
     void RenderDebugNametables();
 
-    void RenderDebugColorPalette() const;
+    void RenderDebugColorPalette();
 
-    void RenderDebugAttributes(tCPU::word NametableAddress) const;
+    void RenderDebugAttributes(tCPU::word NametableAddress);
 
     void RenderDebugPatternTables();
 
@@ -215,5 +216,5 @@ protected:
 
     void RenderSpriteTiles();
 
-    MemoryMapper *mapper;
+    MemoryMapper *mapper = nullptr;
 };
