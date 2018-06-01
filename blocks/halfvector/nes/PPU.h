@@ -2,6 +2,7 @@
 
 #include "Platform.h"
 #include "Cartridge.h"
+#include "MemoryMapper.h"
 
 class Memory;
 
@@ -67,34 +68,6 @@ enum MemoryMappers {
     MEMORY_MAPPER_NROM = 0,
     MEMORY_MAPPER_UNROM = 2,
     MEMORY_MAPPER_CNROM = 3,
-};
-
-class MemoryMapper {
-public:
-    MemoryMapper(tCPU::byte *ppuRam, tCPU::byte *cpuRam) {
-        this->PPU_RAM = ppuRam;
-        this->CPU_RAM = cpuRam;
-        this->PRG_BANKS = new tCPU::byte[0x20000]; // 128KiB (ie megaman1)
-        chrBank = 0;
-        prgBank = 0;
-    }
-
-    void loadRom(Cartridge &rom);
-
-    tCPU::word getEffectivePPUAddress(tCPU::word address);
-
-    void writeByteCPUMemory(tCPU::word address, tCPU::byte value);
-
-    tCPU::byte readByteCPUMemory(tCPU::word address);
-
-private:
-    tCPU::byte *PPU_RAM;
-    tCPU::byte *CPU_RAM;
-    tCPU::byte *PRG_BANKS;
-    int memoryMapperId;
-    int chrBank;
-    int prgBank;
-    int prgBankMask;
 };
 
 class PPU {

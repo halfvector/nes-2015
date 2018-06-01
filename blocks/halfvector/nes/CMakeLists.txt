@@ -81,16 +81,13 @@ add_executable(nes
         Memory.h
         MemoryIO.cpp
         MemoryIO.h
-        MemoryLookup.cpp
-        MemoryLookup.h
+        MemoryLookup.cpp MemoryLookup.h
+        MemoryMapper.cpp MemoryMapper.h
         MemoryOperation.h
-        MemoryStack.cpp
-        MemoryStack.h
+        MemoryStack.cpp MemoryStack.h
         Platform.h
-        PPU.cpp
-        PPU.h
-        RegisterOperation.cpp
-        RegisterOperation.h
+        PPU.cpp PPU.h
+        RegisterOperation.cpp RegisterOperation.h
         Registers.h
         Joypad.cpp Joypad.h Audio.cpp Audio.h)
 

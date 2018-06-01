@@ -43,14 +43,15 @@ int main(int argc, char **argv) {
 //    Cartridge rom = loader.loadCartridge("../roms/Defender 2 (U).nes");
 //    Cartridge rom = loader.loadCartridge("../roms/all/nrom/Slalom (U).nes");
 
+    /////////////////////////////////////////////////
     // mapper=0 aka NROM
-//    Cartridge rom = loader.loadCartridge("../roms/supermariobros.nes"); // played through at least one level
+    Cartridge rom = loader.loadCartridge("../roms/supermariobros.nes"); // played through at least one level
 //    Cartridge rom = loader.loadCartridge("../roms/donkey_kong.nes"); // draws zeroes instead of sprites
 
     /////////////////////////////////////////////////
     // mapper=2 aka UNROM
     // 4 or 8 banks of PRG ROMs
-    Cartridge rom = loader.loadCartridge("../roms/all-roms/USA/Metal Gear (U).nes"); // works fine
+//    Cartridge rom = loader.loadCartridge("../roms/all-roms/USA/Metal Gear (U).nes"); // works fine
 //    Cartridge rom = loader.loadCartridge("../roms/all-roms/USA/Contra (U).nes"); // sprite rendering glitch
 //    Cartridge rom = loader.loadCartridge("../roms/all-roms/USA/Duck Tales (U).nes"); // freezes on intro
     // Mega Man
@@ -59,6 +60,7 @@ int main(int argc, char **argv) {
 //    Cartridge rom = loader.loadCartridge("../roms/all-roms/USA/Mega Man (U).nes");
 //    rom.info.memoryMapperId = 2;
 
+    /////////////////////////////////////////////////
     // mapper=3 aka CNROM
 //    Cartridge rom = loader.loadCartridge("../roms/all-roms/USA/Donkey Kong Classics (U).nes"); // works but claims to be mapper=64.
 //    Cartridge rom = loader.loadCartridge("../roms/arkanoid.nes"); // works fine
