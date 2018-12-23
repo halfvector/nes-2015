@@ -214,7 +214,7 @@ MemoryIO::MemoryIO(PPU *ppu, Joypad *joypad, Audio *apu)
 
 class MemoryIOPortException : public ExceptionBase<MemoryIOPortException> {
 public:
-    MemoryIOPortException(std::string const &str)
+    MemoryIOPortException(const char* str)
             : ExceptionBase(str) {}
 };
 

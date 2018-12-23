@@ -2,7 +2,6 @@
 #include "CartridgeLoader.h"
 #include "Logging.h"
 #include "CPU.h"
-#include "DI.h"
 #include "Backtrace.h"
 #include "MemoryStack.h"
 #include "GUI.h"
@@ -17,60 +16,22 @@
 #include <cstring>
 #include <cstdlib>
 #include <unistd.h>
+#include <thread>
 
-using namespace boost;
 using namespace std::chrono_literals;
 typedef std::chrono::high_resolution_clock clock_type;
 
-
 void collectInputEvents(Joypad *pJoypad, bool *pBoolean);
+
+void printLibVersions();
+
+Cartridge loadCartridge();
 
 int main(int argc, char **argv) {
     Backtrace::install();
+    printLibVersions();
 
-    CartridgeLoader loader;
-//    Cartridge rom = loader.loadCartridge("../roms/SuperMarioClouds.nes"); // draws zeroes instead of clouds, almost scrolls
-//    Cartridge rom = loader.loadCartridge("../roms/stars.nes"); // draws tiles instead of stars
-//    Cartridge rom = loader.loadCartridge("../roms/scanline.nes"); // stabler
-//    Cartridge rom = loader.loadCartridge("../roms/scroll.nes"); // doesn't work at all
-//    Cartridge rom = loader.loadCartridge("../roms/color_test.nes"); // doesn't work at all
-//    Cartridge rom = loader.loadCartridge("../roms/nestest.nes");
-//    Cartridge rom = loader.loadCartridge("../roms/instr_timing/instr_timing.nes");
-//    Cartridge rom = loader.loadCartridge("../roms/megaman1.nes");
-//    Cartridge rom = loader.loadCartridge("../roms/megaman.nes");
-//    Cartridge rom = loader.loadCartridge("../roms/apu_mixer/square.nes");
-//    Cartridge rom = loader.loadCartridge("../roms/Karateka (J) [p1].nes");
-//    Cartridge rom = loader.loadCartridge("../roms/Defender 2 (U).nes");
-//    Cartridge rom = loader.loadCartridge("../roms/all/nrom/Slalom (U).nes");
-
-    /////////////////////////////////////////////////
-    // mapper=0 aka NROM
-    Cartridge rom = loader.loadCartridge("../roms/supermariobros.nes"); // played through at least one level
-//    Cartridge rom = loader.loadCartridge("../roms/donkey_kong.nes"); // draws zeroes instead of sprites
-
-    /////////////////////////////////////////////////
-    // mapper=2 aka UNROM
-    // 4 or 8 banks of PRG ROMs
-//    Cartridge rom = loader.loadCartridge("../roms/all-roms/USA/Metal Gear (U).nes"); // works fine
-//    Cartridge rom = loader.loadCartridge("../roms/all-roms/USA/Contra (U).nes"); // sprite rendering glitch
-//    Cartridge rom = loader.loadCartridge("../roms/all-roms/USA/Duck Tales (U).nes"); // freezes on intro
-    // Mega Man
-    // claims to mapper=66 (override)
-    // intro rendering glitch, seems to be using wrong nametable, freezes on death
-//    Cartridge rom = loader.loadCartridge("../roms/all-roms/USA/Mega Man (U).nes");
-//    rom.info.memoryMapperId = 2;
-
-    /////////////////////////////////////////////////
-    // mapper=3 aka CNROM
-//    Cartridge rom = loader.loadCartridge("../roms/all-roms/USA/Donkey Kong Classics (U).nes"); // works but claims to be mapper=64.
-//    Cartridge rom = loader.loadCartridge("../roms/arkanoid.nes"); // works fine
-//    Cartridge rom = loader.loadCartridge("../roms/all-roms/USA/Gradius (U).nes"); // works fine
-//    Cartridge rom = loader.loadCartridge("../roms/all-roms/USA/Arkista's Ring (U) [!].nes"); // doesn't boot
-//    Cartridge rom = loader.loadCartridge("../roms/all-roms/USA/Cybernoid - The Fighting Machine (U).nes"); // claims to be mapper=67
-//    Cartridge rom = loader.loadCartridge("../roms/all-roms/USA/Bump'n'Jump (U).nes"); // doesn't boot
-//    Cartridge rom = loader.loadCartridge("../roms/mapper_3_no_bus_conflict_test.nes"); // doesn't work.
-
-
+    Cartridge rom = loadCartridge();
 
     // raster output
     auto raster = new Raster();
@@ -201,6 +162,64 @@ int main(int argc, char **argv) {
     delete gui;
 
     audio->close();
+}
+
+Cartridge loadCartridge() {
+    CartridgeLoader loader;
+//    Cartridge rom = loader.loadCartridge("../roms/SuperMarioClouds.nes"); // draws zeroes instead of clouds, almost scrolls
+//    Cartridge rom = loader.loadCartridge("../roms/stars.nes"); // draws tiles instead of stars
+//    Cartridge rom = loader.loadCartridge("../roms/scanline.nes"); // stabler
+//    Cartridge rom = loader.loadCartridge("../roms/scroll.nes"); // doesn't work at all
+//    Cartridge rom = loader.loadCartridge("../roms/color_test.nes"); // doesn't work at all
+//    Cartridge rom = loader.loadCartridge("../roms/nestest.nes");
+//    Cartridge rom = loader.loadCartridge("../roms/instr_timing/instr_timing.nes");
+//    Cartridge rom = loader.loadCartridge("../roms/megaman1.nes");
+//    Cartridge rom = loader.loadCartridge("../roms/megaman.nes");
+//    Cartridge rom = loader.loadCartridge("../roms/apu_mixer/square.nes");
+//    Cartridge rom = loader.loadCartridge("../roms/Karateka (J) [p1].nes");
+//    Cartridge rom = loader.loadCartridge("../roms/Defender 2 (U).nes");
+//    Cartridge rom = loader.loadCartridge("../roms/all/nrom/Slalom (U).nes");
+
+    /////////////////////////////////////////////////
+// mapper=0 aka NROM
+    Cartridge rom = loader.loadCartridge("../../roms/supermariobros.nes"); // played through at least one level
+//    Cartridge rom = loader.loadCartridge("../roms/donkey_kong.nes"); // draws zeroes instead of sprites
+//    rom.info.memoryMapperId = 0;
+
+    /////////////////////////////////////////////////
+// mapper=2 aka UNROM
+// 4 or 8 banks of PRG ROMs
+//    Cartridge rom = loader.loadCartridge("../roms/all-roms/USA/Metal Gear (U).nes"); // works fine
+//    Cartridge rom = loader.loadCartridge("../roms/all-roms/USA/Contra (U).nes"); // sprite rendering glitch
+//    Cartridge rom = loader.loadCartridge("../roms/all-roms/USA/Duck Tales (U).nes"); // freezes on intro
+// Mega Man
+// claims to mapper=66 (override)
+// intro rendering glitch, seems to be using wrong nametable, freezes on death
+//    Cartridge rom = loader.loadCartridge("../roms/all-roms/USA/Mega Man (U).nes");
+//    rom.info.memoryMapperId = 2;
+
+    /////////////////////////////////////////////////
+// mapper=3 aka CNROM
+//    Cartridge rom = loader.loadCartridge("../roms/all-roms/USA/Donkey Kong Classics (U).nes"); // works but claims to be mapper=64.
+//    Cartridge rom = loader.loadCartridge("../roms/arkanoid.nes"); // works fine
+//    Cartridge rom = loader.loadCartridge("../roms/all-roms/USA/Gradius (U).nes"); // works fine
+//    Cartridge rom = loader.loadCartridge("../roms/all-roms/USA/Arkista's Ring (U) [!].nes"); // doesn't boot
+//    Cartridge rom = loader.loadCartridge("../roms/all-roms/USA/Cybernoid - The Fighting Machine (U).nes"); // claims to be mapper=67
+//    Cartridge rom = loader.loadCartridge("../roms/all-roms/USA/Bump'n'Jump (U).nes"); // doesn't boot
+//    Cartridge rom = loader.loadCartridge("../roms/mapper_3_no_bus_conflict_test.nes"); // doesn't work.
+
+
+    return rom;
+}
+
+void printLibVersions() {
+    SDL_version compiled;
+    SDL_version linked;
+
+    SDL_VERSION(&compiled);
+    SDL_GetVersion(&linked);
+    PrintInfo("Compiled against SDL v%d.%d.%d", compiled.major, compiled.minor, compiled.patch);
+    PrintInfo("Linked against SDL v%d.%d.%d", linked.major, linked.minor, linked.patch);
 }
 
 // pump the event loop to ensure window visibility

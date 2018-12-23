@@ -8,7 +8,7 @@
 struct AddressModeProperties {
     int8_t offset;
     int8_t cycles;
-    std::string addressLine;
+    const char* addressLine;
 };
 
 enum InstructionMnemonic {
