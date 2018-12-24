@@ -32,6 +32,9 @@ struct MemoryIO {
     tCPU::byte read(tCPU::word address);
 
     void setMemory(Memory *memory);
+
+    static int cpuCyclesPenalty;
+
 protected:
     PPU* ppu;
     Audio* apu;

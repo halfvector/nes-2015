@@ -100,7 +100,7 @@ PPU::PPU(Raster *raster) : raster(raster) {
 
     // clear memory
     memset(SPR_RAM, 248, 256);
-    memset(PPU_RAM, 0, 0x4000);
+    memset(PPU_RAM, 0, 0x10000);
 }
 
 /**
@@ -338,7 +338,7 @@ void PPU::renderScanline(const tCPU::word Y) {
     ushort numAttributes = 8; // 8 attributes per scanline (4 per tile)
 
     if(settings.BackgroundVisible)
-    for (ushort i = 0; i < numTiles; i++) {
+    for (ushort i = 0; i <= numTiles; i++) {
         auto nametable = nametableAddy;
         auto nametableAttributeOffset = nametableAddy + 0x3C0;
 
@@ -424,11 +424,8 @@ void PPU::renderScanline(const tCPU::word Y) {
 
 //            auto bgra = 0xFF << 24 | (tileIdx) << 16;
 
-            // render tile
-            int bgra = 0xFF << 24 | color.R << 16 | color.G << 8 | color.B;
-
             // update final color output
-            *(backgroundRender++) = bgra;
+            *(backgroundRender++) = color.ColorValue;
 
             // update mask
             *(backgroundMask++) = lowerBits * 64;
@@ -528,25 +525,21 @@ void PPU::renderScanline(const tCPU::word Y) {
 
             if ((!spriteBehindBG || raster->backgroundMask[Y * 256 + screenX] == 0) && colorLowerBits) {
                 tPaletteEntry &color = colorPalette[paletteId];
-                int bgra = 0xFF << 24 | color.R << 16 | color.G << 8 | color.B;
-
-//                if(firstSprite) {
-//                    bgra = 0xffff0000;
-//                } else {
-//                    bgra = 0xffffffff;
-//                }
 
                 // write final color output
-                *((int *) raster->screenBuffer + Y * 256 + screenX) = bgra;
+                ((int *) raster->screenBuffer)[Y * 256 + screenX] = color.ColorValue;
                 // write mask
                 raster->spriteMask[Y * 256 + screenX] = colorLowerBits * 64;
+                raster->backgroundMask[Y * 256 + screenX] += 0xf0;
             }
 
             // test sprite-0 hit detection against background mask
             if (!sprite0HitInThisFrame && !sprite0HitInThisScanline && i == 0) {
                 // if we got a sprite0 color pixel over a non-transparent background pixel
-                if (raster->backgroundMask[Y * 256 + screenX] > 0 && colorLowerBits > 0) {
+                // a transparent pixel has lower two bits = 0 (should do 'bg & 0x3')
+                if ((raster->backgroundMask[Y * 256 + screenX]) != 0 && colorLowerBits != 0) {
                     sprite0HitInThisScanline = true;
+//                    PrintInfo("Sprite-0 collision detected");
                 }
             }
         }
@@ -683,7 +676,7 @@ PPU::readFromVRam() {
 
 void
 PPU::writeToVRam(tCPU::byte value) {
-    WriteByToPPU(vramAddress14bit, value);
+    WriteByteToPPU(vramAddress14bit, value);
     AutoIncrementVRAMAddress();
 }
 
@@ -691,7 +684,16 @@ tCPU::word
 PPU::GetEffectiveAddress(tCPU::word address) {
     if (address < 0x2000) {
         // pattern table chr-rom page
-//        PrintInfo("Address is < 0x2000; Referencing CHR-ROM @ $%04X", (int) (address));
+
+        // use a memory mapper if one is available
+        if(mapper != nullptr) {
+           address = mapper->getEffectivePPUAddress(address);
+        }
+
+//        PrintInfo("Address is < 0x2000; Referencing CHR-ROM @ $%04X", address);
+
+        return address;
+
     }
 
     // PPU
@@ -783,10 +785,13 @@ PPU::ReadByteFromPPU(tCPU::word Address) {
 }
 
 bool
-PPU::WriteByToPPU(tCPU::word Address, tCPU::byte Value) {
+PPU::WriteByteToPPU(tCPU::word Address, tCPU::byte Value) {
     tCPU::word EffectiveAddress = GetEffectiveAddress(Address);
     PPU_RAM[EffectiveAddress] = Value;
-    PrintDbg("Wrote 0x%02X to PPU RAM @ 0x%04X (0x%04X)", Value, EffectiveAddress, Address);
+
+    if(Address >= 0x8000) {
+        PrintInfo("Wrote 0x%02X to PPU RAM @ 0x%04X (0x%04X)", Value, EffectiveAddress, Address);
+    }
     if (EffectiveAddress >= 0x3f00 && EffectiveAddress < 0x4000) {
         PrintDbg("Wrote 0x%02X to PPU RAM @ 0x%04X (0x%04X)", Value, EffectiveAddress, Address);
     }
@@ -1124,6 +1129,8 @@ void PPU::RenderDebugPatternTables() {// render two pattern tables
     // each pixel has two bits for four colors
     // renders into 128x128 target
 
+    int base = 0x0000;
+
     // rows
     for (auto i = 0; i < 32; i++) {
         // columns
@@ -1138,8 +1145,8 @@ void PPU::RenderDebugPatternTables() {// render two pattern tables
                 // 8 rows, each row takes two bytes
                 // each pixel in the byte is a color bit for a column
                 auto rowSrc = src + k;
-                auto pattern1 = PPU_RAM[rowSrc + 0];
-                auto pattern2 = PPU_RAM[rowSrc + 8];
+                auto pattern1 = ReadByteFromPPU(base + rowSrc + 0);
+                auto pattern2 = ReadByteFromPPU(base + rowSrc + 8);
 
                 // columns
                 for (auto l = 0; l < 8; l++) {
@@ -1171,7 +1178,7 @@ void PPU::RenderDebugPatternTables() {// render two pattern tables
  * each super-tile covers 2x2 set of tiles (8x8 pixels each)
  * thus each attribute tile is made up of 4x4 pattern tiles
  */
-void PPU::RenderDebugAttributes(tCPU::word NametableAddress) const {
+void PPU::RenderDebugAttributes(tCPU::word NametableAddress) {
     // clear attribute table debug view (128x128@32bit)
     for (int x = 0; x < 128; x++) {
         for (int y = 0; y < 128; y++) {
@@ -1233,14 +1240,14 @@ void PPU::RenderDebugAttributes(tCPU::word NametableAddress) const {
     }
 }
 
-void PPU::RenderDebugColorPalette() const {// render color palette
+void PPU::RenderDebugColorPalette() {// render color palette
     // colors
     for (auto nametableId = 0; nametableId < 4; nametableId++) {
         for (auto p = 0; p < 32; p++) {
 
             auto size = 8;
             auto paletteType = 0; // 0 = background, 1 = sprite
-            auto paletteId = PPU_RAM[0x3F00 + paletteType * 16 + p + nametableId * 4];
+            auto paletteId = ReadByteFromPPU(0x3F00 + paletteType * 16 + p + nametableId * 4);
             auto pitch = 256;
             auto dst = nametableId * pitch * size + p * size;
 
@@ -1326,8 +1333,8 @@ void PPU::RenderDebugNametables() {
                     // row
                     for (unsigned short k = 0; k < 8; k++) {
                         // lookup row byte pattern
-                        tCPU::byte PatternByte0 = PPU_RAM[settings.BackgroundPatternTableAddress + tileNumber * 16 + k];
-                        tCPU::byte PatternByte1 = PPU_RAM[settings.BackgroundPatternTableAddress + tileNumber * 16 + k + 8];
+                        tCPU::byte PatternByte0 = ReadByteFromPPU(settings.BackgroundPatternTableAddress + tileNumber * 16 + k);
+                        tCPU::byte PatternByte1 = ReadByteFromPPU(settings.BackgroundPatternTableAddress + tileNumber * 16 + k + 8);
 
                         // column
                         for (short l = 0; l < 8; l++) {
@@ -1392,24 +1399,24 @@ void PPU::RenderDebugNametables() {
 void
 PPU::loadRom(Cartridge &rom) {
     for (uint8_t i = 0; i < rom.header.numChrPages; i++) {
-        writeChrPage(rom.characterDataPages[i].buffer);
+        writeChrPage(i, rom.characterDataPages[i].buffer);
     }
 
     settings.mirroring = rom.info.mirroring;
 }
 
 /**
- * Write 8kB chr-rom page to PPU memory
- * Populates the pattern table
+ * Write 8kB chr-rom pages to PPU memory
+ * Populates the pattern tables. MMC roms can bank switch from here.
  */
 void
-PPU::writeChrPage(uint8_t buffer[]) {
-
-//    for (int j = 0; j < CHR_ROM_PAGE_SIZE; j += 8) {
-//        PrintInfo("%05X %02X %02X %02X %02X %02X %02X %02X %02X", (j), (int) buffer[j + 0], (int) buffer[j + 1],
-//                  (int) buffer[j + 2], (int) buffer[j + 3], (int) buffer[j + 4], (int) buffer[j + 5],
-//                  (int) buffer[j + 6], (int) buffer[j + 7]);
-//    }
-
-    memcpy(PPU_RAM, buffer, 0x2000);
+PPU::writeChrPage(uint16_t page, uint8_t buffer[]) {
+    memcpy(PPU_RAM, buffer, CHR_ROM_PAGE_SIZE);
 }
+
+void
+PPU::useMemoryMapper(MemoryMapper *mapper) {
+    this->mapper = mapper;
+
+}
+

@@ -7,7 +7,6 @@
 #include "Platform.h"
 #include "Instructions.h"
 #include "Registers.h"
-#include "DI.h"
 
 class CPU {
 public:

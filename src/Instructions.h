@@ -8,7 +8,7 @@
 struct AddressModeProperties {
     int8_t offset;
     int8_t cycles;
-    std::string addressLine;
+    const char* addressLine;
 };
 
 enum InstructionMnemonic {
@@ -22,7 +22,17 @@ enum InstructionMnemonic {
     STY = 0x8C, TAX = 0xAA, TAY = 0xA8, TSX = 0xBA, TXA = 0x8A, TXS = 0x9A, TYA = 0x98,
 
     // Extra opcodes
-    LAX = 0xAF, SAX = 0x8F
+    LAX = 0xAF, SAX = 0x8F, SHY = 0x8C
+};
+
+template<ProcessorStatusFlags Register>
+struct BranchIf {
+    static void is(InstructionContext *ctx, bool expectedState);
+    static bool BranchTaken;
+};
+
+struct BranchState {
+    static bool BranchTaken;
 };
 
 struct tInstructionBase {
@@ -75,15 +85,15 @@ struct Opcode {
 
     methodPtr execute = nullptr;
 
-    void set(const char *M, unsigned char B, unsigned char C, bool PBC,
-             const char *D, enum AddressMode A, bool I = false) {
-        Mnemonic = M;
-        Bytes = B;
-        Cycles = C;
-        Description = D;
+    void set(const char *mnemonic, unsigned char bytes, unsigned char cycles, bool PBC,
+             const char *description, enum AddressMode addressMode, bool invalid = false) {
+        Mnemonic = mnemonic;
+        Bytes = bytes;
+        Cycles = cycles;
+        Description = description;
         PageBoundaryCondition = PBC;
-        AddressMode = A;
-        Invalid = I;
+        AddressMode = addressMode;
+        Invalid = invalid;
     }
 };
 

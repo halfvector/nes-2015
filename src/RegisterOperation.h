@@ -3,7 +3,7 @@
 /**
  * Register helper
  */
-template<Register register>
+template<Register>
 struct RegisterOperation {
 };
 

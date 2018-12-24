@@ -2,7 +2,6 @@
 #include "CartridgeLoader.h"
 #include "Logging.h"
 #include "CPU.h"
-#include "DI.h"
 #include "Backtrace.h"
 #include "MemoryStack.h"
 #include "GUI.h"
@@ -17,34 +16,22 @@
 #include <cstring>
 #include <cstdlib>
 #include <unistd.h>
+#include <thread>
 
-using namespace boost;
 using namespace std::chrono_literals;
 typedef std::chrono::high_resolution_clock clock_type;
 
-
 void collectInputEvents(Joypad *pJoypad, bool *pBoolean);
+
+void printLibVersions();
+
+Cartridge loadCartridge();
 
 int main(int argc, char **argv) {
     Backtrace::install();
+    printLibVersions();
 
-    CartridgeLoader loader;
-    Cartridge rom = loader.loadCartridge("../roms/supermariobros.nes"); // intro works, cannot tile scroll
-//    Cartridge rom = loader.loadCartridge("../roms/SuperMarioClouds.nes"); // draws zeroes instead of clouds, almost scrolls
-//    Cartridge rom = loader.loadCartridge("../roms/stars.nes"); // draws tiles instead of stars
-//    Cartridge rom = loader.loadCartridge("../roms/scanline.nes"); // stabler
-//    Cartridge rom = loader.loadCartridge("../roms/scroll.nes"); // doesn't work at all
-//    Cartridge rom = loader.loadCartridge("../roms/color_test.nes"); // doesn't work at all
-//    Cartridge rom = loader.loadCartridge("../roms/nestest.nes");
-//    Cartridge rom = loader.loadCartridge("../roms/gradius.nes"); // scrolling intro almost works
-//    Cartridge rom = loader.loadCartridge("../roms/megaman1.nes");
-//    Cartridge rom = loader.loadCartridge("../roms/donkey_kong.nes"); // draws zeroes instead of sprites
-//    Cartridge rom = loader.loadCartridge("../roms/apu_mixer/square.nes");
-
-//    Cartridge rom = loader.loadCartridge("../roms/Karateka (J) [p1].nes");
-//    Cartridge rom = loader.loadCartridge("../roms/Defender 2 (U).nes");
-//    Cartridge rom = loader.loadCartridge("../roms/all/nrom/Slalom (U).nes");
-
+    Cartridge rom = loadCartridge();
 
     // raster output
     auto raster = new Raster();
@@ -67,19 +54,28 @@ int main(int argc, char **argv) {
     // rendering
     auto gui = new GUI(raster);
 
+    // memory mapper
+    auto mmc = new MemoryMapper(ppu->getPpuRam(), memory->getByteArray());
+    ppu->useMemoryMapper(mmc);
+    memory->useMemoryMapper(mmc);
+
     // cpu
     auto cpu = new CPU(registers, memory, stack);
     cpu->load(rom);
-    cpu->reset(); // read PC from RESET vector
 
+    // load rom into memory mapper last, as it may override PRG ROM
+    mmc->loadRom(rom);
+
+    // read PC from RESET vector
+    cpu->reset();
+
+    // pump event loop to get window to appear before emulation starts
     gui->render();
-
 
     PrintDbg("Reset program-counter to 0x%X", registers->PC);
 
     // https://www.pagetable.com/?p=410
     auto doVblankNMI = [&]() {
-//        PrintInfo("Doing VBlank NMI (pushes to stack)");
         // clear break flag
         registers->P.B = 0;
         stack->pushStackWord(registers->PC);
@@ -94,6 +90,9 @@ int main(int argc, char **argv) {
         cpu->addCycles(7);
     };
 
+    PrintInfo("registers->PC = 0x%X", registers->PC);
+
+//    Loggy::Enabled = Loggy::DEBUG;
 //    registers->PC = 0xC000; // needed for nestest.nes
     registers->P.X = 1;
     registers->P.I = 1;
@@ -128,6 +127,10 @@ int main(int argc, char **argv) {
             doVblankNMI();
         }
 
+//        if(cpu->getCycleRuntime() > 100) {
+//            alive = false;
+//        }
+
         if (ppu->enteredVBlank()) {
             ppu->renderDebug();
             gui->render();
@@ -140,8 +143,11 @@ int main(int argc, char **argv) {
             last = now;
 
             // throttle to around 60fps
-            if(span < 13ms) {
-                std::this_thread::sleep_for(16ms - span);
+            if(span < 20ms) {
+//                now = std::chrono::high_resolution_clock::now();
+                std::this_thread::sleep_for(20ms - span);
+//                auto newspan = std::chrono::high_resolution_clock::now() - now;
+//                PrintInfo("sleep: wanted=%d got=%d", std::chrono::duration_cast<std::chrono::milliseconds>(16ms - span), std::chrono::duration_cast<std::chrono::milliseconds>(newspan));
             }
         }
     }
@@ -156,6 +162,64 @@ int main(int argc, char **argv) {
     delete gui;
 
     audio->close();
+}
+
+Cartridge loadCartridge() {
+    CartridgeLoader loader;
+//    Cartridge rom = loader.loadCartridge("../roms/SuperMarioClouds.nes"); // draws zeroes instead of clouds, almost scrolls
+//    Cartridge rom = loader.loadCartridge("../roms/stars.nes"); // draws tiles instead of stars
+//    Cartridge rom = loader.loadCartridge("../roms/scanline.nes"); // stabler
+//    Cartridge rom = loader.loadCartridge("../roms/scroll.nes"); // doesn't work at all
+//    Cartridge rom = loader.loadCartridge("../roms/color_test.nes"); // doesn't work at all
+//    Cartridge rom = loader.loadCartridge("../roms/nestest.nes");
+//    Cartridge rom = loader.loadCartridge("../roms/instr_timing/instr_timing.nes");
+//    Cartridge rom = loader.loadCartridge("../roms/megaman1.nes");
+//    Cartridge rom = loader.loadCartridge("../roms/megaman.nes");
+//    Cartridge rom = loader.loadCartridge("../roms/apu_mixer/square.nes");
+//    Cartridge rom = loader.loadCartridge("../roms/Karateka (J) [p1].nes");
+//    Cartridge rom = loader.loadCartridge("../roms/Defender 2 (U).nes");
+//    Cartridge rom = loader.loadCartridge("../roms/all/nrom/Slalom (U).nes");
+
+    /////////////////////////////////////////////////
+// mapper=0 aka NROM
+    Cartridge rom = loader.loadCartridge("../../roms/supermariobros.nes"); // played through at least one level
+//    Cartridge rom = loader.loadCartridge("../roms/donkey_kong.nes"); // draws zeroes instead of sprites
+//    rom.info.memoryMapperId = 0;
+
+    /////////////////////////////////////////////////
+// mapper=2 aka UNROM
+// 4 or 8 banks of PRG ROMs
+//    Cartridge rom = loader.loadCartridge("../roms/all-roms/USA/Metal Gear (U).nes"); // works fine
+//    Cartridge rom = loader.loadCartridge("../roms/all-roms/USA/Contra (U).nes"); // sprite rendering glitch
+//    Cartridge rom = loader.loadCartridge("../roms/all-roms/USA/Duck Tales (U).nes"); // freezes on intro
+// Mega Man
+// claims to mapper=66 (override)
+// intro rendering glitch, seems to be using wrong nametable, freezes on death
+//    Cartridge rom = loader.loadCartridge("../roms/all-roms/USA/Mega Man (U).nes");
+//    rom.info.memoryMapperId = 2;
+
+    /////////////////////////////////////////////////
+// mapper=3 aka CNROM
+//    Cartridge rom = loader.loadCartridge("../roms/all-roms/USA/Donkey Kong Classics (U).nes"); // works but claims to be mapper=64.
+//    Cartridge rom = loader.loadCartridge("../roms/arkanoid.nes"); // works fine
+//    Cartridge rom = loader.loadCartridge("../roms/all-roms/USA/Gradius (U).nes"); // works fine
+//    Cartridge rom = loader.loadCartridge("../roms/all-roms/USA/Arkista's Ring (U) [!].nes"); // doesn't boot
+//    Cartridge rom = loader.loadCartridge("../roms/all-roms/USA/Cybernoid - The Fighting Machine (U).nes"); // claims to be mapper=67
+//    Cartridge rom = loader.loadCartridge("../roms/all-roms/USA/Bump'n'Jump (U).nes"); // doesn't boot
+//    Cartridge rom = loader.loadCartridge("../roms/mapper_3_no_bus_conflict_test.nes"); // doesn't work.
+
+
+    return rom;
+}
+
+void printLibVersions() {
+    SDL_version compiled;
+    SDL_version linked;
+
+    SDL_VERSION(&compiled);
+    SDL_GetVersion(&linked);
+    PrintInfo("Compiled against SDL v%d.%d.%d", compiled.major, compiled.minor, compiled.patch);
+    PrintInfo("Linked against SDL v%d.%d.%d", linked.major, linked.minor, linked.patch);
 }
 
 // pump the event loop to ensure window visibility

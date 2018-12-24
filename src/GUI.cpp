@@ -67,13 +67,13 @@ GUI::render() {
     }
 
     // disable rendering masks for performance reasons
-//    if (SDL_UpdateTexture(backgroundMaskTexture, NULL, raster->backgroundMask, 256) < 0) {
-//        PrintError("SDL_UpdateTexture(backgroundMaskTexture) failed: %s\n", SDL_GetError());
-//    }
-//
-//    if (SDL_UpdateTexture(spriteMaskTexture, NULL, raster->spriteMask, 256) < 0) {
-//        PrintError("SDL_UpdateTexture(spriteMaskTexture) failed: %s\n", SDL_GetError());
-//    }
+    if (SDL_UpdateTexture(backgroundMaskTexture, NULL, raster->backgroundMask, 256) < 0) {
+        PrintError("SDL_UpdateTexture(backgroundMaskTexture) failed: %s\n", SDL_GetError());
+    }
+
+    if (SDL_UpdateTexture(spriteMaskTexture, NULL, raster->spriteMask, 256) < 0) {
+        PrintError("SDL_UpdateTexture(spriteMaskTexture) failed: %s\n", SDL_GetError());
+    }
 
     SDL_SetRenderDrawColor(renderer, 10, 10, 10, 255);
     SDL_RenderClear(renderer);

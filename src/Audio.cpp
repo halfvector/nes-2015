@@ -2,7 +2,7 @@
 #include "Audio.h"
 #include "Logging.h"
 
-#define AUDIO_ENABLED false
+#define AUDIO_ENABLED true
 
 /**
  * References:

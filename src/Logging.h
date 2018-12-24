@@ -1,8 +1,5 @@
 #pragma once
 
-#include <boost/format.hpp>
-#include <boost/filesystem.hpp>
-#include <spdlog/logger.h>
 #include <iostream>
 
 struct Loggy {
@@ -38,20 +35,24 @@ struct Loggy {
 #define PrintUnimplementedIO   if(LOG_INFO) Loggy::log(__PRETTY_FUNCTION__, Loggy::INFO).println
 
 
-static std::string boostFormatWrapper(boost::format &f) {
-    return boost::str(f);
-}
-
-template<class T, class... Ts>
-static std::string boostFormatWrapper(boost::format &f, T &&t, Ts &&... args) {
-    return boostFormatWrapper(f % std::forward<T>(t), std::forward<Ts>(args)...);
-}
+//static std::string boostFormatWrapper(boost::format &f) {
+//    return boost::str(f);
+//}
+//
+//template<class T, class... Ts>
+//static std::string boostFormatWrapper(boost::format &f, T &&t, Ts &&... args) {
+//    return boostFormatWrapper(f % std::forward<T>(t), std::forward<Ts>(args)...);
+//}
 
 template<typename... Ts>
-static void ThrowException(std::string const &fmt, Ts &&... args) {
-    boost::format f(fmt);
-    auto result = boostFormatWrapper(f, std::forward<Ts>(args)...);
-    throw std::runtime_error(result);
+static void ThrowException(const char *fmt, ...) {
+    char buffer[1024];
+    va_list args;
+    va_start (args, fmt);
+    vsprintf(buffer, fmt, args);
+    va_end (args);
+
+    throw std::runtime_error(buffer);
 }
 
 static void PrintBitState(char byte, char mask, const char *label) {
