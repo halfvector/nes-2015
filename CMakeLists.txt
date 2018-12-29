@@ -34,18 +34,33 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O1")
 # improve template/type error messages
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fdiagnostics-show-template-tree -fno-elide-type")
 
-
 #set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -rdynamic -Wl,-stack_size -Wl,0x10000")
 
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-omit-frame-pointer -fno-optimize-sibling-calls")
 
 #set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY meh)
-set(CMAKE_BINARY_DIR bleh)
-
 file(GLOB SOURCES "src/*.cpp" "src/*.h")
 add_executable(nes ${SOURCES})
 
+find_package(OpenGL REQUIRED)
+
+# add dependency on shaders to ensure they are included in every build/run
+#file(GLOB_RECURSE GLSL_SOURCE_FILES
+#        "src/shaders/*.frag"
+#        "src/shaders/*.vert")
+
+#add_custom_target(nes_shaders
+#        COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/src/shaders $<TARGET_FILE_DIR:nes>/shaders
+#        DEPENDS ${GLSL_SOURCE_FILES})
+
+#add_dependencies(nes nes_shaders)
+
 # conan macro will link with all dependencies
 conan_target_link_libraries(nes)
+target_link_libraries(nes ${OPENGL_LIBRARIES})
+
+# copy shaders into build folder (doesn't get called when hitting cmd-r in clion with no code-changes
+#add_custom_command(TARGET nes POST_BUILD
+#        COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/src/shaders $<TARGET_FILE_DIR:nes>/shaders)
+
