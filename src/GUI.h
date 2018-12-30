@@ -22,8 +22,9 @@ protected:
     // opengl
     SDL_GLContext glContext;
     SDL_Window *glWindow;
-    SDL_Texture *glRenderTarget;
-    uint32_t vao, vbo, ebo, pbo, rt;
+    uint32_t vao, vbo, ebo, rt;
+    uint32_t renderTargets[2], fbo;
+    uint32_t passThruShader, createGBufferShader;
 
     // debug buffers
     SDL_Texture *patternTexture, *attributeTexture, *paletteTexture;
@@ -36,6 +37,10 @@ protected:
     void createQuad();
 
     void createShaders();
+
+    void createRenderTargets();
+
+    uint32_t createProgram(uint32_t vertexShader, uint32_t fragmentShader) const;
 };
 
 

@@ -132,6 +132,7 @@ GUI::GUI(Raster *raster)
     SDL_RaiseWindow(glWindow);
 
     createQuad();
+    createRenderTargets();
     createShaders();
 }
 
@@ -248,24 +249,6 @@ GUI::~GUI() {
     SDL_Quit();
 }
 
-void GUI::renderQuad() {
-
-//    SDL_GL_BindTexture(finalTexture, nullptr, nullptr);
-
-    glCheckError();
-    glBindTexture(GL_TEXTURE_2D, rt);
-    glCheckError();
-//    auto now = std::chrono::high_resolution_clock::now();
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 256, 256, 0, GL_BGRA, GL_UNSIGNED_BYTE, raster->screenBuffer);
-//    glFlush();
-//    auto span = std::chrono::high_resolution_clock::now() - now;
-//    PrintInfo("glTexImage2D() took %d msec", std::chrono::duration_cast<std::chrono::milliseconds>(span));
-    glCheckError();
-
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-    glCheckError();
-}
-
 void GUI::createQuad() {
     glGenTextures(1, &rt);
     glBindTexture(GL_TEXTURE_2D, rt);
@@ -293,6 +276,25 @@ void GUI::createQuad() {
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
+    // define layout of the vertex buffer object. related vertex shaders must define same input layout.
+    GLuint posAttrib = 0;
+    GLuint colAttrib = 1;
+    GLuint texCoord = 2;
+    glEnableVertexAttribArray(posAttrib);
+    glCheckError();
+    glVertexAttribPointer(posAttrib, 2, GL_FLOAT, GL_FALSE, 7 * sizeof(GLfloat), nullptr);
+    glCheckError();
+
+    glEnableVertexAttribArray(colAttrib);
+    glCheckError();
+    glVertexAttribPointer(colAttrib, 3, GL_FLOAT, GL_FALSE, 7 * sizeof(GLfloat), (void *) (2 * sizeof(GLfloat)));
+    glCheckError();
+
+    glEnableVertexAttribArray(texCoord);
+    glCheckError();
+    glVertexAttribPointer(texCoord, 2, GL_FLOAT, GL_FALSE, 7 * sizeof(GLfloat), (void *) (5 * sizeof(GLfloat)));
+    glCheckError();
+
     // Create an element array
     glGenBuffers(1, &ebo);
 
@@ -303,56 +305,36 @@ void GUI::createQuad() {
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(elements), elements, GL_STATIC_DRAW);
+
+//    glBindVertexArray(0);
 }
 
-// Shader sources
-const GLchar *vertexSource = R"glsl(
-    #version 410 core
-    in vec2 position;
-    in vec3 color;
-    in vec2 texCoord;
-    out vec3 Color;
-    out vec2 outTexCoord;
-    uniform mat4 MVP;
-    void main()
-    {
-        Color = color;
-        outTexCoord = texCoord;
-        gl_Position = MVP * vec4(position, 0.0, 1.0);
-    }
-)glsl";
-
-const GLchar *fragmentSource = R"glsl(
-    #version 410 core
-    in vec3 Color;
-    in vec2 outTexCoord;
-    uniform sampler2D texSampler;
-    out vec4 outColor;
-    void main()
-    {
-        vec3 tex = texture(texSampler, outTexCoord).rgb;
-        outColor = vec4(tex, 1.0);
-    }
-)glsl";
-
 GLuint loadShader(GLenum type, const char *shaderName, const char *shaderFilePath);
+
 void checkShaderCompilationError(const char *shaderName, GLuint shaderId);
 
 void GUI::createShaders() {
     GLuint vertexShader = loadShader(GL_VERTEX_SHADER, "vertex shader", "../../src/shaders/passthru.vert");
     GLuint fragmentShader = loadShader(GL_FRAGMENT_SHADER, "fragment shader", "../../src/shaders/passthru.frag");
+    passThruShader = createProgram(vertexShader, fragmentShader);
 
-    // Link the vertex and fragment shader into a shader program
+
+    GLuint gBufferVertex = loadShader(GL_VERTEX_SHADER, "vertex shader", "../../src/shaders/create-gbuffer.vert");
+    GLuint gBufferFragment = loadShader(GL_FRAGMENT_SHADER, "fragment shader", "../../src/shaders/create-gbuffer.frag");
+    createGBufferShader = createProgram(gBufferVertex, gBufferFragment);
+}
+
+GLuint GUI::createProgram(GLuint vertexShader,
+                          GLuint fragmentShader) const {// Link the vertex and fragment shader into a shader program
     GLuint shaderProgram = glCreateProgram();
     glAttachShader(shaderProgram, vertexShader);
     glCheckError();
     glAttachShader(shaderProgram, fragmentShader);
     glCheckError();
-    glBindFragDataLocation(shaderProgram, 0, "outColor");
-    glCheckError();
     glProgramParameteri(shaderProgram, GL_PROGRAM_SEPARABLE, true);
+    glCheckError();
 
-    // compile the shaders together
+    // link the shaders together
     glLinkProgram(shaderProgram);
     glCheckError();
 
@@ -361,65 +343,146 @@ void GUI::createShaders() {
     if (programLinked == 0) {
         int maxLength;
         glGetProgramiv(shaderProgram, GL_INFO_LOG_LENGTH, &maxLength);
-        char *shaderProgramInfoLog = new char[maxLength];
-        glGetProgramInfoLog(shaderProgram, maxLength, &maxLength, shaderProgramInfoLog);
-        PrintError("Failed to link shaders into program: %s", shaderProgramInfoLog);
-        delete[] shaderProgramInfoLog;
+        char *errorLog = new char[maxLength];
+        glGetProgramInfoLog(shaderProgram, maxLength, &maxLength, errorLog);
+        PrintError("Failed to link shaders into program: %s", errorLog);
+        delete[] errorLog;
+        exit(1);
+    }
+    return shaderProgram;
+}
+
+void GUI::createRenderTargets() {
+    // configure render targets
+    glGenTextures(2, renderTargets);
+
+    PrintInfo("renderTargets[0] = %d", renderTargets[0]);
+    PrintInfo("renderTargets[1] = %d", renderTargets[1]);
+
+    glBindTexture(GL_TEXTURE_2D, renderTargets[0]);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 256, 256, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+
+    glBindTexture(GL_TEXTURE_2D, renderTargets[1]);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 256, 256, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    glGenFramebuffers(1, &fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, renderTargets[0], 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, renderTargets[1], 0);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void GUI::renderQuad() {
+    int w, h;
+    SDL_GetWindowSize(glWindow, &w, &h);
+    glm::mat4 projection = glm::ortho(0.0f, (float) w, 0.0f, (float) h, -10.0f, 10.0f);
+
+    glUseProgram(createGBufferShader);
+    glCheckError();
+    glUniform1i(glGetAttribLocation(createGBufferShader, "texSampler"), 0);
+    glCheckError();
+
+    glm::mat4 view = glm::lookAt(
+            glm::vec3(0, 0, 1),
+            glm::vec3(0, 0, 0),
+            glm::vec3(0, 1, 0)
+    );
+
+    glm::mat4 viewProjection = projection * view;
+    glUniformMatrix4fv(glGetUniformLocation(passThruShader, "MVP"), 1, GL_FALSE, glm::value_ptr(viewProjection));
+
+    // read from primary framebuffer
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+    // write to gbuffer and its multiple render-targets
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbo);
+    GLenum renderTargetAliases[] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
+    glDrawBuffers(2, renderTargetAliases);
+    glCheckError();
+
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+        PrintError("Framebuffer error");
+        glCheckError();
         exit(1);
     }
 
-    glUseProgram(shaderProgram);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, rt);
+    glCheckError();
+//    auto now = std::chrono::high_resolution_clock::now();
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 256, 256, 0, GL_BGRA, GL_UNSIGNED_BYTE, raster->screenBuffer);
+//    glFlush();
+//    auto span = std::chrono::high_resolution_clock::now() - now;
+//    PrintInfo("glTexImage2D() took %d msec", std::chrono::duration_cast<std::chrono::milliseconds>(span));
     glCheckError();
 
-    // Specify the layout of the vertex data
-    GLint posAttrib = glGetAttribLocation(shaderProgram, "position");
+    glBindVertexArray(vao);
     glCheckError();
-    glEnableVertexAttribArray(posAttrib);
-    glVertexAttribPointer(posAttrib, 2, GL_FLOAT, GL_FALSE, 7 * sizeof(GLfloat), 0);
-
-    GLint colAttrib = glGetAttribLocation(shaderProgram, "color");
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
     glCheckError();
-    glEnableVertexAttribArray(colAttrib);
-    glVertexAttribPointer(colAttrib, 3, GL_FLOAT, GL_FALSE, 7 * sizeof(GLfloat), (void *) (2 * sizeof(GLfloat)));
+    glBindVertexArray(0);
     glCheckError();
 
-    GLint texCoord = glGetAttribLocation(shaderProgram, "texCoord");
-    glCheckError();
-    glEnableVertexAttribArray(texCoord);
-    glCheckError();
-    glVertexAttribPointer(texCoord, 2, GL_FLOAT, GL_FALSE, 7 * sizeof(GLfloat), (void *) (5 * sizeof(GLfloat)));
+    // write to primary framebuffer
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    // read from gbuffer
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo);
+
+    glBindVertexArray(vao);
+
+    // draw render-targets to screen
+    glUseProgram(passThruShader);
     glCheckError();
 
-    GLint texSampler = glGetAttribLocation(shaderProgram, "texSampler");
-    glCheckError();
-    glUniform1i(texSampler, 0);
-    glCheckError();
-
-    int w, h;
-    SDL_GetWindowSize(glWindow, &w, &h);
-    glCheckError();
-
-    glm::mat4 projection = glm::ortho(0.0f, (float) w, 0.0f, (float) h, -10.0f, 10.0f);
-    glm::mat4 view = glm::lookAt(
-            glm::vec3(0, 0, 1), // Camera is at (4,3,3), in World Space
-            glm::vec3(0, 0, 0), // and looks at the origin
-            glm::vec3(0, 1, 0)  // Head is up (set to 0,-1,0 to look upside-down)
+    // draw RT #1
+    view = glm::lookAt(
+            glm::vec3(0, 0, 1),
+            glm::vec3(0, 0, 0),
+            glm::vec3(0, 1, 0)
     );
 
-    glm::mat4 viewProjection = projection;// * view;
+    viewProjection = projection * view;
+    glUniformMatrix4fv(glGetUniformLocation(passThruShader, "MVP"), 1, GL_FALSE, glm::value_ptr(viewProjection));
 
-    GLint projectionMatrix = glGetUniformLocation(shaderProgram, "MVP");
-    if (projectionMatrix == -1) {
-        PrintError("Could not get uniform from shader-program");
-    }
-    glUniformMatrix4fv(projectionMatrix, 1, GL_FALSE, glm::value_ptr(viewProjection));
+    glActiveTexture(GL_TEXTURE0);
+    glCheckError();
+    glBindTexture(GL_TEXTURE_2D, renderTargets[0]);
+    glCheckError();
+    glUniform1i(glGetAttribLocation(passThruShader, "texSampler"), 0);
+    glCheckError();
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
+    glCheckError();
+
+    // shift over to the size to draw RT #2
+    view = glm::lookAt(
+            glm::vec3(-256, 0, 1),
+            glm::vec3(-256, 0, 0),
+            glm::vec3(0, 1, 0)
+    );
+
+    viewProjection = projection * view;
+    glUniformMatrix4fv(glGetUniformLocation(passThruShader, "MVP"), 1, GL_FALSE, glm::value_ptr(viewProjection));
+    glCheckError();
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, renderTargets[1]);
+    glUniform1i(glGetAttribLocation(passThruShader, "texSampler"), 0);
+    glCheckError();
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
     glCheckError();
 }
 
 GLuint loadShader(GLenum type, const char *shaderName, const char *shaderFilePath) {
-    char* buffer = new char[100000];
+    char *buffer = new char[100000];
     FILE *file = fopen(shaderFilePath, "r");
-    if(file == nullptr) {
+    if (file == nullptr) {
         PrintError("Failed to load shader=%s from file=%s", shaderName, shaderFilePath);
     }
     int len = fread(buffer, 1, 100000, file);
