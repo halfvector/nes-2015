@@ -1,5 +1,4 @@
 #version 410 core
-//#extension GL_ARB_separate_shader_objects : enable
 
 uniform mat4 MVP; // model view projection matrix
 

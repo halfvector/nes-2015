@@ -1,12 +1,10 @@
 #define GL_SILENCE_DEPRECATION 1
 #define GL3_PROTOTYPES 1
+#define GLM_ENABLE_EXPERIMENTAL
 
-#include <OpenGL/gl3.h>
-#include <OpenGL/gl3ext.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include <SDL2/SDL_opengl_glext.h>
-
+#include <glm/gtx/transform.hpp>
 
 //#include <SDL2/SDL_opengl.h>
 #include "GUI.h"
@@ -51,7 +49,7 @@ GUI::GUI(Raster *raster)
     }
 
     // Create software-rendering Window
-    debugWindow = SDL_CreateWindow("NES - Debug", 0, 330, 1320, 564, SDL_WINDOW_SHOWN);
+    debugWindow = SDL_CreateWindow("NES - Debug", 0, 330, 1320, 564, SDL_WINDOW_ALLOW_HIGHDPI);
     if (debugWindow == nullptr) {
         PrintError("SDL_CreateWindow#1 failed: %s", SDL_GetError());
         throw std::runtime_error("SDL_CreateWindow#1 failed");
@@ -100,7 +98,7 @@ GUI::GUI(Raster *raster)
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 
     // Create OpenGL Window and Context
-    glWindow = SDL_CreateWindow("NES - Composite", 0, 0, 1320, 256, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
+    glWindow = SDL_CreateWindow("NES - Composite", 0, 0, 1320, 512, SDL_WINDOW_OPENGL | SDL_WINDOW_ALLOW_HIGHDPI);
     if (glWindow == nullptr) {
         PrintError("SDL_CreateWindow#2 failed: %s", SDL_GetError());
         throw std::runtime_error("SDL_CreateWindow#2 failed");
@@ -124,6 +122,8 @@ GUI::GUI(Raster *raster)
 //        throw std::runtime_error("SDL_CreateTexture failed");
 //    }
 
+//    SDL_WM_SetCaption( "TTF Test", NULL );
+
     SDL_GL_SetSwapInterval(1);
     int swapInterval = SDL_GL_GetSwapInterval();
     PrintInfo("VSync interval: %d", swapInterval);
@@ -134,112 +134,140 @@ GUI::GUI(Raster *raster)
     createQuad();
     createRenderTargets();
     createShaders();
+
+    if (TTF_Init() < 0) {
+        PrintInfo("Failed to initialize sdl2_ttf library: %s", SDL_GetError());
+        exit(1);
+    }
+
+    font = TTF_OpenFont("../../fonts/visitor2.ttf", 19);
+    if (font == nullptr) {
+        PrintError("Failed to open font: %s", TTF_GetError());
+        exit(1);
+    }
+
+    TTF_SetFontHinting(font, TTF_HINTING_MONO);
+    TTF_SetFontKerning(font, 0);
+    TTF_SetFontOutline(font, 0);
+
+    int w, h;
+
+    // set logical size equal to window size
+    // this allows for unscaled/nearest-neighbor pixel-accurate output
+    // on hi-dpi screens where renderer output size != window size
+    SDL_GetWindowSize(debugWindow, &w, &h);
+    PrintInfo("Debug Window size: %d x %d", w, h);
+    SDL_RenderSetLogicalSize(renderer, w, h);
+    glCheckError();
+
+    SDL_GetWindowSize(glWindow, &w, &h);
+    PrintInfo("OpenGL Window size: %d x %d", w, h);
+
+    SDL_GL_GetDrawableSize(debugWindow, &w, &h);
+    PrintInfo("Debug Window drawable size: %d x %d", w, h);
+    glCheckError();
+
+    SDL_GL_GetDrawableSize(glWindow, &w, &h);
+    PrintInfo("OpenGL Window drawable size: %d x %d", w, h);
+    glCheckError();
+
+    SDL_GetRendererOutputSize(renderer, &w, &h);
+    PrintInfo("Debug Window Renderer output size: %d x %d", w, h);
+    glCheckError();
+
+    SDL_Rect rect;
+    SDL_RenderGetViewport(renderer, &rect);
+    PrintInfo("Debug Window Renderer viewport: %d x %d @ %d, %d", rect.w, rect.h, rect.x, rect.y);
+    glCheckError();
+
+    SDL_RenderGetLogicalSize(renderer, &w, &h);
+    PrintInfo("Debug Window Renderer logical size: %d x %d", w, h);
+
+    glCheckError();
+}
+
+void uploadTexture(SDL_Texture* texture, void* ptr, int pitch) {
+    if (SDL_UpdateTexture(texture, nullptr, ptr, pitch) < 0) {
+        PrintError("Failed to SDL_UpdateTexture(): %s", SDL_GetError());
+    }
+}
+
+void renderTexture(SDL_Renderer* renderer, SDL_Texture* texture, SDL_Rect rect) {
+    if(SDL_RenderCopy(renderer, texture, nullptr, &rect) < 0) {
+        PrintError("Failed to SDL_RenderCopy(): %s", SDL_GetError());
+    }
 }
 
 void
 GUI::render() {
-    // blit software rasterized textures to window
+    auto now = std::chrono::high_resolution_clock::now();
+    // render into debug window
+//    renderDebugViews();
+    auto span = std::chrono::high_resolution_clock::now() - now;
+    PrintInfo("renderDebugViews() took %d msec", std::chrono::duration_cast<std::chrono::milliseconds>(span));
 
-    if (SDL_UpdateTexture(finalTexture, nullptr, raster->screenBuffer, 256 * 4) < 0) {
-        PrintError("SDL_UpdateTexture(final) failed: %s\n", SDL_GetError());
-    }
+    now = std::chrono::high_resolution_clock::now();
+    // render into opengl window
+    renderPostProcessing();
+    span = std::chrono::high_resolution_clock::now() - now;
+    PrintInfo("renderPostProcessing() took %d msec", std::chrono::duration_cast<std::chrono::milliseconds>(span));
+}
 
-    if (SDL_UpdateTexture(patternTexture, nullptr, raster->patternTable, 128 * 4) < 0) {
-        PrintError("SDL_UpdateTexture(patternTable) failed: %s\n", SDL_GetError());
-    }
+void GUI::renderDebugViews() const {// store internal buffers as a texture
+    uploadTexture(finalTexture, raster->screenBuffer, 256 * 4);
+    uploadTexture(patternTexture, raster->patternTable, 128 * 4);
+    uploadTexture(attributeTexture, raster->attributeTable, 256 * 4);
+    uploadTexture(paletteTexture, raster->palette, 256 * 4);
+    uploadTexture(nametableTexture, raster->nametables, 512 * 4);
+    uploadTexture(backgroundMaskTexture, raster->backgroundMask, 256);
+    uploadTexture(spriteMaskTexture, raster->spriteMask, 256);
 
-    if (SDL_UpdateTexture(attributeTexture, nullptr, raster->attributeTable, 256 * 4) < 0) {
-        PrintError("SDL_UpdateTexture(attributeTable) failed: %s\n", SDL_GetError());
-    }
-
-    if (SDL_UpdateTexture(paletteTexture, nullptr, raster->palette, 256 * 4) < 0) {
-        PrintError("SDL_UpdateTexture(palette) failed: %s\n", SDL_GetError());
-    }
-
-    if (SDL_UpdateTexture(nametableTexture, nullptr, raster->nametables, 512 * 4) < 0) {
-        PrintError("SDL_UpdateTexture(nametableTexture) failed: %s\n", SDL_GetError());
-    }
-
-    // disable rendering masks for performance reasons
-    if (SDL_UpdateTexture(backgroundMaskTexture, nullptr, raster->backgroundMask, 256) < 0) {
-        PrintError("SDL_UpdateTexture(backgroundMaskTexture) failed: %s\n", SDL_GetError());
-    }
-
-    if (SDL_UpdateTexture(spriteMaskTexture, nullptr, raster->spriteMask, 256) < 0) {
-        PrintError("SDL_UpdateTexture(spriteMaskTexture) failed: %s\n", SDL_GetError());
-    }
-
+    // clear screen
     SDL_SetRenderDrawColor(renderer, 10, 10, 10, 255);
     SDL_RenderClear(renderer);
 
-    // copy textures into render surface
-    auto finalRect = SDL_Rect{
-            0, 0, 256, 256
-    };
-    SDL_RenderCopy(renderer, finalTexture, nullptr, &finalRect);
+    // draw textures
+    renderTexture(renderer, finalTexture, SDL_Rect{0, 0, 256, 256});
+    drawText("Render", 0, 0);
 
-    // copy textures into render surface
-    auto patternRect = SDL_Rect{
-            266, 0, 256, 512
-    };
-    SDL_RenderCopy(renderer, patternTexture, nullptr, &patternRect);
+    renderTexture(renderer, patternTexture, SDL_Rect{266, 0, 256, 512});
+    drawText("Pattern Table", 266, 0);
 
-    auto attributesRect = SDL_Rect{
-            0, 266, 256, 256
-    };
-    SDL_RenderCopy(renderer, attributeTexture, nullptr, &attributesRect);
+    renderTexture(renderer, attributeTexture, SDL_Rect{0, 266, 256, 256});
+    drawText("Attributes Table", 0, 256);
 
-    auto paletteRect = SDL_Rect{
-            0, 532, 256, 32
-    };
-    SDL_RenderCopy(renderer, paletteTexture, nullptr, &paletteRect);
+    renderTexture(renderer, paletteTexture, SDL_Rect{0, 532, 256, 32});
+    drawText("Palette Map", 0, 522);
 
-    auto nametableRect = SDL_Rect{
-            532, 0, 512, 512
-    };
-    SDL_RenderCopy(renderer, nametableTexture, nullptr, &nametableRect);
+    renderTexture(renderer, nametableTexture, SDL_Rect{532, 0, 512, 512});
+    drawText("Nametable $2000", 532, 0);
+    drawText("Nametable $2400", 788, 0);
+    drawText("Nametable $2400", 788, 256);
+    drawText("Nametable $2800", 532, 256);
 
-    auto backgroundMaskRect = SDL_Rect{
-            1054, 0, 256, 256
-    };
-    SDL_RenderCopy(renderer, backgroundMaskTexture, nullptr, &backgroundMaskRect);
+    renderTexture(renderer, backgroundMaskTexture, SDL_Rect{1054, 0, 256, 256});
+    drawText("Background Mask", 1054, 0);
 
-    auto spriteMaskRect = SDL_Rect{
-            1054, 266, 256, 256
-    };
-    SDL_RenderCopy(renderer, spriteMaskTexture, nullptr, &spriteMaskRect);
+    renderTexture(renderer, spriteMaskTexture, SDL_Rect{1054, 266, 256, 256});
+    drawText("Sprite Mask", 1054, 256);
 
-//     present surface
+    // flip to screen
     SDL_RenderPresent(renderer);
+}
 
+void GUI::drawText(const char *message, const int posX, const int posY) const {
+    SDL_Color color = {255, 255, 255, 255};
+    SDL_Color bg = {0, 0, 0, 255};
+    SDL_Surface *textSurface = TTF_RenderText_Shaded(font, message, color, bg);
+    SDL_Texture *textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
 
-    // render OpenGL window
-//    if(SDL_SetRenderTarget(glRenderer, glRenderTarget) < 0) {
-//        PrintError("SDL_SetRenderTarget(final) failed: %s\n", SDL_GetError());
-//    }
-//    SDL_SetRenderDrawColor(glRenderer, 100, 255, 200, 255);
-//    SDL_RenderClear(glRenderer);
+    auto textRect = SDL_Rect{posX, posY};
+    SDL_QueryTexture(textTexture, nullptr, nullptr, &textRect.w, &textRect.h);
 
-    // reset OpenGL Context
+    SDL_RenderCopy(renderer, textTexture, nullptr, &textRect);
 
-    glDisable(GL_DEPTH_TEST);
-    glDisable(GL_CULL_FACE);
-    int w, h;
-    SDL_GetWindowSize(glWindow, &w, &h);
-    glViewport(0, 0, w, h);
-//    glClearDepth(1.0);
-    SDL_GL_MakeCurrent(glWindow, glContext);
-    glClearColor(1.0, 0.8, 0.3, 1.0);
-    glClear(GL_COLOR_BUFFER_BIT);
-
-//    glGenBuffers(1, &pbo);
-//    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
-//    glBufferData(GL_PIXEL_UNPACK_BUFFER, pbo)
-
-    renderQuad();
-
-    glFlush();
-    SDL_GL_SwapWindow(glWindow);
+    SDL_DestroyTexture(textTexture);
+    SDL_FreeSurface(textSurface);
 }
 
 GUI::~GUI() {
@@ -314,14 +342,32 @@ GLuint loadShader(GLenum type, const char *shaderName, const char *shaderFilePat
 void checkShaderCompilationError(const char *shaderName, GLuint shaderId);
 
 void GUI::createShaders() {
-    GLuint vertexShader = loadShader(GL_VERTEX_SHADER, "vertex shader", "../../src/shaders/passthru.vert");
-    GLuint fragmentShader = loadShader(GL_FRAGMENT_SHADER, "fragment shader", "../../src/shaders/passthru.frag");
-    passThruShader = createProgram(vertexShader, fragmentShader);
-
+    GLuint passthruVertex = loadShader(GL_VERTEX_SHADER, "vertex shader", "../../src/shaders/passthru.vert");
+    GLuint passthroughFragment = loadShader(GL_FRAGMENT_SHADER, "fragment shader", "../../src/shaders/passthru.frag");
+    passThruShader = createProgram(passthruVertex, passthroughFragment);
 
     GLuint gBufferVertex = loadShader(GL_VERTEX_SHADER, "vertex shader", "../../src/shaders/create-gbuffer.vert");
     GLuint gBufferFragment = loadShader(GL_FRAGMENT_SHADER, "fragment shader", "../../src/shaders/create-gbuffer.frag");
     createGBufferShader = createProgram(gBufferVertex, gBufferFragment);
+
+    GLuint blurVertex = loadShader(GL_VERTEX_SHADER, "vertex shader", "../../src/shaders/blur.vert");
+    GLuint blurFragment = loadShader(GL_FRAGMENT_SHADER, "fragment shader", "../../src/shaders/blur.frag");
+    blurShader = createProgram(blurVertex, blurFragment);
+
+    GLuint composeVertex = loadShader(GL_VERTEX_SHADER, "vertex shader", "../../src/shaders/compose.vert");
+    GLuint composeFragment = loadShader(GL_FRAGMENT_SHADER, "fragment shader", "../../src/shaders/compose.frag");
+    composeShader = createProgram(composeVertex, composeFragment);
+
+    GLint numAttributes;
+    glGetProgramiv(composeShader, GL_ACTIVE_ATTRIBUTES, &numAttributes);
+    PrintInfo("num of attributes: %d", numAttributes);
+    GLenum type;
+    GLint size;
+    char name[256];
+    for (int i = 0; i < numAttributes; i++) {
+        glGetActiveAttrib(composeShader, i, 256, nullptr, &size, &type, name);
+        PrintInfo("  attribute=%s size=%d", name, size);
+    }
 }
 
 GLuint GUI::createProgram(GLuint vertexShader,
@@ -354,40 +400,52 @@ GLuint GUI::createProgram(GLuint vertexShader,
 
 void GUI::createRenderTargets() {
     // configure render targets
-    glGenTextures(2, renderTargets);
+    glGenTextures(4, renderTargets);
 
-    PrintInfo("renderTargets[0] = %d", renderTargets[0]);
-    PrintInfo("renderTargets[1] = %d", renderTargets[1]);
-
+    // albedo
     glBindTexture(GL_TEXTURE_2D, renderTargets[0]);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 256, 256, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 256, 256, 0, GL_RGB, GL_FLOAT, nullptr);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 
+    // bloom ping-pong
     glBindTexture(GL_TEXTURE_2D, renderTargets[1]);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 256, 256, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 256, 256, 0, GL_RGB, GL_FLOAT, nullptr);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+
+    // bloom ping-pong
+    glBindTexture(GL_TEXTURE_2D, renderTargets[2]);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 256, 256, 0, GL_RGB, GL_FLOAT, nullptr);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+
+    // final
+    glBindTexture(GL_TEXTURE_2D, renderTargets[3]);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, 256, 256, 0, GL_RGB, GL_FLOAT, nullptr);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 
     glBindTexture(GL_TEXTURE_2D, 0);
 
     glGenFramebuffers(1, &fbo);
-    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, renderTargets[0], 0);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, renderTargets[1], 0);
-
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+//    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+//    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
-void GUI::renderQuad() {
-    int w, h;
+void GUI::renderPostProcessing() {
+    // switch to OpenGL window and context
+    SDL_GL_MakeCurrent(glWindow, glContext);
+
+    glClearColor(1.0, 0.8, 0.3, 1.0); // debug color
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    GLsizei w, h;
     SDL_GetWindowSize(glWindow, &w, &h);
+    glViewport(0, 0, w, h);
     glm::mat4 projection = glm::ortho(0.0f, (float) w, 0.0f, (float) h, -10.0f, 10.0f);
 
     glUseProgram(createGBufferShader);
-    glCheckError();
-    glUniform1i(glGetAttribLocation(createGBufferShader, "texSampler"), 0);
     glCheckError();
 
     glm::mat4 view = glm::lookAt(
@@ -396,13 +454,23 @@ void GUI::renderQuad() {
             glm::vec3(0, 1, 0)
     );
 
-    glm::mat4 viewProjection = projection * view;
-    glUniformMatrix4fv(glGetUniformLocation(passThruShader, "MVP"), 1, GL_FALSE, glm::value_ptr(viewProjection));
+    glm::mat scale = glm::scale(glm::vec3(1));
 
-    // read from primary framebuffer
+    glm::mat4 viewProjection = projection * scale * view;
+    glUniformMatrix4fv(glGetUniformLocation(createGBufferShader, "MVP"), 1, GL_FALSE, glm::value_ptr(viewProjection));
+
+    /////////////////////////////////////////////////
+    // create G-Buffer and upload framebuffers from CPU to GPU
+
+    // reset framebuffer
     glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
-    // write to gbuffer and its multiple render-targets
+
+    // write to multiple render-targets that make up the g-buffer
+    // render standard albedo into RT0
+    // render bright pixels into RT1
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbo);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, renderTargets[0], 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, renderTargets[1], 0);
     GLenum renderTargetAliases[] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
     glDrawBuffers(2, renderTargetAliases);
     glCheckError();
@@ -415,7 +483,6 @@ void GUI::renderQuad() {
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, rt);
-    glCheckError();
 //    auto now = std::chrono::high_resolution_clock::now();
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 256, 256, 0, GL_BGRA, GL_UNSIGNED_BYTE, raster->screenBuffer);
 //    glFlush();
@@ -424,59 +491,161 @@ void GUI::renderQuad() {
     glCheckError();
 
     glBindVertexArray(vao);
-    glCheckError();
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    glBindVertexArray(0);
+
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fbo);
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo);
+
+    /////////////////////////////////////////////////
+    // Bloom
+
+    // read bright pixels from RT1
+    // render horizontal blur into RT2
+    GLenum singleTargetAlias[] = {GL_COLOR_ATTACHMENT0};
+    glDrawBuffers(1, singleTargetAlias);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, renderTargets[2], 0);
+    glUseProgram(blurShader);
+    glUniformMatrix4fv(glGetUniformLocation(blurShader, "MVP"), 1, GL_FALSE, glm::value_ptr(viewProjection));
+    glUniform1i(glGetUniformLocation(blurShader, "horizontalBlur"), 1);
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, renderTargets[1]);
     glCheckError();
+    glUniform1i(glGetUniformLocation(blurShader, "texSampler"), 0);
+    glCheckError();
+    glBindVertexArray(vao);
+    glCheckError();
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
     glBindVertexArray(0);
     glCheckError();
 
-    // write to primary framebuffer
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    // read from gbuffer
-    glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo);
+    // read horizontal blur from RT2
+    // render vertical blur into RT1
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, renderTargets[1], 0);
+    glUniform1i(glGetUniformLocation(blurShader, "horizontalBlur"), 0);
 
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, renderTargets[2]);
+    glCheckError();
+    glUniform1i(glGetUniformLocation(blurShader, "texSampler"), 0);
+    glCheckError();
     glBindVertexArray(vao);
+    glCheckError();
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
+    glBindVertexArray(0);
+    glCheckError();
 
-    // draw render-targets to screen
+    /////////////////////////////////////////////////
+    // Compose final image from g-buffer
+
+    // read albedo from RT0
+    // read bloom from RT1
+    // render final composite into RT3
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, renderTargets[3], 0);
+    glUseProgram(composeShader);
+    glUniformMatrix4fv(glGetUniformLocation(composeShader, "MVP"), 1, GL_FALSE, glm::value_ptr(viewProjection));
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, renderTargets[0]);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, renderTargets[1]);
+    glUniform1i(glGetUniformLocation(composeShader, "albedoSampler"), 0);
+    glUniform1i(glGetUniformLocation(composeShader, "bloomSampler"), 1);
+    glBindVertexArray(vao);
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
+    glBindVertexArray(0);
+    glCheckError();
+
+    /////////////////////////////////////////////////
+    // Draw render-targets on screen
+
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+
+    // create projection matrix based on window-size (same width x height on low-dpi and high-dpi screens)
+    // set OpenGL Viewport to framebuffer size (will vary based on screen dpi, eg: 2x higher on retina screens)
+    // this gets us really simple dpi-invariant scaling for consistent rendering on screen
+    // without changing shaders or any complex math
+    SDL_GetWindowSize(glWindow, &w, &h);
+    projection = glm::ortho(0.0f, (float) w, 0.0f, (float) h, -10.0f, 10.0f);
+    SDL_GL_GetDrawableSize(glWindow, &w, &h);
+    glViewport(0, 0, w, h);
+
     glUseProgram(passThruShader);
     glCheckError();
 
-    // draw RT #1
+    // draw RT0
+    view = glm::lookAt(
+            glm::vec3(-512, -256, 1),
+            glm::vec3(-512, -256, 0),
+            glm::vec3(0, 1, 0)
+    );
+
+    scale = glm::scale(glm::vec3(1));
+
+    viewProjection = projection * scale * view;
+    glUniformMatrix4fv(glGetUniformLocation(passThruShader, "MVP"), 1, GL_FALSE, glm::value_ptr(viewProjection));
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, renderTargets[0]);
+    glUniform1i(glGetAttribLocation(passThruShader, "texSampler"), 0);
+    glBindVertexArray(vao);
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
+
+    // draw RT1
+    view = glm::lookAt(
+            glm::vec3(-768, -256, 1),
+            glm::vec3(-768, -256, 0),
+            glm::vec3(0, 1, 0)
+    );
+
+    scale = glm::scale(glm::vec3(1));
+
+    viewProjection = projection * scale * view;
+    glUniformMatrix4fv(glGetUniformLocation(passThruShader, "MVP"), 1, GL_FALSE, glm::value_ptr(viewProjection));
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, renderTargets[1]);
+    glUniform1i(glGetAttribLocation(passThruShader, "texSampler"), 0);
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
+
+    // draw RT2
+    view = glm::lookAt(
+            glm::vec3(-1024, -256, 1),
+            glm::vec3(-1024, -256, 0),
+            glm::vec3(0, 1, 0)
+    );
+
+    scale = glm::scale(glm::vec3(1));
+
+    viewProjection = projection * scale * view;
+    glUniformMatrix4fv(glGetUniformLocation(passThruShader, "MVP"), 1, GL_FALSE, glm::value_ptr(viewProjection));
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, renderTargets[2]);
+    glUniform1i(glGetAttribLocation(passThruShader, "texSampler"), 0);
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
+
+    // draw RT3
     view = glm::lookAt(
             glm::vec3(0, 0, 1),
             glm::vec3(0, 0, 0),
             glm::vec3(0, 1, 0)
     );
 
-    viewProjection = projection * view;
+    scale = glm::scale(glm::vec3(2));
+
+    viewProjection = projection * scale * view;
     glUniformMatrix4fv(glGetUniformLocation(passThruShader, "MVP"), 1, GL_FALSE, glm::value_ptr(viewProjection));
 
     glActiveTexture(GL_TEXTURE0);
-    glCheckError();
-    glBindTexture(GL_TEXTURE_2D, renderTargets[0]);
-    glCheckError();
-    glUniform1i(glGetAttribLocation(passThruShader, "texSampler"), 0);
-    glCheckError();
+    glBindTexture(GL_TEXTURE_2D, renderTargets[3]);
+    glUniform1i(glGetUniformLocation(passThruShader, "texSampler"), 0);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
-    glCheckError();
 
-    // shift over to the size to draw RT #2
-    view = glm::lookAt(
-            glm::vec3(-256, 0, 1),
-            glm::vec3(-256, 0, 0),
-            glm::vec3(0, 1, 0)
-    );
-
-    viewProjection = projection * view;
-    glUniformMatrix4fv(glGetUniformLocation(passThruShader, "MVP"), 1, GL_FALSE, glm::value_ptr(viewProjection));
-    glCheckError();
-
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, renderTargets[1]);
-    glUniform1i(glGetAttribLocation(passThruShader, "texSampler"), 0);
-    glCheckError();
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
-    glCheckError();
+    glFlush();
+    SDL_GL_SwapWindow(glWindow);
 }
 
 GLuint loadShader(GLenum type, const char *shaderName, const char *shaderFilePath) {

@@ -1,10 +1,12 @@
 [requires]
 sdl2/2.0.9@bincrafters/stable
+sdl2_ttf/2.0.14@bincrafters/stable
 glm/0.9.9.1@g-truc/stable
 fftw/3.3.8@bincrafters/stable
 
 [options]
 sdl2:shared=False
+sdl2_ttf:shared=False
 
 [generators]
 cmake

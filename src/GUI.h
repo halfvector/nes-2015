@@ -1,6 +1,9 @@
 #pragma once
 
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_ttf.h>
+#include <OpenGL/gl3.h>
+#include <OpenGL/gl3ext.h>
 #include "Platform.h"
 #include "PPU.h"
 
@@ -23,8 +26,9 @@ protected:
     SDL_GLContext glContext;
     SDL_Window *glWindow;
     uint32_t vao, vbo, ebo, rt;
-    uint32_t renderTargets[2], fbo;
-    uint32_t passThruShader, createGBufferShader;
+    uint32_t renderTargets[4], fbo;
+    uint32_t passThruShader, createGBufferShader, blurShader, composeShader;
+    TTF_Font *font;
 
     // debug buffers
     SDL_Texture *patternTexture, *attributeTexture, *paletteTexture;
@@ -32,7 +36,7 @@ protected:
     SDL_Texture *backgroundMaskTexture;
     SDL_Texture *spriteMaskTexture;
 
-    void renderQuad();
+    void renderPostProcessing();
 
     void createQuad();
 
@@ -41,6 +45,10 @@ protected:
     void createRenderTargets();
 
     uint32_t createProgram(uint32_t vertexShader, uint32_t fragmentShader) const;
+
+    void drawText(const char *message, const int posX, const int posY) const;
+
+    void renderDebugViews() const;
 };
 
 
