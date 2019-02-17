@@ -31,7 +31,7 @@ struct Loggy {
 #define PrintMemory            if(LOG_DBG) Loggy::log(__PRETTY_FUNCTION__, Loggy::DEBUG).println
 #define PrintMemoryIO          if(LOG_DBG) Loggy::log(__PRETTY_FUNCTION__, Loggy::DEBUG).println
 #define PrintPpu               if(LOG_DBG) Loggy::log(__PRETTY_FUNCTION__, Loggy::DEBUG).println
-#define PrintApu               if(LOG_DBG) Loggy::log(__PRETTY_FUNCTION__, Loggy::DEBUG).println
+#define PrintApu               if(LOG_INFO) Loggy::log(__PRETTY_FUNCTION__, Loggy::INFO).println
 #define PrintUnimplementedIO   if(LOG_INFO) Loggy::log(__PRETTY_FUNCTION__, Loggy::INFO).println
 
 

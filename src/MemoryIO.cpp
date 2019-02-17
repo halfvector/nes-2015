@@ -154,10 +154,46 @@ struct MemoryIOHandler<0x4007> {
     }
 };
 
+// Audio - Triangle
+template<>
+struct MemoryIOHandler<0x4008> {
+    static void write(Audio *apu, tCPU::byte value) {
+        PrintDbg("Writing 0x%02X to port $4008 - APU - Triangle - Length Counter Halt and Linear Counter", (int) value);
+        apu->setTriangleDuration(value);
+    }
+};
+
+template<>
+struct MemoryIOHandler<0x400A> {
+    static void write(Audio *apu, tCPU::byte value) {
+        PrintDbg("Writing 0x%02X to port $4008 - APU - Triangle - Period (low bits)", (int) value);
+        apu->setTrianglePeriodLow(value);
+    }
+};
+
+template<>
+struct MemoryIOHandler<0x400B> {
+    static void write(Audio *apu, tCPU::byte value) {
+        PrintDbg("Writing 0x%02X to port $4008 - APU - Triangle - Length Counter Reload and Period (high bits)", (int) value);
+        apu->setTrianglePeriodHigh(value);
+    }
+};
+
+// Audio - Noise
+template<>
+struct MemoryIOHandler<0x400C> {
+    static void write(Audio *apu, tCPU::byte value) {
+        PrintDbg("Writing 0x%02X to port $400C - APU - Noise - ", (int) value);
+//        apu->writeDAC(value);
+    }
+};
+
+// Audio - DAC
+
 template<>
 struct MemoryIOHandler<0x4011> {
     static void write(Audio *apu, tCPU::byte value) {
-        PrintApu("Writing 0x%02X to port $4011 - APU - DMC - Direct write to DAC", (int) value);
+        PrintDbg("Writing 0x%02X to port $4011 - APU - DMC - Direct write to DAC", (int) value);
         apu->writeDAC(value);
     }
 };
@@ -166,12 +202,12 @@ template<>
 struct MemoryIOHandler<0x4015> {
     static tCPU::byte read(Audio *apu) {
         tCPU::byte value = apu->getChannelStatus();
-        PrintApu("Read 0x%02X from port $4015 - APU - Channel Control", (int) value);
+        PrintDbg("Read 0x%02X from port $4015 - APU - Channel Control", (int) value);
         return value;
     }
 
     static void write(Audio *apu, tCPU::byte value) {
-        PrintApu("Writing 0x%02X to port $4015 - APU - Channel Control", (int) value);
+        PrintDbg("Writing 0x%02X to port $4015 - APU - Channel Control", (int) value);
         apu->setChannelStatus(value);
     }
 };
@@ -272,7 +308,7 @@ MemoryIO::write(tCPU::word address, tCPU::byte value) {
             MemoryIOHandler<0x4003>::write(apu, value);
             break;
 
-            // Audio - square waveform channel 2
+        // Audio - square waveform channel 2
         case 0x4004:
             MemoryIOHandler<0x4004>::write(apu, value);
             break;
@@ -293,7 +329,20 @@ MemoryIO::write(tCPU::word address, tCPU::byte value) {
             MemoryIOHandler<0x4011>::write(apu, value);
             break;
 
-        case 0x4008 ... 0x4010:
+            // Audio - square waveform channel 2
+        case 0x4008:
+            MemoryIOHandler<0x4008>::write(apu, value);
+            break;
+
+        case 0x400A:
+            MemoryIOHandler<0x400A>::write(apu, value);
+            break;
+
+        case 0x400B:
+            MemoryIOHandler<0x400B>::write(apu, value);
+            break;
+
+        case 0x400C ... 0x4010:
         case 0x4012 ... 0x4013:
 //            PrintUnimplementedIO("Skipping Unimplemented I/O Port: APU $%04X - APU", address);
             break;

@@ -142,13 +142,17 @@ int main(int argc, char **argv) {
             auto span = now - last;
             last = now;
 
+            /*
             // throttle to around 60fps
-            if(span < 20ms) {
-//                now = std::chrono::high_resolution_clock::now();
-                std::this_thread::sleep_for(20ms - span);
-//                auto newspan = std::chrono::high_resolution_clock::now() - now;
-//                PrintInfo("sleep: wanted=%d got=%d", std::chrono::duration_cast<std::chrono::milliseconds>(16ms - span), std::chrono::duration_cast<std::chrono::milliseconds>(newspan));
+            const std::chrono::milliseconds &goal = 16ms;
+            auto gap = std::chrono::duration_cast<std::chrono::milliseconds>(span - goal);
+            if(gap > 2ms) {
+                now = std::chrono::high_resolution_clock::now();
+                std::this_thread::sleep_for(gap);
+                auto actual_delay = std::chrono::high_resolution_clock::now() - now;
+                PrintInfo("throttling ppu: wanted=%d msec got=%d msec", gap, std::chrono::duration_cast<std::chrono::milliseconds>(actual_delay));
             }
+            */
         }
     }
 
@@ -180,9 +184,11 @@ Cartridge loadCartridge() {
 //    Cartridge rom = loader.loadCartridge("../roms/Defender 2 (U).nes");
 //    Cartridge rom = loader.loadCartridge("../roms/all/nrom/Slalom (U).nes");
 
+    Cartridge rom = loader.loadCartridge("../../src/roms/sound-test/sound-test.nes");
+
     /////////////////////////////////////////////////
 // mapper=0 aka NROM
-    Cartridge rom = loader.loadCartridge("../../roms/supermariobros.nes"); // played through at least one level
+//    Cartridge rom = loader.loadCartridge("../../roms/supermariobros.nes"); // played through at least one level
 //    Cartridge rom = loader.loadCartridge("../roms/donkey_kong.nes"); // draws zeroes instead of sprites
 //    rom.info.memoryMapperId = 0;
 

@@ -5,9 +5,9 @@
 template<typename ExceptionType>
 class ExceptionBase : public std::runtime_error {
 public:
-    ExceptionBase(const char *str) : std::runtime_error(str) {}
+    explicit ExceptionBase(const char *str) : std::runtime_error(str) {}
 
-    static ExceptionType emit(const char *fmt, ...) {
+    static void emit(const char *fmt, ...) {
         char buffer[1024];
         va_list args;
         va_start (args, fmt);

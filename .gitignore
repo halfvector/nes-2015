@@ -4,7 +4,7 @@ bin
 cmake
 deps
 bii/.hive.db
-roms
+./roms
 lib
 .DS_Store
 cmake-build-debug

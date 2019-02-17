@@ -132,7 +132,6 @@ CPU::executeOpcode(int code) {
 
     // add branch penalty
     if (BranchState::BranchTaken) {
-        PrintDbg("detected a branch");
         cycles++;
     }
 
