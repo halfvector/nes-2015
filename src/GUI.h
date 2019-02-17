@@ -6,14 +6,17 @@
 #include <OpenGL/gl3ext.h>
 #include "Platform.h"
 #include "PPU.h"
+#include <map>
 
 class GUI {
 public:
     GUI(Raster *raster);
-
     ~GUI();
-
     void render();
+
+    bool showEnhancedPPU;
+    bool showDebuggerPPU;
+    bool showDebuggerAPU;
 
 protected:
     Raster *raster;
@@ -36,6 +39,8 @@ protected:
     SDL_Texture *backgroundMaskTexture;
     SDL_Texture *spriteMaskTexture;
 
+    std::map<const char*, SDL_Texture*> labelCache;
+
     void renderPostProcessing();
 
     void createQuad();
@@ -46,9 +51,11 @@ protected:
 
     uint32_t createProgram(uint32_t vertexShader, uint32_t fragmentShader) const;
 
-    void drawText(const char *message, const int posX, const int posY) const;
+    void drawText(const char *message, const int posX, const int posY);
 
-    void renderDebugViews() const;
+    void renderDebugViews();
+
+    SDL_Texture *generateTextureLabel(const char *message);
 };
 
 

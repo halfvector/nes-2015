@@ -43,6 +43,10 @@ GLenum glCheckError_(const char *file, int line) {
 GUI::GUI(Raster *raster)
         : raster(raster) {
 
+    showEnhancedPPU = false;
+    showDebuggerPPU = true;
+    showDebuggerAPU = false;
+
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
         PrintError("SDL_Init failed: %s", SDL_GetError());
         throw std::runtime_error("SDL_Init failed");
@@ -62,13 +66,21 @@ GUI::GUI(Raster *raster)
         throw std::runtime_error("SDL_CreateRenderer failed");
     }
 
+    SDL_RendererInfo info;
+    SDL_GetRendererInfo(renderer, &info);
+    PrintInfo("info.num_texture_formats = %d", info.num_texture_formats);
+    for (int i = 0; i < info.num_texture_formats; i++) {
+        PrintInfo("  %s = %d bytes/pixel", SDL_GetPixelFormatName(info.texture_formats[i]),
+                  SDL_BYTESPERPIXEL(info.texture_formats[i]));
+    }
+
     finalTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 256, 256);
     patternTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 128, 256);
     attributeTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 256, 256);
     paletteTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 256, 32);
     nametableTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 512, 512);
-    backgroundMaskTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGB332, SDL_TEXTUREACCESS_STREAMING, 256, 256);
-    spriteMaskTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGB332, SDL_TEXTUREACCESS_STREAMING, 256, 256);
+    backgroundMaskTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_NV12, SDL_TEXTUREACCESS_STREAMING, 256, 256);
+    spriteMaskTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_NV12, SDL_TEXTUREACCESS_STREAMING, 256, 256);
 
     if (finalTexture == nullptr) {
         PrintError("SDL_CreateTexture failed: %s", SDL_GetError());
@@ -79,6 +91,8 @@ GUI::GUI(Raster *raster)
         PrintError("SDL_CreateTexture failed: %s", SDL_GetError());
         throw std::runtime_error("SDL_CreateTexture failed");
     }
+
+    SDL_RaiseWindow(debugWindow);
 
     // Reconfigure preferred OpenGL settings: Profile = Core and Version = 3.1
     if (SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG | SDL_GL_CONTEXT_DEBUG_FLAG) <
@@ -97,24 +111,25 @@ GUI::GUI(Raster *raster)
     SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 0);
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 
-    // Create OpenGL Window and Context
-    glWindow = SDL_CreateWindow("NES - Composite", 0, 0, 1320, 512, SDL_WINDOW_OPENGL | SDL_WINDOW_ALLOW_HIGHDPI);
-    if (glWindow == nullptr) {
-        PrintError("SDL_CreateWindow#2 failed: %s", SDL_GetError());
-        throw std::runtime_error("SDL_CreateWindow#2 failed");
-    }
+    if (showEnhancedPPU) {
+        // Create OpenGL Window and Context
+        glWindow = SDL_CreateWindow("NES - Composite", 0, 0, 1320, 512, SDL_WINDOW_OPENGL | SDL_WINDOW_ALLOW_HIGHDPI);
+        if (glWindow == nullptr) {
+            PrintError("SDL_CreateWindow#2 failed: %s", SDL_GetError());
+            throw std::runtime_error("SDL_CreateWindow#2 failed");
+        }
 
-    glContext = SDL_GL_CreateContext(glWindow);
-    if (glContext == nullptr) {
-        PrintError("SDL_GL_CreateContext failed: %s", SDL_GetError());
-    }
+        glContext = SDL_GL_CreateContext(glWindow);
+        if (glContext == nullptr) {
+            PrintError("SDL_GL_CreateContext failed: %s", SDL_GetError());
+        }
 
-    // Dump OpenGL versioning info
+        // Dump OpenGL versioning info
 
-    PrintInfo("OpenGL Vendor: %s", glGetString(GL_VENDOR));
-    PrintInfo("OpenGL Renderer: %s", glGetString(GL_RENDERER));
-    PrintInfo("OpenGL Version: %s", glGetString(GL_VERSION));
-    PrintInfo("GLSL Version: %s", glGetString(GL_SHADING_LANGUAGE_VERSION));
+        PrintInfo("OpenGL Vendor: %s", glGetString(GL_VENDOR));
+        PrintInfo("OpenGL Renderer: %s", glGetString(GL_RENDERER));
+        PrintInfo("OpenGL Version: %s", glGetString(GL_VERSION));
+        PrintInfo("GLSL Version: %s", glGetString(GL_SHADING_LANGUAGE_VERSION));
 
 //    glRenderTarget = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, 256, 256);
 //    if (glRenderTarget == nullptr) {
@@ -124,16 +139,16 @@ GUI::GUI(Raster *raster)
 
 //    SDL_WM_SetCaption( "TTF Test", NULL );
 
-    SDL_GL_SetSwapInterval(1);
-    int swapInterval = SDL_GL_GetSwapInterval();
-    PrintInfo("VSync interval: %d", swapInterval);
+        SDL_GL_SetSwapInterval(1);
+        int swapInterval = SDL_GL_GetSwapInterval();
+        PrintInfo("VSync interval: %d", swapInterval);
 
-    SDL_RaiseWindow(debugWindow);
-    SDL_RaiseWindow(glWindow);
+        SDL_RaiseWindow(glWindow);
 
-    createQuad();
-    createRenderTargets();
-    createShaders();
+        createQuad();
+        createRenderTargets();
+        createShaders();
+    }
 
     if (TTF_Init() < 0) {
         PrintInfo("Failed to initialize sdl2_ttf library: %s", SDL_GetError());
@@ -160,16 +175,16 @@ GUI::GUI(Raster *raster)
     SDL_RenderSetLogicalSize(renderer, w, h);
     glCheckError();
 
-    SDL_GetWindowSize(glWindow, &w, &h);
-    PrintInfo("OpenGL Window size: %d x %d", w, h);
+//    SDL_GetWindowSize(glWindow, &w, &h);
+//    PrintInfo("OpenGL Window size: %d x %d", w, h);
 
     SDL_GL_GetDrawableSize(debugWindow, &w, &h);
     PrintInfo("Debug Window drawable size: %d x %d", w, h);
     glCheckError();
 
-    SDL_GL_GetDrawableSize(glWindow, &w, &h);
-    PrintInfo("OpenGL Window drawable size: %d x %d", w, h);
-    glCheckError();
+//    SDL_GL_GetDrawableSize(glWindow, &w, &h);
+//    PrintInfo("OpenGL Window drawable size: %d x %d", w, h);
+//    glCheckError();
 
     SDL_GetRendererOutputSize(renderer, &w, &h);
     PrintInfo("Debug Window Renderer output size: %d x %d", w, h);
@@ -182,18 +197,17 @@ GUI::GUI(Raster *raster)
 
     SDL_RenderGetLogicalSize(renderer, &w, &h);
     PrintInfo("Debug Window Renderer logical size: %d x %d", w, h);
-
     glCheckError();
 }
 
-void uploadTexture(SDL_Texture* texture, void* ptr, int pitch) {
+void uploadTexture(SDL_Texture *texture, void *ptr, int pitch) {
     if (SDL_UpdateTexture(texture, nullptr, ptr, pitch) < 0) {
         PrintError("Failed to SDL_UpdateTexture(): %s", SDL_GetError());
     }
 }
 
-void renderTexture(SDL_Renderer* renderer, SDL_Texture* texture, SDL_Rect rect) {
-    if(SDL_RenderCopy(renderer, texture, nullptr, &rect) < 0) {
+void renderTexture(SDL_Renderer *renderer, SDL_Texture *texture, SDL_Rect rect) {
+    if (SDL_RenderCopy(renderer, texture, nullptr, &rect) < 0) {
         PrintError("Failed to SDL_RenderCopy(): %s", SDL_GetError());
     }
 }
@@ -202,23 +216,27 @@ void
 GUI::render() {
     auto now = std::chrono::high_resolution_clock::now();
     // render into debug window
-//    renderDebugViews();
+    renderDebugViews();
     auto span = std::chrono::high_resolution_clock::now() - now;
     PrintInfo("renderDebugViews() took %d msec", std::chrono::duration_cast<std::chrono::milliseconds>(span));
 
-    now = std::chrono::high_resolution_clock::now();
-    // render into opengl window
-    renderPostProcessing();
-    span = std::chrono::high_resolution_clock::now() - now;
-    PrintInfo("renderPostProcessing() took %d msec", std::chrono::duration_cast<std::chrono::milliseconds>(span));
+    if (showEnhancedPPU) {
+        now = std::chrono::high_resolution_clock::now();
+        // render into opengl window
+        renderPostProcessing();
+        span = std::chrono::high_resolution_clock::now() - now;
+        PrintInfo("renderPostProcessing() took %d msec", std::chrono::duration_cast<std::chrono::milliseconds>(span));
+    }
 }
 
-void GUI::renderDebugViews() const {// store internal buffers as a texture
+void GUI::renderDebugViews() {// store internal buffers as a texture
     uploadTexture(finalTexture, raster->screenBuffer, 256 * 4);
     uploadTexture(patternTexture, raster->patternTable, 128 * 4);
     uploadTexture(attributeTexture, raster->attributeTable, 256 * 4);
     uploadTexture(paletteTexture, raster->palette, 256 * 4);
     uploadTexture(nametableTexture, raster->nametables, 512 * 4);
+
+    // TODO: fix CPU based format conversion overhead for these two textures
     uploadTexture(backgroundMaskTexture, raster->backgroundMask, 256);
     uploadTexture(spriteMaskTexture, raster->spriteMask, 256);
 
@@ -255,25 +273,42 @@ void GUI::renderDebugViews() const {// store internal buffers as a texture
     SDL_RenderPresent(renderer);
 }
 
-void GUI::drawText(const char *message, const int posX, const int posY) const {
+/**
+ * Draws static text on the screen. Caches aggressively.
+ */
+void GUI::drawText(const char *message, const int posX, const int posY) {
+    SDL_Texture *textTexture = generateTextureLabel(message);
+
+    auto textRect = SDL_Rect{posX, posY};
+    SDL_QueryTexture(textTexture, nullptr, nullptr, &textRect.w, &textRect.h);
+    SDL_RenderCopy(renderer, textTexture, nullptr, &textRect);
+}
+
+SDL_Texture *GUI::generateTextureLabel(const char *message) {
+    // return a cached texture if available
+    auto cachedEntry = labelCache.find(message);
+    if (cachedEntry != labelCache.end()) {
+        return cachedEntry->second;
+    }
+
+    // otherwise generate a new one
     SDL_Color color = {255, 255, 255, 255};
     SDL_Color bg = {0, 0, 0, 255};
     SDL_Surface *textSurface = TTF_RenderText_Shaded(font, message, color, bg);
     SDL_Texture *textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
-
-    auto textRect = SDL_Rect{posX, posY};
-    SDL_QueryTexture(textTexture, nullptr, nullptr, &textRect.w, &textRect.h);
-
-    SDL_RenderCopy(renderer, textTexture, nullptr, &textRect);
-
-    SDL_DestroyTexture(textTexture);
     SDL_FreeSurface(textSurface);
+
+    labelCache[message] = textTexture;
+
+    return textTexture;
 }
 
 GUI::~GUI() {
-    SDL_GL_DeleteContext(glContext);
+    if (showEnhancedPPU) {
+        SDL_GL_DeleteContext(glContext);
+        SDL_DestroyWindow(glWindow);
+    }
     SDL_DestroyWindow(debugWindow);
-    SDL_DestroyWindow(glWindow);
     SDL_Quit();
 }
 

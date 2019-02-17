@@ -132,7 +132,9 @@ int main(int argc, char **argv) {
 //        }
 
         if (ppu->enteredVBlank()) {
-            ppu->renderDebug();
+            if(gui->showDebuggerPPU) {
+                ppu->renderDebug();
+            }
             gui->render();
             ppu->clear();
             collectInputEvents(joypad, &alive);

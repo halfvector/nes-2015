@@ -50,8 +50,8 @@ public:
         palette = new tCPU::byte[256 * 32 * 4];
         patternTable = new tCPU::byte[128 * 256 * 4];
         attributeTable = new tCPU::byte[256 * 256 * 4];
-        backgroundMask = new tCPU::byte[256 * 256];
-        spriteMask = new tCPU::byte[256 * 256];
+        backgroundMask = new tCPU::byte[256 * 256 * 2];
+        spriteMask = new tCPU::byte[256 * 256 * 2];
         nametables = new tCPU::byte[512 * 512 * 4];
     }
 

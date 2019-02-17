@@ -327,7 +327,7 @@ void PPU::renderScanline(const tCPU::word Y) {
 
 
     int *backgroundRender = (int *) raster->screenBuffer + Y * 256;
-    unsigned char *backgroundMask = raster->backgroundMask + Y * 256;
+    tCPU::byte *backgroundMask = raster->backgroundMask + Y * 256;
 
     /**
      * Render background tiles.
@@ -896,11 +896,11 @@ void PPU::clear() {
     // clear palette table debug view (256x32@32bit)
     memset_pattern4(raster->palette, &clearPattern, 256 * 32 * 4);
 
-    // clear sprite mask debug view (256x256@8bit)
-    memset(raster->spriteMask, 0, 256 * 256);
+    // clear sprite mask debug view (256x256@16bit)
+    memset(raster->spriteMask, 128, 256 * 256 * 2);
 
-    // clear background mask debug view (256x256@8bit)
-    memset(raster->backgroundMask, 0, 256 * 256);
+    // clear background mask debug view (256x256@16bit)
+    memset(raster->backgroundMask, 128, 256 * 256 * 2);
 }
 
 void PPU::renderDebug() {
