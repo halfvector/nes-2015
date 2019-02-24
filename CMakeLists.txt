@@ -23,7 +23,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-function -Wno-unused-variabl
 
 # generate complete debug type info, tune for GDB (-ggdb) or LLDB (-glldb)
 # enable address sanitization to easily catch buffer overflows and heap corruptions
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -glldb -fsanitize=address")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-omit-frame-pointer -g -glldb -fsanitize=address")
 
 # enable optimizations
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O1")

@@ -21,8 +21,14 @@ public:
 protected:
     Raster *raster;
 
-    SDL_Window *debugWindow;
-    SDL_Renderer *renderer;
+    SDL_Window *apuDebugWindow;
+    SDL_Renderer *apuDebugRenderer;
+    SDL_Texture *square1FFTTexture, *square1WaveformTexture;
+    SDL_Texture *square2FFTTexture, *square2WaveformTexture;
+    SDL_Texture *triangleFFTTexture, *triangleWaveformTexture;
+
+    SDL_Window *ppuDebugWindow;
+    SDL_Renderer *ppuDebugRenderer;
     SDL_Texture *finalTexture;
 
     // opengl
@@ -39,7 +45,7 @@ protected:
     SDL_Texture *backgroundMaskTexture;
     SDL_Texture *spriteMaskTexture;
 
-    std::map<const char*, SDL_Texture*> labelCache;
+    std::map<size_t, SDL_Texture*> labelCache;
 
     void renderPostProcessing();
 
@@ -51,11 +57,11 @@ protected:
 
     uint32_t createProgram(uint32_t vertexShader, uint32_t fragmentShader) const;
 
-    void drawText(const char *message, const int posX, const int posY);
+    void drawText(SDL_Renderer *renderer, const char *message, const int posX, const int posY);
 
     void renderDebugViews();
 
-    SDL_Texture *generateTextureLabel(const char *message);
+    SDL_Texture *generateTextureLabel(const char *message, SDL_Renderer *renderer);
 };
 
 

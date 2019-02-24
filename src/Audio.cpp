@@ -4,6 +4,7 @@
 #include <thread>
 #include <chrono>
 #include <fftw3.h>
+#include <algorithm>
 
 #define AUDIO_ENABLED true
 
@@ -20,7 +21,7 @@
  * http://web.textfiles.com/games/nessound.txt -- excellent envelope decay and sweep unit details
  */
 
-static int dutyCycleSequence[4][8] = {
+static int  dutyCycleSequence[4][8] = {
         {1, 0, 0, 0, 0, 0, 0, 0}, // 0, 12.5%
         {1, 1, 0, 0, 0, 0, 0, 0}, // 1, 25%
         {1, 1, 1, 1, 0, 0, 0, 0}, // 2, 50%
@@ -61,17 +62,145 @@ Audio::populate(Uint8 *stream, int len) {
     }
 }
 
-Audio::Audio() {
+void ChannelDebug::initialize(int numSamples) {
+    fftSize = numSamples;
+    samples = (double *) fftw_malloc(sizeof(double) * numSamples);
+    fft = (double *) fftw_malloc(sizeof(double) * numSamples);
+    plan = fftw_plan_r2r_1d(fftSize, samples, fft, FFTW_R2HC, 0);
+    currentIdx = 0;
+}
+
+/**
+ * Returns true if sample buffer is full and ready for processing
+ */
+bool ChannelDebug::put(double sample) {
+    samples[currentIdx] = sample;
+
+    if (++currentIdx == fftSize) {
+        currentIdx = 0;
+        return true;
+    }
+
+    return false;
+}
+
+void ChannelDebug::compute(tCPU::byte *fftRaster, tCPU::byte *waveformRaster) {
+
+    // calculate FFT
+    auto start = std::chrono::high_resolution_clock::now();
+    fftw_execute(plan);
+    auto actual_delay = std::chrono::high_resolution_clock::now() - start;
+    PrintInfo("FFT calculation took %d usec", std::chrono::duration_cast<std::chrono::microseconds>(actual_delay));
+
+//    double peakPower = 0;
+//    int peakPowerIdx = 0;
+//    for (int i = 0; i < fftSize / 2; i++) {
+//        double complex = i == 0 ? 0 : fft[fftSize - i];
+//        double power = sqrt(fft[i] * fft[i] + complex * complex) / double(fftSize);
+//        if (power > peakPower) {
+//            peakPower = power;
+//            peakPowerIdx = i;
+//        }
+//    }
+//
+//    double bucketFreq = 44100.0 / double(fftSize);
+//    printf("peakPower = %.1f @ frequency = %.1f\n", peakPower, peakPowerIdx * bucketFreq);
+
+    // rasterize FFT
+//    start = std::chrono::high_resolution_clock::now();
+
+    const double peakPower = 15.0;
+
+    const int fftRasterWidth = 512;
+    const int fftSamplesPerPixel = fftSize / 2 / fftRasterWidth;
+    const int fftRasterHeight = 64;
+    const double powerPerPixel = peakPower / double(fftRasterHeight);
+
+    // compute real power spectrum
+    double powers[fftRasterWidth];
+    for (int x = 0; x < fftRasterWidth; x++) {
+        double power = 0;
+        for (int j = 0; j < fftSamplesPerPixel; j++) {
+            int k = x * fftSamplesPerPixel + j;
+            double complex = x == 0 ? 0 : fft[fftSize - k];
+            power += sqrt(fft[k] * fft[k] + complex * complex) / double(fftSize);
+        }
+        power /= double(fftSamplesPerPixel);
+        powers[x] = 2 * power;
+    }
+
+    const uint8_t bgColor = 0x22;
+    const uint32_t fftColor = 0xf9ceff;
+    const uint32_t waveformColor = 0x2bd1fc;
+    const uint32_t axesColor = 0x54736E;
+
+    // rasterize fft
+    memset(fftRaster, bgColor, 512 * 64 * 4);
+    uint32_t *fftPixels = (uint32_t *) fftRaster;
+
+    for (int y = 0; y < fftRasterHeight; y++) {
+        double cutoff = double(fftRasterHeight - y - 1) * powerPerPixel;
+
+        for (int i = 0; i < fftRasterWidth; i++) {
+            if (powers[i] >= cutoff) {
+                fftPixels[y * fftRasterWidth + i] = fftColor;
+            }
+        }
+    }
+
+//    actual_delay = std::chrono::high_resolution_clock::now() - start;
+//    PrintInfo("FFT rasterization took %d usec", std::chrono::duration_cast<std::chrono::microseconds>(actual_delay));
+
+//    start = std::chrono::high_resolution_clock::now();
+
+    // rasterize waveform
+    memset(waveformRaster, bgColor, 1024 * 64 * 4);
+
+    const int rasterWidth = 1024;
+    const int numSamples = fftSize / rasterWidth;
+
+    uint32_t *waveformPixels = (uint32_t *) waveformRaster;
+
+    // draw axes
+    for (int i = 0; i < rasterWidth; i++) {
+        waveformPixels[31 * rasterWidth + i] = axesColor;
+    }
+
+    int lastY = 0;
+    for (int i = 0; i < rasterWidth; i++) {
+        // convert from nes per-channel amplitude range [0,15] to visualization range [14,114]
+        const int y = std::clamp(4 * (15 - samples[i]), 0.0, 63.0);
+
+        // interpolate vertically
+        if (i > 0) {
+            for (int k = lastY; k < y; k++) {
+                waveformPixels[k * rasterWidth + i] = waveformColor;
+            }
+            for (int k = y; k < lastY; k++) {
+                waveformPixels[k * rasterWidth + i] = waveformColor;
+            }
+        }
+
+        waveformPixels[y * rasterWidth + i] = waveformColor;
+        lastY = y;
+    }
+
+//    actual_delay = std::chrono::high_resolution_clock::now() - start;
+//    PrintInfo("Waveform rasterization took %d usec", std::chrono::duration_cast<std::chrono::microseconds>(actual_delay));
+}
+
+Audio::Audio(Raster *raster) {
+    this->raster = raster;
+
     square1.buffer = new tCPU::byte[2048];
     memset(square1.buffer, 128, 2048);
 
     buffer = new tCPU::byte[bufferSize];
     memset(buffer, 128, bufferSize);
 
-    fftInput = (double *) fftw_malloc(sizeof(double) * fftSize);
-    fftOutput = (double *) fftw_malloc(sizeof(double) * fftSize);
-
-    fftPlan = fftw_plan_r2r_1d(fftSize, fftInput, fftOutput, FFTW_R2HC, 0);
+    square1Debug.initialize(4096);
+    square2Debug.initialize(4096);
+    triangleDebug.initialize(4096);
 
     // open a single audio channel with unsigned 8-bit samples
     // 44.1 khz and 1024 sample buffers
@@ -266,6 +395,10 @@ void Audio::configureFrameSequencer(tCPU::byte value) {
 //    triangle.lengthCounter = 0;
 }
 
+double hamming(int i, int nn) {
+    return (0.54 - 0.46 * cos(2.0 * M_PI * (double) i / (double) (nn - 1)));
+}
+
 void Audio::execute(int cpuCycles) {
     // for simplicity we will use 1 apu cycle = 1 cpu cycle
     apuCycles += cpuCycles;
@@ -322,9 +455,9 @@ void Audio::execute(int cpuCycles) {
         }
 
         // output square wave
-        int value1 = 0, value2 = 0, value3 = 0;
+        double value1 = 0, value2 = 0, value3 = 0;
         if (square1.enabled) {
-            value1 = dutyCycleSequence[square1.dutyCycle][square1.dutyStep] ? 7 * square1.volume : 0;
+            value1 = dutyCycleSequence[square1.dutyCycle][square1.dutyStep] ? square1.volume : 0;
 
             if (square1.lengthCounterLoad == 0) {
 //                value1 = 0;
@@ -336,31 +469,29 @@ void Audio::execute(int cpuCycles) {
             }
         }
         if (square2.enabled) {
-            value2 = dutyCycleSequence[square2.dutyCycle][square2.dutyStep] ? 7 * square2.volume : 0;
+            value2 = dutyCycleSequence[square2.dutyCycle][square2.dutyStep] ? square2.volume : 0;
         }
 
         if (triangle.enabled) {
 //            if(triangle.counterMode == LENGTH_COUNTER && triangle.lengthCounter > 0) {
-            value3 = (triangleSequence[triangle.dutyStep]) * 7;
+            value3 = (triangleSequence[triangle.dutyStep]);
 //            }
         }
 
-
-        sampleWaveTime += 1.0 / 44100.0;
 
         double sampleAmplitude = 50;
         double sampleFrequency = 440;
 
 //        value1 = value2 = value3 = 0;
 
-        // sample clean sine wave
-//        value1 = int(sampleAmplitude * sin(sampleFrequency * 2 * M_PI * sampleWaveTime));
+//         sample clean sine wave
+//        value1 = sampleAmplitude * sin(sampleFrequency * 2.0 * M_PI * sampleWaveTime);
 
         // sample clean square wave
 //        value1 = sampleAmplitude * (2 * (2 * floor(sampleFrequency * sampleWaveTime) - floor(sampleFrequency * 2 * sampleWaveTime)) + 1);
 
         // sample clean pulse wave
-//        value1 = sampleAmplitude * ((2 * floor(sampleFrequency * sampleWaveTime) - floor(sampleFrequency * 2 * sampleWaveTime)) + 1);
+//        value2 = sampleAmplitude * ((2 * floor(sampleFrequency * sampleWaveTime) - floor(sampleFrequency * 2 * sampleWaveTime)) + 1);
 
         // nes sequencer pulse wave
 //        int step = (int) floor(8 * (sampleFrequency * sampleWaveTime)) % 8;
@@ -368,17 +499,19 @@ void Audio::execute(int cpuCycles) {
 
         // sample clean triangle wave
 //        value1 = sampleAmplitude * M_2_PI * asin(sin(sampleFrequency * 2 * M_PI * sampleWaveTime));
-//        value1 = 105 * (M_1_PI * asin(sin(sampleFrequency * 2 * M_PI * sampleWaveTime)) + .5);
+//        value3 = sampleAmplitude * (M_1_PI * asin(sin(sampleFrequency * 2 * M_PI * sampleWaveTime)) + .5);
 
         // nes sequencer triangle wave
 //        int step = (int) round(30 * (sampleFrequency * sampleWaveTime)) % 30;
 //        value1 = (triangleSequence[step]) * 7;
 
+        sampleWaveTime += 1.0 / 44100.0;
+
         // convert volume to unsigned-char amplitude value where 128 is silence
 //        int normalizedSquareOut = 95.88 / (8128 / (value1+value2) + 100);
 //        if(bufferWriteIdx < bufferSize - 1) {
 
-        int amplitude = value1 + value2 + value3;
+        double amplitude = value1 + value2 + value3;
 
         buffer[bufferWriteIdx++] = 128 + amplitude;
 //            bufferWriteIdx = ++bufferWriteIdx % bufferSize;
@@ -386,57 +519,17 @@ void Audio::execute(int cpuCycles) {
 //        }
         apuSampleCycleCounter = 0;
 
-        fftInput[fftIdx++] = amplitude;
+        // write samples for each channel
+        if (square1Debug.put(value1)) {
+            square1Debug.compute(raster->square1FFT, raster->square1Waveform);
+        }
 
-        if (fftIdx == 2048) {
-            fftw_execute(fftPlan);
+        if (square2Debug.put(value2)) {
+            square2Debug.compute(raster->square2FFT, raster->square2Waveform);
+        }
 
-            // sample rate = 44100
-            // fft size = 2048
-            // each bucket = 21 samples
-
-            int peakPower = 0;
-            int peakPowerIdx = 0;
-            for (int i = 1; i < 1024; i++) {
-                int power = sqrt(fftOutput[i] * fftOutput[i]);
-                if (power > peakPower) {
-                    peakPower = power;
-                    peakPowerIdx = i;
-                }
-            }
-
-            int bucketFreq = 44100 / 2048;
-
-            int rows = 5;
-            int columns = 100;
-            int rowPower = peakPower / rows;
-
-            printf("peakPower = %d @ frequency = %d\n", peakPower, peakPowerIdx * bucketFreq);
-
-            for (int r = rows; r >= 0; r--) {
-                int cutoff = r * rowPower;
-
-                if (r == rows) {
-                    for (int i = 0; i < columns; i += 10) {
-                        printf("%-10d", i * bucketFreq);
-                    }
-                    printf("\n");
-                }
-
-                for (int i = 0; i < columns; i++) {
-                    int power = sqrt(fftOutput[i] * fftOutput[i]);
-                    if (power >= cutoff) {
-                        printf("|");
-                    } else {
-                        printf(" ");
-                    }
-                }
-
-                printf("\n");
-            }
-
-
-            fftIdx = 0;
+        if(triangleDebug.put(value3)) {
+            triangleDebug.compute(raster->triangleFFT, raster->triangleWaveform);
         }
 
         const int samplesPerSecond = 44100;

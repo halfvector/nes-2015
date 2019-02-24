@@ -4,6 +4,7 @@
 #include <SDL2/SDL_audio.h>
 #include <fftw3.h>
 #include "Platform.h"
+#include "PPU.h"
 
 struct Sweep {
     bool enabled;
@@ -29,7 +30,7 @@ struct SquareEnvelope {
 
     Sweep sweep;
 
-    tCPU::byte* buffer;
+    tCPU::byte *buffer;
     int bufferIdx = 0;
     int bufferStart = 0;
 };
@@ -59,29 +60,49 @@ struct TriangleEnvelope {
     int dutyStep = 0;
 };
 
+struct ChannelDebug {
+    double *samples, *fft;
+    int currentIdx, fftSize;
+    fftw_plan plan;
+    void initialize(int numSamples);
+    bool put(double sample);
+    void compute(tCPU::byte *fft, tCPU::byte *waveform);
+};
+
 class Audio {
 public:
-    Audio();
+    Audio(Raster *pRaster);
+
     void close();
 
     void populate(Uint8 *stream, int len);
+
     static void populateFuncPtr(void *data, Uint8 *stream, int len) {
-        static_cast<Audio*>(data)->populate(stream, len);
+        static_cast<Audio *>(data)->populate(stream, len);
     }
 
     void configureFrameSequencer(tCPU::byte value);
+
     void setChannelStatus(tCPU::byte status);
+
     tCPU::byte getChannelStatus();
 
     void writeDAC(tCPU::byte value);
 
     void setSquare1Envelope(tCPU::byte value);
+
     void setSquare1NoteHigh(tCPU::byte value);
+
     void setSquare1NoteLow(tCPU::byte value);
+
     void setSquare1Sweep(tCPU::byte value);
+
     void setSquare2Envelope(tCPU::byte value);
+
     void setSquare2NoteHigh(tCPU::byte value);
+
     void setSquare2NoteLow(tCPU::byte value);
+
     void setSquare2Sweep(tCPU::byte value);
 
     void execute(int cpuCycles);
@@ -96,17 +117,11 @@ private:
     tCPU::byte channelStatus;
     tCPU::word apuCycles = 0;
     tCPU::word apuSampleCycleCounter = 0;
-
-    tCPU::byte* buffer;
+    tCPU::byte *buffer;
     int bufferReadIdx = 0, bufferWriteIdx = 0, bufferAvailable = 0;
     int bufferSize = 8192 * 8;
 
     double sampleWaveTime = 0;
-
-    double *fftInput, *fftOutput;
-    int fftIdx = 0;
-    int fftSize = 2048;
-    fftw_plan fftPlan;
 
     FrameCounterMode frameCounterMode = FOUR_STEP;
     SquareEnvelope square1;
@@ -118,6 +133,10 @@ private:
     void executeQuarterFrame();
 
     bool issueIRQ = false;
+
+    // debugging
+    ChannelDebug square1Debug, square2Debug, triangleDebug;
+    Raster *raster;
 };
 
 
