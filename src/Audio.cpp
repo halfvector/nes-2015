@@ -569,10 +569,6 @@ void Audio::execute(int cpuCycles) {
 
         sampleWaveTime += 1.0 / 44100.0;
 
-        // convert volume to unsigned-char amplitude value where 128 is silence
-//        int normalizedSquareOut = 95.88 / (8128 / (value1+value2) + 100);
-//        if(bufferWriteIdx < bufferSize - 1) {
-
         double amplitude = value3 + value4;
 
         double square_approximation = 0.00752 * (value1 + value2);

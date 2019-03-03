@@ -44,7 +44,7 @@ GUI::GUI(Raster *raster)
         : raster(raster) {
 
     showEnhancedPPU = false;
-    showDebuggerPPU = false;
+    showDebuggerPPU = true;
     showDebuggerAPU = true;
 
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {

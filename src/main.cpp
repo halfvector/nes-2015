@@ -183,7 +183,7 @@ Cartridge loadCartridge() {
 //    Cartridge rom = loader.loadCartridge("../roms/megaman.nes");
 //    Cartridge rom = loader.loadCartridge("../roms/apu_mixer/square.nes");
 //    Cartridge rom = loader.loadCartridge("../roms/Karateka (J) [p1].nes");
-//    Cartridge rom = loader.loadCartridge("../roms/Defender 2 (U).nes");
+//    Cartridge rom = loader.loadCartridge("../../roms/Defender 2 (U).nes");
 //    Cartridge rom = loader.loadCartridge("../roms/all/nrom/Slalom (U).nes");
 
 //    Cartridge rom = loader.loadCartridge("../../src/roms/sound-test/sound-test.nes");

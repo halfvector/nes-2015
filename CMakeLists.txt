@@ -23,16 +23,20 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-function -Wno-unused-variabl
 
 # generate complete debug type info, tune for GDB (-ggdb) or LLDB (-glldb)
 # enable address sanitization to easily catch buffer overflows and heap corruptions
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-omit-frame-pointer -g -glldb -fsanitize=address")
+# -O1 optimizations are compatible with address-sanitizer
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O1 -fno-omit-frame-pointer -g -glldb -fsanitize=address")
 
-# enable optimizations
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O1")
+# enable speed optimizations
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2")
 
 # generate optimization report
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Rpass=inline -fsave-optimization-record")
 
 # improve template/type error messages
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fdiagnostics-show-template-tree -fno-elide-type")
+
+# disable optimizations for profiling mode
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer")
 
 #set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -rdynamic -Wl,-stack_size -Wl,0x10000")
 
