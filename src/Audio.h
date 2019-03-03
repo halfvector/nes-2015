@@ -3,6 +3,7 @@
 
 #include <SDL2/SDL_audio.h>
 #include <fftw3.h>
+#include <chrono>
 #include "Platform.h"
 #include "PPU.h"
 
@@ -27,6 +28,7 @@ struct SquareEnvelope {
     tCPU::word timerPeriod; // 11 bit note period
     tCPU::word timerPeriodReloader; // actual value to use
     tCPU::byte lengthCounterLoad; // 5 bit waveform duration until silence
+    tCPU::byte lengthCounter = 0;
 
     Sweep sweep;
 
@@ -41,6 +43,23 @@ enum CounterMode {
 
 enum FrameCounterMode {
     FOUR_STEP, FIVE_STEP
+};
+
+struct NoiseEnvelope {
+    bool lengthCounterHalt;
+    bool constantVolume = true;
+    int volume = 0;
+    bool loopNoise;
+    int timerPeriod = 0;
+    int timerPeriodReloader;
+    int lengthCounter = 0;
+    int lengthCounterLoad;
+    uint16_t shiftRegister = 1; // 15-bits
+    bool enabled = false;
+    bool envelopeStart = false;
+    int decayLevel = 0;
+    uint16_t dividerPeriodReloader = 0;
+    uint16_t dividerPeriod;
 };
 
 struct TriangleEnvelope {
@@ -113,6 +132,12 @@ public:
 
     void setTrianglePeriodLow(tCPU::byte value);
 
+    void setNoiseEnvelope(tCPU::byte value);
+
+    void setNoisePeriod(tCPU::byte value);
+
+    void setNoiseLength(tCPU::byte value);
+
 private:
     tCPU::byte channelStatus;
     tCPU::word apuCycles = 0;
@@ -127,6 +152,7 @@ private:
     SquareEnvelope square1;
     SquareEnvelope square2;
     TriangleEnvelope triangle;
+    NoiseEnvelope noise;
 
     void executeHalfFrame();
 
@@ -135,7 +161,7 @@ private:
     bool issueIRQ = false;
 
     // debugging
-    ChannelDebug square1Debug, square2Debug, triangleDebug;
+    ChannelDebug square1Debug, square2Debug, triangleDebug, noiseDebug;
     Raster *raster;
 };
 

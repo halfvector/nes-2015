@@ -21,7 +21,7 @@
  * http://web.textfiles.com/games/nessound.txt -- excellent envelope decay and sweep unit details
  */
 
-static int  dutyCycleSequence[4][8] = {
+static int dutyCycleSequence[4][8] = {
         {1, 0, 0, 0, 0, 0, 0, 0}, // 0, 12.5%
         {1, 1, 0, 0, 0, 0, 0, 0}, // 1, 25%
         {1, 1, 1, 1, 0, 0, 0, 0}, // 2, 50%
@@ -31,6 +31,15 @@ static int  dutyCycleSequence[4][8] = {
 static int triangleSequence[] = {
         15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0,
         0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
+};
+
+// convert a 5-bit index into a length counter
+int lengthCounterLookup[] = {10, 254, 20, 2, 40, 4, 80, 6, 160, 8, 60, 10, 14, 12, 26, 14, 12, 16, 24, 18, 48, 20, 96, 22,
+                             192, 24, 72, 26, 16, 28, 32, 30};
+
+// convert 4-bit noise index into a timer period
+int noisePeriodLookup[] = {
+        4, 8, 16, 32, 64, 96, 128, 160, 202, 254, 380, 508, 762, 1016, 2034, 4068
 };
 
 const double cpuFrequency = 1789773;
@@ -90,7 +99,7 @@ void ChannelDebug::compute(tCPU::byte *fftRaster, tCPU::byte *waveformRaster) {
     auto start = std::chrono::high_resolution_clock::now();
     fftw_execute(plan);
     auto actual_delay = std::chrono::high_resolution_clock::now() - start;
-    PrintInfo("FFT calculation took %d usec", std::chrono::duration_cast<std::chrono::microseconds>(actual_delay));
+    PrintDbg("FFT calculation took %d usec", std::chrono::duration_cast<std::chrono::microseconds>(actual_delay));
 
 //    double peakPower = 0;
 //    int peakPowerIdx = 0;
@@ -126,6 +135,10 @@ void ChannelDebug::compute(tCPU::byte *fftRaster, tCPU::byte *waveformRaster) {
             power += sqrt(fft[k] * fft[k] + complex * complex) / double(fftSize);
         }
         power /= double(fftSamplesPerPixel);
+
+//        double complex = x == 0 ? 0 : fft[fftSize - x];
+//        power = sqrt(fft[x] * fft[x] + complex * complex) / double(fftSize);
+
         powers[x] = 2 * power;
     }
 
@@ -162,9 +175,9 @@ void ChannelDebug::compute(tCPU::byte *fftRaster, tCPU::byte *waveformRaster) {
     uint32_t *waveformPixels = (uint32_t *) waveformRaster;
 
     // draw axes
-    for (int i = 0; i < rasterWidth; i++) {
-        waveformPixels[31 * rasterWidth + i] = axesColor;
-    }
+//    for (int i = 0; i < rasterWidth; i++) {
+//        waveformPixels[31 * rasterWidth + i] = axesColor;
+//    }
 
     int lastY = 0;
     for (int i = 0; i < rasterWidth; i++) {
@@ -201,6 +214,7 @@ Audio::Audio(Raster *raster) {
     square1Debug.initialize(4096);
     square2Debug.initialize(4096);
     triangleDebug.initialize(4096);
+    noiseDebug.initialize(4096);
 
     // open a single audio channel with unsigned 8-bit samples
     // 44.1 khz and 1024 sample buffers
@@ -241,17 +255,22 @@ void
 Audio::setChannelStatus(tCPU::byte status) {
     this->channelStatus = status;
 
-    square1.enabled = status & 1;
-    square2.enabled = status & 2;
-    triangle.enabled = status & 4;
-    bool noise = status & 8;
+    square1.enabled = ((status >> 0u) & 1u) == 1u;
+    square2.enabled = ((status >> 1u) & 1u) == 1u;
+    triangle.enabled = ((status >> 2u) & 1u) == 1u;
+    noise.enabled = ((status >> 3u) & 1u) == 1u;
     bool dmc = status & 16;
 
-    PrintApu("Set channels: Square 1 = %d / Square 2 = %d / Triangle = %d / Noise = %d / DMC = %d",
-             square1.enabled, square2.enabled, triangle.enabled, noise, dmc);
+    if (!noise.enabled) {
+        noise.lengthCounterLoad = 0;
+        noise.lengthCounter = 0;
+    }
+
+//    PrintApu("Set channels: Square 1 = %d / Square 2 = %d / Triangle = %d / Noise = %d / DMC = %d",
+//             square1.enabled, square2.enabled, triangle.enabled, noise.enabled, dmc);
 
 #if AUDIO_ENABLED
-    if (square1.enabled || square2.enabled || triangle.enabled) {
+    if (square1.enabled || square2.enabled || triangle.enabled || noise.enabled) {
         SDL_PauseAudio(0);
     } else {
         SDL_PauseAudio(1);
@@ -266,7 +285,7 @@ Audio::getChannelStatus() {
 
 void
 Audio::writeDAC(tCPU::byte value) {
-    PrintApu("DAC received byte %2X", value);
+    PrintDbg("DAC received byte %2X", value);
 }
 
 /**
@@ -290,7 +309,7 @@ Audio::setSquare1Envelope(tCPU::byte value) {
     this->square1.lengthCounterDisabled = value & (1 << 5);
     this->square1.dutyCycle = (value & 0xc0) >> 6;
 
-    PrintApu("  volume = %d / saw-disabled = %d / length-disabled = %d / duty = %d",
+    PrintDbg("  volume = %d / saw-disabled = %d / length-disabled = %d / duty = %d",
              this->square1.volume, this->square1.sawEnvelopeDisabled,
              this->square1.lengthCounterDisabled, this->square1.dutyCycle);
 }
@@ -299,20 +318,21 @@ Audio::setSquare1Envelope(tCPU::byte value) {
 void Audio::setSquare1NoteHigh(tCPU::byte value) {
     square1.timerPeriod &= 0x00ff; // clear upper bits
     square1.timerPeriod |= (value & 0x7) << 8; // OR upper 3 bits
-    square1.lengthCounterLoad = (value & 0xf8) >> 3; // upper 5 bits
+    square1.lengthCounterLoad = lengthCounterLookup[(value & 0xf8) >> 3]; // upper 5 bits
+    square1.lengthCounter = square1.lengthCounterLoad;
 
     square1.timerPeriodReloader = square1.timerPeriod + 1;
-    square1.timerValue = square1.timerPeriodReloader;
-//    square1.dutyStep = 0;
+//    square1.timerValue = square1.timerPeriodReloader;
+    square1.dutyStep = 0;
 
-    PrintApu("  timerPeriod (high bits) = %d / lengthCounter = %d", this->square1.timerPeriod,
+    PrintDbg("  timerPeriod (high bits) = %d / lengthCounter = %d", this->square1.timerPeriod,
              this->square1.lengthCounterLoad);
 }
 
 void Audio::setSquare1NoteLow(tCPU::byte value) {
     this->square1.timerPeriod &= 0xff00; // clear lower 8 bits
     this->square1.timerPeriod |= value; // OR lower 8 bits
-    PrintApu("  timerPeriod (low bits) = %d", this->square1.timerPeriod);
+    PrintDbg("  timerPeriod (low bits) = %d", this->square1.timerPeriod);
 }
 
 void Audio::setSquare1Sweep(tCPU::byte value) {
@@ -349,20 +369,21 @@ Audio::setSquare2Envelope(tCPU::byte value) {
 void Audio::setSquare2NoteHigh(tCPU::byte value) {
     square2.timerPeriod &= 0x00ff; // clear upper bits
     square2.timerPeriod |= (value & 0x7) << 8; // OR upper 3 bits
-    square2.lengthCounterLoad = (value & 0xf8) >> 3; // upper 5 bits
+    square2.lengthCounterLoad = lengthCounterLookup[(value & 0xf8) >> 3]; // upper 5 bits
+    square2.lengthCounter = square2.lengthCounterLoad;
 
     square2.timerPeriodReloader = square2.timerPeriod + 1;
-    square2.timerValue = square2.timerPeriodReloader;
-//    square2.dutyStep = 0;
+//    square2.timerValue = square2.timerPeriodReloader;
+    square2.dutyStep = 0;
 
-    PrintApu("  timerPeriod (high bits) = %d / lengthCounter = %d", this->square2.timerPeriod,
+    PrintDbg("  timerPeriod (high bits) = %d / lengthCounter = %d", this->square2.timerPeriod,
              this->square2.lengthCounterLoad);
 }
 
 void Audio::setSquare2NoteLow(tCPU::byte value) {
     this->square2.timerPeriod &= 0xff00; // clear lower 8 bits
     this->square2.timerPeriod |= value; // OR lower 8 bits
-    PrintApu("  timerPeriod (low bits) = %d", this->square2.timerPeriod);
+    PrintDbg("  timerPeriod (low bits) = %d", this->square2.timerPeriod);
 }
 
 void Audio::setSquare2Sweep(tCPU::byte value) {
@@ -381,7 +402,7 @@ void Audio::configureFrameSequencer(tCPU::byte value) {
     bool mode = value & (1 << 7);
     bool clearInterrupt = value & (1 << 6);
 
-    PrintApu("  frame rate mode = %d, clear interrupt = %d", mode, clearInterrupt);
+    PrintDbg("  frame rate mode = %s, clear interrupt = %d", mode ? "5-step" : "4-step", clearInterrupt);
 
     if (mode) {
         this->frameCounterMode = FIVE_STEP;
@@ -416,7 +437,7 @@ void Audio::execute(int cpuCycles) {
     // vsync @ 60hz = 16msec per frame
     // with up to 5-10msec delay per frame for vsync, 1024 is smallest safe buffer to use
 
-    static int sampleInterval = 40;
+    static int sampleInterval = 34;
 
     if (apuSampleCycleCounter >= sampleInterval) {
         // clock pulse channels every other CPU cycle
@@ -444,23 +465,45 @@ void Audio::execute(int cpuCycles) {
 
         // clock triangle channel every CPU cycle
         for (int i = 0; i < apuSampleCycleCounter; i++) {
-            if (triangle.counterMode == LENGTH_COUNTER && triangle.lengthCounter > 0) {
+//            if (triangle.counterMode == LENGTH_COUNTER && triangle.lengthCounter > 0) {
                 if (triangle.timerValue == 0) {
                     triangle.dutyStep = (triangle.dutyStep + 1) % 32;
                     triangle.timerValue = triangle.timerPeriodReloader;
                 } else {
                     triangle.timerValue--;
                 }
+//            }
+        }
+
+        for (int i = 0; i < apuSampleCycleCounter; i += 2) {
+//            if (noise.lengthCounter > 0) {
+            if (noise.timerPeriod == 0) {
+                // if loop mode enabled, xor against value of bit-6
+                // otherwise xor against bit-1
+                uint16_t xorValue = (noise.loopNoise ? (noise.shiftRegister >> 6u) : (noise.shiftRegister >> 1u)) & 1u; // loop on bit 6
+                uint16_t feedback = (noise.shiftRegister & 1u) ^xorValue; // xor against bit-0
+                noise.shiftRegister >>= 1u; // shift right
+//                    noise.shiftRegister &= ~(1 << 13); // clear bit 14
+                noise.shiftRegister |= (feedback << 14u); // set bit 14
+                noise.timerPeriod = noise.timerPeriodReloader;
+
+//                    char srBuf[33];
+//                    SDL_itoa(noise.shiftRegister, srBuf, 2);
+//                    PrintApu("noise.shiftRegister = %015s", srBuf);
+
+            } else {
+                noise.timerPeriod--;
             }
+//            }
         }
 
         // output square wave
-        double value1 = 0, value2 = 0, value3 = 0;
-        if (square1.enabled) {
+        double value1 = 0, value2 = 0, value3 = 0, value4 = 0;
+        if (square1.enabled && square2.lengthCounterLoad > 0) {
             value1 = dutyCycleSequence[square1.dutyCycle][square1.dutyStep] ? square1.volume : 0;
 
             if (square1.lengthCounterLoad == 0) {
-//                value1 = 0;
+                value1 = 0;
             }
 
             if (square1.timerPeriod < 8) {
@@ -468,16 +511,35 @@ void Audio::execute(int cpuCycles) {
 //                value1 = 0;
             }
         }
-        if (square2.enabled) {
+        if (square2.enabled && square2.lengthCounterLoad > 0) {
             value2 = dutyCycleSequence[square2.dutyCycle][square2.dutyStep] ? square2.volume : 0;
+
+            if (square2.lengthCounterLoad == 0) {
+                value2 = 0;
+            }
         }
 
         if (triangle.enabled) {
-//            if(triangle.counterMode == LENGTH_COUNTER && triangle.lengthCounter > 0) {
             value3 = (triangleSequence[triangle.dutyStep]);
-//            }
+
+            if (triangle.counterMode == LENGTH_COUNTER && triangle.lengthCounter == 0) {
+                value3 = 0;
+            }
         }
 
+        if (noise.enabled) {
+            value4 = noise.volume;
+
+            if (!noise.constantVolume) {
+                value4 = noise.decayLevel;
+            }
+
+            // mute noise channel if bit-0 of shift-register is set
+            // or length counter is zero
+            if (((noise.shiftRegister & 1u) == 1u) || (noise.lengthCounter == 0)) {
+                value4 = 0;
+            }
+        }
 
         double sampleAmplitude = 50;
         double sampleFrequency = 440;
@@ -511,12 +573,15 @@ void Audio::execute(int cpuCycles) {
 //        int normalizedSquareOut = 95.88 / (8128 / (value1+value2) + 100);
 //        if(bufferWriteIdx < bufferSize - 1) {
 
-        double amplitude = value1 + value2 + value3;
+        double amplitude = value3 + value4;
+
+        double square_approximation = 0.00752 * (value1 + value2);
+        double triangle_noise_dmc_approximation = 0.00851 * value2 + 0.00494 * value4;
+
+        amplitude = 80.0 * (square_approximation + triangle_noise_dmc_approximation);
 
         buffer[bufferWriteIdx++] = 128 + amplitude;
-//            bufferWriteIdx = ++bufferWriteIdx % bufferSize;
-//            bufferAvailable++;
-//        }
+
         apuSampleCycleCounter = 0;
 
         // write samples for each channel
@@ -528,8 +593,12 @@ void Audio::execute(int cpuCycles) {
             square2Debug.compute(raster->square2FFT, raster->square2Waveform);
         }
 
-        if(triangleDebug.put(value3)) {
+        if (triangleDebug.put(value3)) {
             triangleDebug.compute(raster->triangleFFT, raster->triangleWaveform);
+        }
+
+        if (noiseDebug.put(value4)) {
+            noiseDebug.compute(raster->noiseFFT, raster->noiseWaveform);
         }
 
         const int samplesPerSecond = 44100;
@@ -537,22 +606,15 @@ void Audio::execute(int cpuCycles) {
 
         if (bufferWriteIdx >= writeSize) {
             int queued = SDL_GetQueuedAudioSize(1);
-//            if(queued > 2000 && sampleInterval < 55) {
-//                sampleInterval++;
-//            }
-//
-//            if(queued < 1000 && sampleInterval > 38) {
-//                sampleInterval --;
-//            }
 
-            PrintApu("Soundcard has %d bytes queued. sampleInterval = %d", queued, sampleInterval);
+//            PrintApu("Soundcard has %d bytes queued. sampleInterval = %d", queued, sampleInterval);
 
             if (queued > 20000) {
                 SDL_ClearQueuedAudio(1);
                 PrintApu("*** DROPPED AUDIO QUEUE ***");
             }
 
-            if (square1.enabled || square2.enabled || triangle.enabled) {
+            if (square1.enabled || square2.enabled || triangle.enabled || noise.enabled) {
                 if (SDL_QueueAudio(1, buffer, bufferWriteIdx) != 0) {
                     PrintError("SDL_QueueAudio() had an error: %s", SDL_GetError());
                 }
@@ -569,7 +631,7 @@ void Audio::execute(int cpuCycles) {
                     std::this_thread::sleep_for(std::chrono::milliseconds(delay));
                     auto actual_sleep = std::chrono::duration_cast<std::chrono::milliseconds>(
                             std::chrono::high_resolution_clock::now() - now);
-                    PrintApu("throttling apu: wanted=%d msec got=%d msec", delay, actual_sleep);
+//                    PrintApu("throttling apu: wanted=%d msec got=%d msec", delay, actual_sleep);
                 }
             }
 
@@ -577,51 +639,90 @@ void Audio::execute(int cpuCycles) {
         }
     }
 
-    // progress frame sequencer
-    switch (apuCycles) {
-        case 37281:
-            if (this->frameCounterMode == FIVE_STEP) {
-                executeQuarterFrame();
-                executeHalfFrame();
-                apuCycles = 0;
-            }
-            break;
-        case 29828:
-            if (this->frameCounterMode == FOUR_STEP) {
-                executeQuarterFrame();
-                executeHalfFrame();
-                apuCycles = 0;
+    // every 7457 do a step
+    // in 5-step mode there is an extra delay step
 
-                if (issueIRQ) {
-                    issueIRQ = false;
-                    PrintApu("UNIMPLEMENTED: Issue IRQ at last tick of 4 step sequencer");
+    static int frameSequenceStep = 0;
+
+    int currentStep = floor(apuCycles / 7457);
+    if (frameSequenceStep != currentStep) {
+        frameSequenceStep = currentStep;
+        // perform step
+//        PrintApu("Stepping frame sequence: %d at apu cycle %d", frameSequenceStep, apuCycles);
+
+        switch (frameSequenceStep) {
+            case 5:
+                if (this->frameCounterMode == FIVE_STEP) {
+                    apuCycles = 0;
+                    frameSequenceStep = 0;
                 }
-            }
-            break;
-        case 22371:
-            executeQuarterFrame();
-            break;
-        case 14913:
-            executeQuarterFrame();
-            executeHalfFrame();
-            break;
-        case 7457:
-            executeQuarterFrame();
-            break;
-        default:
-            break;
+                break;
+            case 4: // 60hz
+                executeQuarterFrame();
+                executeHalfFrame();
+
+                if (this->frameCounterMode == FOUR_STEP) {
+                    apuCycles = 0;
+                    frameSequenceStep = 0;
+
+                    if (issueIRQ) {
+                        issueIRQ = false;
+                        PrintApu("UNIMPLEMENTED: Issue IRQ at last tick of 4 step sequencer");
+                    }
+                }
+                break;
+            case 3:
+                executeQuarterFrame();
+                break;
+            case 2:
+                executeQuarterFrame();
+                executeHalfFrame();
+                break;
+            case 1:
+                executeQuarterFrame();
+                break;
+            default:
+                break;
+        }
     }
+
+    // 37281
+    // 29828
+    // 22371
+    // 14913
+    // 7457
 }
 
 void Audio::executeQuarterFrame() {
     // update envelopes and triangle's linear counter (~240hz)
 
-    if (!this->square1.lengthCounterDisabled && this->square1.lengthCounterLoad > 0) {
-        this->square1.lengthCounterLoad--;
-    }
-
     if (triangle.linearCounter > 0) {
         triangle.linearCounter--;
+    }
+
+    // update noise envelope
+    if (!noise.envelopeStart) {
+        // if start flag is clear, clock the divider
+        if (noise.dividerPeriod > 0) {
+            noise.dividerPeriod--;
+        } else {
+            // reload divider
+            noise.dividerPeriod = noise.dividerPeriodReloader - 1;
+            // clock decay-level counter
+            if (noise.decayLevel > 0) {
+                noise.decayLevel--;
+            } else {
+                if (!noise.lengthCounterHalt) { // aka envelope-loop flag
+                    noise.decayLevel = 15;
+                }
+            }
+        }
+
+    } else {
+        // otherwise clear the flag and decay-level set to 15
+        noise.envelopeStart = false;
+        noise.decayLevel = 15;
+        noise.dividerPeriod = noise.dividerPeriodReloader;
     }
 }
 
@@ -635,11 +736,19 @@ void Audio::executeHalfFrame() {
         }
     }
 
-
     if (this->square1.sweep.decrease) {
+
 //        this->square1.note -= this->square1.note >> this->square1.sweep.shift;
     } else {
 //        this->square1.note += this->square1.note >> this->square1.sweep.shift;
+    }
+
+    if (!this->square1.lengthCounterDisabled && this->square1.lengthCounter > 0) {
+        this->square1.lengthCounter--;
+    }
+
+    if (!this->square2.lengthCounterDisabled && this->square2.lengthCounter > 0) {
+        this->square2.lengthCounter--;
     }
 
     // execute length counters
@@ -648,6 +757,9 @@ void Audio::executeHalfFrame() {
         //PrintApu("Updated triangle length counter to %d", triangle.lengthCounter);
     }
 
+    if (!noise.lengthCounterHalt && noise.lengthCounter > 0) {
+        noise.lengthCounter--;
+    }
 }
 
 void Audio::setTriangleDuration(tCPU::byte value) {
@@ -657,7 +769,7 @@ void Audio::setTriangleDuration(tCPU::byte value) {
 
     triangle.controlFlagEnabled = ((value & 0x80) != 0);
 
-    PrintApu("  counter-type = %s / linear-counter-load = %d",
+    PrintDbg("  counter-type = %s / linear-counter-load = %d",
              triangle.counterMode == LENGTH_COUNTER ? "length-counter" : "linear-counter",
              triangle.linearCounterLoad);
 }
@@ -669,14 +781,13 @@ void Audio::setTrianglePeriodHigh(tCPU::byte value) {
     triangle.timerPeriodReloader = triangle.timerPeriod + 1;
 
     int lengthCounterIdx = (value >> 3) & 0x1f; // use upper 5 bits
-    int lengthLUT[] = {10, 254, 20, 2, 40, 4, 80, 6, 160, 8, 60, 10, 14, 12, 26, 14, 12, 16, 24, 18, 48, 20, 96, 22,
-                       192, 24, 72, 26, 16, 28, 32, 30};
 
-    triangle.lengthCounter = lengthLUT[lengthCounterIdx];
+    triangle.lengthCounter = lengthCounterLookup[lengthCounterIdx];
     triangle.linearCounterReloadEnabled = true;
+    triangle.phase = 0;
 
-    PrintApu("  timerPeriod = %d / length-counter = %d (idx = %d)", triangle.timerPeriod, triangle.lengthCounter,
-             lengthCounterIdx);
+//    PrintApu("  timerPeriod = %d / length-counter = %d (idx = %d)", triangle.timerPeriod, triangle.lengthCounter,
+//             lengthCounterIdx);
 }
 
 void Audio::setTrianglePeriodLow(tCPU::byte value) {
@@ -687,4 +798,26 @@ void Audio::setTrianglePeriodLow(tCPU::byte value) {
 //    PrintApu("  timerPeriod (low bits) = %d", triangle.timerPeriod);
 }
 
+void Audio::setNoiseEnvelope(tCPU::byte value) {
+    noise.lengthCounterHalt = (value >> 5) & 1;
+    noise.constantVolume = (value >> 4) & 1;
+    noise.volume = value & 0xFU;
+    noise.dividerPeriodReloader = (value & 0xFU) + 1; // number of quarter-frames
 
+//    PrintApu("  counter-halt = %d / constant-volume = %d / volume = %d", noise.lengthCounterHalt, noise.constantVolume, noise.volume);
+}
+
+void Audio::setNoisePeriod(tCPU::byte value) {
+    noise.loopNoise = (value >> 7) & 1;
+    noise.timerPeriodReloader = noisePeriodLookup[value & 0xFU];
+    noise.timerPeriod = noise.timerPeriodReloader;
+
+//    PrintApu("  loop-noise = %d / timer-period = %d (idx = %d)", noise.loopNoise, noise.timerPeriodReloader, (value & 0xFU));
+}
+
+void Audio::setNoiseLength(tCPU::byte value) {
+    noise.lengthCounterLoad = lengthCounterLookup[value >> 3u];
+    noise.lengthCounter = noise.lengthCounterLoad;
+    noise.envelopeStart = true;
+//    PrintApu("  length-counter = %d", noise.lengthCounterLoad);
+}

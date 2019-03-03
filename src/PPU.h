@@ -64,6 +64,9 @@ public:
 
         triangleFFT = new tCPU::byte[512 * 64 * 4];
         triangleWaveform = new tCPU::byte[1024 * 64 * 4];
+
+        noiseFFT = new tCPU::byte[512 * 64 * 4];
+        noiseWaveform = new tCPU::byte[1024 * 64 * 4];
     }
 
     tCPU::byte *screenBuffer;
@@ -77,6 +80,7 @@ public:
     tCPU::byte *square1FFT, *square1Waveform;
     tCPU::byte *square2FFT, *square2Waveform;
     tCPU::byte *triangleFFT, *triangleWaveform;
+    tCPU::byte *noiseFFT, *noiseWaveform;
 };
 
 enum MemoryMappers {

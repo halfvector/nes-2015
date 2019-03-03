@@ -44,7 +44,7 @@ GUI::GUI(Raster *raster)
         : raster(raster) {
 
     showEnhancedPPU = false;
-    showDebuggerPPU = true;
+    showDebuggerPPU = false;
     showDebuggerAPU = true;
 
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
@@ -54,7 +54,7 @@ GUI::GUI(Raster *raster)
 
     if (showDebuggerAPU) {
         // Create software-rendering Window
-        apuDebugWindow = SDL_CreateWindow("APU Debugger", 0, 0, 512, 828, SDL_WINDOW_ALLOW_HIGHDPI);
+        apuDebugWindow = SDL_CreateWindow("APU Debugger", 0, 0, 520, 828, SDL_WINDOW_ALLOW_HIGHDPI);
         if (apuDebugWindow == nullptr) {
             PrintError("SDL_CreateWindow#1 failed: %s", SDL_GetError());
             throw std::runtime_error("SDL_CreateWindow#1 failed");
@@ -84,6 +84,8 @@ GUI::GUI(Raster *raster)
         square2WaveformTexture = SDL_CreateTexture(apuDebugRenderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 1024, 64);
         triangleFFTTexture = SDL_CreateTexture(apuDebugRenderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 512, 64);
         triangleWaveformTexture = SDL_CreateTexture(apuDebugRenderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 1024, 64);
+        noiseFFTTexture = SDL_CreateTexture(apuDebugRenderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 512, 64);
+        noiseWaveformTexture = SDL_CreateTexture(apuDebugRenderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 1024, 64);
     }
 
     if (showDebuggerPPU) {
@@ -275,33 +277,41 @@ GUI::render() {
         int height = 64;
 
         uploadTexture(square1FFTTexture, raster->square1FFT, 512 * 4);
-        renderTexture(apuDebugRenderer, square1FFTTexture, SDL_Rect{0, 10, 512, height});
-        drawText(apuDebugRenderer, "Pulse 1 - FFT", 0, 0);
+        renderTexture(apuDebugRenderer, square1FFTTexture, SDL_Rect{4, 10, 512, height});
+        drawText(apuDebugRenderer, "Pulse 1 - FFT", 4, 0);
 
         uploadTexture(square1WaveformTexture, raster->square1Waveform, 1024 * 4);
-        renderTexture(apuDebugRenderer, square1WaveformTexture, SDL_Rect{0, height + padding * 2, 512, height});
-        drawText(apuDebugRenderer, "Pulse 1 - Waveform", 0, height + padding);
+        renderTexture(apuDebugRenderer, square1WaveformTexture, SDL_Rect{4, height + padding * 2, 512, height});
+        drawText(apuDebugRenderer, "Pulse 1 - Waveform", 4, height + padding);
 
         uploadTexture(square2FFTTexture, raster->square2FFT, 512 * 4);
-        renderTexture(apuDebugRenderer, square2FFTTexture, SDL_Rect{0, height * 2 + padding * 3, 512, height});
-        drawText(apuDebugRenderer, "Pulse 2 - FFT", 0, height * 2 + padding * 2);
+        renderTexture(apuDebugRenderer, square2FFTTexture, SDL_Rect{4, height * 2 + padding * 3, 512, height});
+        drawText(apuDebugRenderer, "Pulse 2 - FFT", 4, height * 2 + padding * 2);
 
         uploadTexture(square2WaveformTexture, raster->square2Waveform, 1024 * 4);
-        renderTexture(apuDebugRenderer, square2WaveformTexture, SDL_Rect{0, height * 3 + padding * 4, 512, height});
-        drawText(apuDebugRenderer, "Pulse 2 - Waveform", 0, height * 3 + padding * 3);
+        renderTexture(apuDebugRenderer, square2WaveformTexture, SDL_Rect{4, height * 3 + padding * 4, 512, height});
+        drawText(apuDebugRenderer, "Pulse 2 - Waveform", 4, height * 3 + padding * 3);
 
         uploadTexture(triangleFFTTexture, raster->triangleFFT, 512 * 4);
-        renderTexture(apuDebugRenderer, triangleFFTTexture, SDL_Rect{0, height * 4 + padding * 5, 512, height});
-        drawText(apuDebugRenderer, "Triangle - FFT", 0, height * 4 + padding * 4);
+        renderTexture(apuDebugRenderer, triangleFFTTexture, SDL_Rect{4, height * 4 + padding * 5, 512, height});
+        drawText(apuDebugRenderer, "Triangle - FFT", 4, height * 4 + padding * 4);
 
         uploadTexture(triangleWaveformTexture, raster->triangleWaveform, 1024 * 4);
-        renderTexture(apuDebugRenderer, triangleWaveformTexture, SDL_Rect{0, height * 5 + padding * 6, 512, height});
-        drawText(apuDebugRenderer, "Triangle - Waveform", 0, height * 5 + padding * 5);
+        renderTexture(apuDebugRenderer, triangleWaveformTexture, SDL_Rect{4, height * 5 + padding * 6, 512, height});
+        drawText(apuDebugRenderer, "Triangle - Waveform", 4, height * 5 + padding * 5);
+
+        uploadTexture(noiseFFTTexture, raster->noiseFFT, 512 * 4);
+        renderTexture(apuDebugRenderer, noiseFFTTexture, SDL_Rect{4, height * 6 + padding * 7, 512, height});
+        drawText(apuDebugRenderer, "Noise - FFT", 4, height * 6 + padding * 6);
+
+        uploadTexture(noiseWaveformTexture, raster->noiseWaveform, 1024 * 4);
+        renderTexture(apuDebugRenderer, noiseWaveformTexture, SDL_Rect{4, height * 7 + padding * 8, 512, height});
+        drawText(apuDebugRenderer, "Noise - Waveform", 4, height * 7 + padding * 7);
 
         // flip
         SDL_RenderPresent(apuDebugRenderer);
         auto span = std::chrono::high_resolution_clock::now() - now;
-        PrintInfo("Rendering APU Debugger took %d msec", std::chrono::duration_cast<std::chrono::milliseconds>(span));
+        //PrintInfo("Rendering APU Debugger took %d msec", std::chrono::duration_cast<std::chrono::milliseconds>(span));
     }
 }
 

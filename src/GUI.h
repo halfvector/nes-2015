@@ -26,6 +26,7 @@ protected:
     SDL_Texture *square1FFTTexture, *square1WaveformTexture;
     SDL_Texture *square2FFTTexture, *square2WaveformTexture;
     SDL_Texture *triangleFFTTexture, *triangleWaveformTexture;
+    SDL_Texture *noiseFFTTexture, *noiseWaveformTexture;
 
     SDL_Window *ppuDebugWindow;
     SDL_Renderer *ppuDebugRenderer;

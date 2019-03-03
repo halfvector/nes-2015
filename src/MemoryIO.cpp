@@ -183,8 +183,30 @@ struct MemoryIOHandler<0x400B> {
 template<>
 struct MemoryIOHandler<0x400C> {
     static void write(Audio *apu, tCPU::byte value) {
-        PrintDbg("Writing 0x%02X to port $400C - APU - Noise - ", (int) value);
-//        apu->writeDAC(value);
+        char buffer[9];
+        SDL_itoa(value, buffer, 2);
+        PrintDbg("Writing 0x%02X (%08s) to port $400C - APU - Noise - Length Counter Halt and Volume", (int) value, buffer);
+        apu->setNoiseEnvelope(value);
+    }
+};
+
+template<>
+struct MemoryIOHandler<0x400E> {
+    static void write(Audio *apu, tCPU::byte value) {
+        char buffer[9];
+        SDL_itoa(value, buffer, 2);
+        PrintDbg("Writing 0x%02X (%08s) to port $400E - APU - Noise - Loop Enable and Noise Period", (int) value, buffer);
+        apu->setNoisePeriod(value);
+    }
+};
+
+template<>
+struct MemoryIOHandler<0x400F> {
+    static void write(Audio *apu, tCPU::byte value) {
+        char buffer[9];
+        SDL_itoa(value, buffer, 2);
+        PrintDbg("Writing 0x%02X (%08s) to port $400F - APU - Noise - Length Counter Reload", (int) value, buffer);
+        apu->setNoiseLength(value);
     }
 };
 
@@ -342,7 +364,19 @@ MemoryIO::write(tCPU::word address, tCPU::byte value) {
             MemoryIOHandler<0x400B>::write(apu, value);
             break;
 
-        case 0x400C ... 0x4010:
+        case 0x400C:
+            MemoryIOHandler<0x400C>::write(apu, value);
+            break;
+
+        case 0x400E:
+            MemoryIOHandler<0x400E>::write(apu, value);
+            break;
+
+        case 0x400F:
+            MemoryIOHandler<0x400F>::write(apu, value);
+            break;
+
+        case 0x4010 ... 0x4010:
         case 0x4012 ... 0x4013:
 //            PrintUnimplementedIO("Skipping Unimplemented I/O Port: APU $%04X - APU", address);
             break;
