@@ -6,7 +6,9 @@
 
 class Memory;
 
-enum enumSpriteSize { SPRITE_SIZE_8x16 = 1, SPRITE_SIZE_8x8 = 0 };
+enum enumSpriteSize {
+    SPRITE_SIZE_8x16 = 1, SPRITE_SIZE_8x8 = 0
+};
 
 struct PPU_Settings {
     /*
@@ -50,18 +52,35 @@ public:
         palette = new tCPU::byte[256 * 32 * 4];
         patternTable = new tCPU::byte[128 * 256 * 4];
         attributeTable = new tCPU::byte[256 * 256 * 4];
-        backgroundMask = new tCPU::byte[256 * 256];
-        spriteMask = new tCPU::byte[256 * 256];
+        backgroundMask = new tCPU::byte[256 * 256 * 2];
+        spriteMask = new tCPU::byte[256 * 256 * 2];
         nametables = new tCPU::byte[512 * 512 * 4];
+
+        square1FFT = new tCPU::byte[512 * 64 * 4];
+        square1Waveform = new tCPU::byte[1024 * 64 * 4];
+
+        square2FFT = new tCPU::byte[512 * 64 * 4];
+        square2Waveform = new tCPU::byte[1024 * 64 * 4];
+
+        triangleFFT = new tCPU::byte[512 * 64 * 4];
+        triangleWaveform = new tCPU::byte[1024 * 64 * 4];
+
+        noiseFFT = new tCPU::byte[512 * 64 * 4];
+        noiseWaveform = new tCPU::byte[1024 * 64 * 4];
     }
 
-    tCPU::byte* screenBuffer;
-    tCPU::byte* palette;
-    tCPU::byte* patternTable;
-    tCPU::byte* attributeTable;
-    tCPU::byte* backgroundMask;
-    tCPU::byte* spriteMask;
-    tCPU::byte* nametables;
+    tCPU::byte *screenBuffer;
+    tCPU::byte *palette;
+    tCPU::byte *patternTable;
+    tCPU::byte *attributeTable;
+    tCPU::byte *backgroundMask;
+    tCPU::byte *spriteMask;
+    tCPU::byte *nametables;
+
+    tCPU::byte *square1FFT, *square1Waveform;
+    tCPU::byte *square2FFT, *square2Waveform;
+    tCPU::byte *triangleFFT, *triangleWaveform;
+    tCPU::byte *noiseFFT, *noiseWaveform;
 };
 
 enum MemoryMappers {
@@ -75,10 +94,13 @@ public:
     PPU(Raster *);
 
     void loadRom(Cartridge &rom);
+
     void writeChrPage(uint16_t page, uint8_t buffer[]);
+
     void clear();
 
     void execute(int numCycles);
+
     tCPU::byte getStatusRegister();
 
     void renderDebug();
@@ -100,28 +122,37 @@ public:
     }
 
     void setControlRegister1(tCPU::byte value);
+
     void setControlRegister2(tCPU::byte value);
 
     tCPU::byte getControlRegister1();
 
     void setVRamAddressRegister2(tCPU::byte value);
+
     void writeToVRam(tCPU::byte value);
+
     tCPU::byte readFromVRam();
 
     // calculate memory address in PPU ram, taking into account mirroring
     tCPU::word GetEffectiveAddress(tCPU::word address);
 
     tCPU::byte ReadByteFromPPU(tCPU::word Address);
+
     bool WriteByteToPPU(tCPU::word Address, tCPU::byte Value);
+
     void AutoIncrementVRAMAddress();
 
     void setVRamAddressRegister1(tCPU::byte value);
-    void setSprRamAddress(tCPU::byte address);
-    void writeSpriteMemory(tCPU::byte value);
-    tCPU::byte readSpriteMemory();
-    void StartSpriteXferDMA(Memory* memory, tCPU::byte address);
 
-    tCPU::byte* getPpuRam() {
+    void setSprRamAddress(tCPU::byte address);
+
+    void writeSpriteMemory(tCPU::byte value);
+
+    tCPU::byte readSpriteMemory();
+
+    void StartSpriteXferDMA(Memory *memory, tCPU::byte address);
+
+    tCPU::byte *getPpuRam() {
         return PPU_RAM;
     }
 
@@ -160,10 +191,15 @@ protected:
     tCPU::word reloadBits;
 
     PPU_Settings settings;
+
     void setVerticalBlank();
+
     void advanceRenderableScanline();
+
     void advanceBlankScanline();
+
     void onEnterHBlank();
+
     void renderScanline(const tCPU::word scanline);
 
     tCPU::byte GetColorFromPalette(int paletteType, int upperBits, int lowerBits);

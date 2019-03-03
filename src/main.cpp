@@ -39,7 +39,7 @@ int main(int argc, char **argv) {
     auto ppu = new PPU(raster);
     ppu->loadRom(rom);
     // apu
-    auto audio = new Audio();
+    auto audio = new Audio(raster);
     // controllers
     auto joypad = new Joypad();
     // i/o port mapper
@@ -132,7 +132,9 @@ int main(int argc, char **argv) {
 //        }
 
         if (ppu->enteredVBlank()) {
-            ppu->renderDebug();
+            if(gui->showDebuggerPPU) {
+                ppu->renderDebug();
+            }
             gui->render();
             ppu->clear();
             collectInputEvents(joypad, &alive);
@@ -181,14 +183,14 @@ Cartridge loadCartridge() {
 //    Cartridge rom = loader.loadCartridge("../roms/megaman.nes");
 //    Cartridge rom = loader.loadCartridge("../roms/apu_mixer/square.nes");
 //    Cartridge rom = loader.loadCartridge("../roms/Karateka (J) [p1].nes");
-//    Cartridge rom = loader.loadCartridge("../roms/Defender 2 (U).nes");
+//    Cartridge rom = loader.loadCartridge("../../roms/Defender 2 (U).nes");
 //    Cartridge rom = loader.loadCartridge("../roms/all/nrom/Slalom (U).nes");
 
-    Cartridge rom = loader.loadCartridge("../../src/roms/sound-test/sound-test.nes");
+//    Cartridge rom = loader.loadCartridge("../../src/roms/sound-test/sound-test.nes");
 
     /////////////////////////////////////////////////
 // mapper=0 aka NROM
-//    Cartridge rom = loader.loadCartridge("../../roms/supermariobros.nes"); // played through at least one level
+    Cartridge rom = loader.loadCartridge("../../roms/supermariobros.nes"); // played through at least one level
 //    Cartridge rom = loader.loadCartridge("../roms/donkey_kong.nes"); // draws zeroes instead of sprites
 //    rom.info.memoryMapperId = 0;
 

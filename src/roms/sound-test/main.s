@@ -36,18 +36,41 @@
     bne :-
 
     ;; Final wait for PPU warmup.
-:    bit PPUSTATUS
-    bpl :-
+ppu_warmup:
+    bit $2002
+    bpl ppu_warmup
 
     ;; Play audio forever.
-    lda #$01        ; enable channel
-    sta APUSTATUS
-    lda #%10111000  ;Duty 00, Volume 8 (half volume)
-    sta $4000
-    lda #$FD        ;$0FD is 440hz for pulse wave
-    sta $4002       ;low 8 bits of period
-    lda #$00
-    sta $4003       ;high 3 bits of period
+;    lda #$01        ; enable channel
+;    sta APUSTATUS
+;    lda #%10111000  ;Duty 00, Volume 8 (half volume)
+;    sta $4000
+;    lda #$FD        ;$0FD is 440hz for pulse wave
+;    sta $4002       ;low 8 bits of period
+;    lda #$00
+;    sta $4003       ;high 3 bits of period
+
+emit_noise:
+
+    lda #$08         ; enable noise channel
+    sta $4015
+    lda #%00011100   ; don't halt, use constant volume (no decay), volume = 12
+    sta $400C
+    lda #%00000100   ; don't loop, set timer period to 32 (idx = 3)
+    sta $400E
+    lda #%00110000   ; length counter idx = 3
+    sta $400F
+
+    ldx #$00
+long_wait:
+wait_for_vblank:
+    bit $2002
+    bpl wait_for_vblank
+    inx
+    cpx #60
+    bne long_wait
+
+    jmp emit_noise
 
 ;    lda #$04        ; enable triangle channel
 ;    sta APUSTATUS

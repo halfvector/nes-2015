@@ -3,9 +3,8 @@ build
 bin
 cmake
 deps
-bii/.hive.db
 ./roms
 lib
 .DS_Store
 cmake-build-debug
-blocks/**/nes/nes
+src/roms/**/*.o

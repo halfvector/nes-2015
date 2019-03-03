@@ -110,7 +110,7 @@ tCPU::byte
 PPU::getStatusRegister() {
     tCPU::byte returnValue = statusRegister;
 
-    if(Loggy::Enabled == Loggy::DEBUG) {
+    if (Loggy::Enabled == Loggy::DEBUG) {
         PrintInfo("PPU; Status register: %s", std::bitset<8>(statusRegister).to_string().c_str());
         PrintInfo("PPU; -> Scanline: %d, HBlank: %d, Pixel: %d", currentScanline, inHBlank, scanlinePixel);
     }
@@ -327,7 +327,7 @@ void PPU::renderScanline(const tCPU::word Y) {
 
 
     int *backgroundRender = (int *) raster->screenBuffer + Y * 256;
-    unsigned char *backgroundMask = raster->backgroundMask + Y * 256;
+    tCPU::byte *backgroundMask = raster->backgroundMask + Y * 256;
 
     /**
      * Render background tiles.
@@ -337,100 +337,100 @@ void PPU::renderScanline(const tCPU::word Y) {
     ushort numTiles = 32; // 32 tiles per scanline
     ushort numAttributes = 8; // 8 attributes per scanline (4 per tile)
 
-    if(settings.BackgroundVisible)
-    for (ushort i = 0; i <= numTiles; i++) {
-        auto nametable = nametableAddy;
-        auto nametableAttributeOffset = nametableAddy + 0x3C0;
+    if (settings.BackgroundVisible)
+        for (ushort i = 0; i <= numTiles; i++) {
+            auto nametable = nametableAddy;
+            auto nametableAttributeOffset = nametableAddy + 0x3C0;
 
-        if(i + tileScroll >= 32) {
-            // read from nametable on the right when doing horizontal scrolling
-            nametable += 0x400;
-            nametableAttributeOffset += 0x400;
-        }
+            if (i + tileScroll >= 32) {
+                // read from nametable on the right when doing horizontal scrolling
+                nametable += 0x400;
+                nametableAttributeOffset += 0x400;
+            }
 
-        auto tileIdx = ReadByteFromPPU(nametable + tileY * numTiles + (i + tileScroll) % 32);
+            auto tileIdx = ReadByteFromPPU(nametable + tileY * numTiles + (i + tileScroll) % 32);
 
-        // each attribute block is 32x32 pixels
-        // there are 8 attribute blocks per scanline
-        // each attribute block covers 4 tiles
-        ushort attributeBase = nametableAttributeOffset + attributeScroll;
-        ushort attributeX = (((i + tileScroll) % 32) >> 2); // new attribute block every 4 tiles
-        auto attribute = ReadByteFromPPU(attributeBase + attributeY * numAttributes + attributeX);
+            // each attribute block is 32x32 pixels
+            // there are 8 attribute blocks per scanline
+            // each attribute block covers 4 tiles
+            ushort attributeBase = nametableAttributeOffset + attributeScroll;
+            ushort attributeX = (((i + tileScroll) % 32) >> 2); // new attribute block every 4 tiles
+            auto attribute = ReadByteFromPPU(attributeBase + attributeY * numAttributes + attributeX);
 //        auto preScaledUpperBits = (attribute >> ((i & 2) | ((tileY & 2) << 1))) & 3;
 //        preScaledUpperBits *= 4;
 
-        int offsetX = (tileY / 2) % 2;
-        int offsetY = ((i+tileScroll) / 2) % 2;
+            int offsetX = (tileY / 2) % 2;
+            int offsetY = ((i + tileScroll) / 2) % 2;
 
-        tCPU::byte upperLeft = Bits<0, 1>::Get(attribute);
-        tCPU::byte upperRight = Bits<2, 3>::Get(attribute);
-        tCPU::byte lowerLeft = Bits<4, 5>::Get(attribute);
-        tCPU::byte lowerRight = Bits<6, 7>::Get(attribute);
+            tCPU::byte upperLeft = Bits<0, 1>::Get(attribute);
+            tCPU::byte upperRight = Bits<2, 3>::Get(attribute);
+            tCPU::byte lowerLeft = Bits<4, 5>::Get(attribute);
+            tCPU::byte lowerRight = Bits<6, 7>::Get(attribute);
 
-        // grab attributes for the tile
-        tCPU::byte upperBits;
+            // grab attributes for the tile
+            tCPU::byte upperBits;
 
-        if (!offsetY && !offsetX)
-            upperBits = upperLeft;
-        else if (offsetY && !offsetX)
-            upperBits = upperRight;
-        else if (!offsetY && offsetX)
-            upperBits = lowerLeft;
-        else
-            upperBits = lowerRight;
+            if (!offsetY && !offsetX)
+                upperBits = upperLeft;
+            else if (offsetY && !offsetX)
+                upperBits = upperRight;
+            else if (!offsetY && offsetX)
+                upperBits = lowerLeft;
+            else
+                upperBits = lowerRight;
 
-        // render single row within the 8x8 pixel tile
-        // each pattern block is 16 bytes long: two sections of 8 bytes each
-        // each byte corresponds to 8 pixels. total: 2 bits per pixel
-        ushort patternBytes = 16;
-        ushort patternSize = 8;
-        ushort patternOffset = settings.BackgroundPatternTableAddress + tileIdx * patternBytes;
-        auto patternByte0 = ReadByteFromPPU(patternOffset + tileRow);
-        auto patternByte1 = ReadByteFromPPU(patternOffset + tileRow + patternSize);
+            // render single row within the 8x8 pixel tile
+            // each pattern block is 16 bytes long: two sections of 8 bytes each
+            // each byte corresponds to 8 pixels. total: 2 bits per pixel
+            ushort patternBytes = 16;
+            ushort patternSize = 8;
+            ushort patternOffset = settings.BackgroundPatternTableAddress + tileIdx * patternBytes;
+            auto patternByte0 = ReadByteFromPPU(patternOffset + tileRow);
+            auto patternByte1 = ReadByteFromPPU(patternOffset + tileRow + patternSize);
 
-        int startX = 0;
-        int endX = 8;
+            int startX = 0;
+            int endX = 8;
 
-        // fine scrolling works by trimming [0,7] pixels from the first tile
-        // ie only render last 3 pixels from tile 1 means succeeding tiles will be rendered at an offset
-        if (i == 0)
-            startX = horizontalScrollOrigin % 8;
+            // fine scrolling works by trimming [0,7] pixels from the first tile
+            // ie only render last 3 pixels from tile 1 means succeeding tiles will be rendered at an offset
+            if (i == 0)
+                startX = horizontalScrollOrigin % 8;
 //        if (i == 31)
 //            endX = horizontalScrollOrigin % 8;
 
-        // no more inner loop branches! -20k cycles per scanline
+            // no more inner loop branches! -20k cycles per scanline
 //        for (auto column = startX; column < endX; column++) {
-        for (int column = startX; column < endX; column++) {
-            auto xOffset = 7 - column;
+            for (int column = startX; column < endX; column++) {
+                auto xOffset = 7 - column;
 
-            // this pixel has two color bits from the pattern table available
-            tCPU::byte pixelBit0 = (patternByte0 >> xOffset) & 1;
-            tCPU::byte pixelBit1 = (patternByte1 >> xOffset) & 1;
+                // this pixel has two color bits from the pattern table available
+                tCPU::byte pixelBit0 = (patternByte0 >> xOffset) & 1;
+                tCPU::byte pixelBit1 = (patternByte1 >> xOffset) & 1;
 
-            tCPU::byte lowerBits = pixelBit0 | (pixelBit1 << 1);
+                tCPU::byte lowerBits = pixelBit0 | (pixelBit1 << 1);
 
-            tCPU::byte paletteId = GetColorFromPalette(0, upperBits, lowerBits);
-            tPaletteEntry &color = colorPalette[paletteId];
+                tCPU::byte paletteId = GetColorFromPalette(0, upperBits, lowerBits);
+                tPaletteEntry &color = colorPalette[paletteId];
 
-            // tile scroll debugging
+                // tile scroll debugging
 //            auto bgra = 0xFF << 24 | (Y) << 16 | (((i+tileScroll) % 32 * 8 + column)) << 8 | 0;
 
-            // attribute scroll debug
+                // attribute scroll debug
 //            auto bgra = 0xFF << 24 | (attributeX * 32) << 16 | (attributeY * 32) << 8 | 0;
 
-            // red = upper-bits
-            // green = lower-bits
+                // red = upper-bits
+                // green = lower-bits
 //            auto bgra = 0xFF << 24 | (upperBits * 64) << 16 | (lowerBits * 64) << 8 | 0;
 
 //            auto bgra = 0xFF << 24 | (tileIdx) << 16;
 
-            // update final color output
-            *(backgroundRender++) = color.ColorValue;
+                // update final color output
+                *(backgroundRender++) = color.ColorValue;
 
-            // update mask
-            *(backgroundMask++) = lowerBits * 64;
+                // update mask
+                *(backgroundMask++) = lowerBits * 64;
+            }
         }
-    }
 
     // now we have to jump around memory to fetch the palette ids
     // its 1.5x faster doing it here than in the loop above :>
@@ -444,106 +444,106 @@ void PPU::renderScanline(const tCPU::word Y) {
     int numSpritesDrawn = 0;
 
     // iterate through all sprites and find ones that need to be rendered on this scanline
-    if(settings.SpriteVisible)
-    for (auto i = 0; i < 256; i += 4) {
-        auto spriteY = SPR_RAM[i] + 1;
+    if (settings.SpriteVisible)
+        for (auto i = 0; i < 256; i += 4) {
+            auto spriteY = SPR_RAM[i] + 1;
 
-        if (spriteY == 249) {    // sprite wants to be ignored
-            continue;
-        }
-
-        auto tileIdx = SPR_RAM[i + 1];
-        auto attributes = SPR_RAM[i + 2];
-
-        auto spriteRow = (Y - spriteY) % 8;
-
-        bool renderLargeSprites = settings.SpriteSize == SPRITE_SIZE_8x16;
-
-        // handle 8x16 sprites
-        auto patternTable = settings.SpritePatternTableAddress;
-        if(renderLargeSprites) {
-            // 8x16 sprites
-            if (spriteY > Y || (spriteY + 16) <= Y) {    // current scanline does not overlap the sprite
+            if (spriteY == 249) {    // sprite wants to be ignored
                 continue;
             }
 
-            // lsb of tile index determines which pattern table to use
-            if((tileIdx & 1) == 0) {
-                patternTable = settings.BackgroundPatternTableAddress;
+            auto tileIdx = SPR_RAM[i + 1];
+            auto attributes = SPR_RAM[i + 2];
+
+            auto spriteRow = (Y - spriteY) % 8;
+
+            bool renderLargeSprites = settings.SpriteSize == SPRITE_SIZE_8x16;
+
+            // handle 8x16 sprites
+            auto patternTable = settings.SpritePatternTableAddress;
+            if (renderLargeSprites) {
+                // 8x16 sprites
+                if (spriteY > Y || (spriteY + 16) <= Y) {    // current scanline does not overlap the sprite
+                    continue;
+                }
+
+                // lsb of tile index determines which pattern table to use
+                if ((tileIdx & 1) == 0) {
+                    patternTable = settings.BackgroundPatternTableAddress;
+                }
+
+                // are we inside first 8x8 tile of the 8x16 sprite?
+                if ((spriteY + 8) > Y) {
+                    // adjust tile number
+                    tileIdx--;
+                }
+
+            } else {
+                // 8x8 sprites
+                if (spriteY > Y || (spriteY + 8) <= Y) {    // current scanline does not overlap the sprite
+                    continue;
+                }
             }
 
-            // are we inside first 8x8 tile of the 8x16 sprite?
-            if((spriteY + 8) > Y) {
-                // adjust tile number
-                tileIdx --;
-            }
+            auto spriteX = SPR_RAM[i + 3];
 
-        } else {
-            // 8x8 sprites
-            if (spriteY > Y || (spriteY + 8) <= Y) {    // current scanline does not overlap the sprite
+            if (spriteY > 238 || spriteX > 248) {
+                // not so properly ignored
                 continue;
             }
-        }
-
-        auto spriteX = SPR_RAM[i + 3];
-
-        if (spriteY > 238 || spriteX > 248) {
-            // not so properly ignored
-            continue;
-        }
 
 //        PrintInfo("Y=%d tile=0x%X SpriteX=%d and SpriteY=%d", Y, tileIdx, spriteX, spriteY);
 
-        numSpritesDrawn++;
+            numSpritesDrawn++;
 
-        bool verticalFlip = Bit<7>::IsSet(attributes);
-        bool horizontalFlip = Bit<6>::IsSet(attributes);
-        bool spriteBehindBG = Bit<5>::IsSet(attributes);
-        tCPU::byte colorUpperBits = Bits<0, 1>::Get(attributes);
+            bool verticalFlip = Bit<7>::IsSet(attributes);
+            bool horizontalFlip = Bit<6>::IsSet(attributes);
+            bool spriteBehindBG = Bit<5>::IsSet(attributes);
+            tCPU::byte colorUpperBits = Bits<0, 1>::Get(attributes);
 
-        // render one row of the sprite
+            // render one row of the sprite
 
-        auto spriteHeight = renderLargeSprites ? 15 : 7;
-        auto patternY = verticalFlip ? (spriteHeight - spriteRow) : spriteRow;
+            auto spriteHeight = renderLargeSprites ? 15 : 7;
+            auto patternY = verticalFlip ? (spriteHeight - spriteRow) : spriteRow;
 
-        int spriteOffset = patternTable + tileIdx * 16;
-        tCPU::byte patternByte0 = ReadByteFromPPU(spriteOffset + patternY);
-        tCPU::byte patternByte1 = ReadByteFromPPU(spriteOffset + patternY + 8);
+            int spriteOffset = patternTable + tileIdx * 16;
+            tCPU::byte patternByte0 = ReadByteFromPPU(spriteOffset + patternY);
+            tCPU::byte patternByte1 = ReadByteFromPPU(spriteOffset + patternY + 8);
 
-        for (int column = 0; column < 8; column++) {
-            auto patternColumn = horizontalFlip ? (column) : (7 - column);
-            tCPU::byte pixelBit0 = (patternByte0 >> patternColumn) & 1;
-            tCPU::byte pixelBit1 = (patternByte1 >> patternColumn) & 1;
+            for (int column = 0; column < 8; column++) {
+                auto patternColumn = horizontalFlip ? (column) : (7 - column);
+                tCPU::byte pixelBit0 = (patternByte0 >> patternColumn) & 1;
+                tCPU::byte pixelBit1 = (patternByte1 >> patternColumn) & 1;
 
-            // lower two bits
-            tCPU::byte colorLowerBits = pixelBit0 | (pixelBit1 << 1);
+                // lower two bits
+                tCPU::byte colorLowerBits = pixelBit0 | (pixelBit1 << 1);
 
-            tCPU::byte paletteId = GetColorFromPalette(1, colorUpperBits, colorLowerBits);
+                tCPU::byte paletteId = GetColorFromPalette(1, colorUpperBits, colorLowerBits);
 
-            // absolute position on output screen
-            auto screenX = spriteX + column;
+                // absolute position on output screen
+                auto screenX = spriteX + column;
 
-            if ((!spriteBehindBG || raster->backgroundMask[Y * 256 + screenX] == 0) && colorLowerBits) {
-                tPaletteEntry &color = colorPalette[paletteId];
+                if ((!spriteBehindBG || raster->backgroundMask[Y * 256 + screenX] == 0) && colorLowerBits) {
+                    tPaletteEntry &color = colorPalette[paletteId];
 
-                // write final color output
-                ((int *) raster->screenBuffer)[Y * 256 + screenX] = color.ColorValue;
-                // write mask
-                raster->spriteMask[Y * 256 + screenX] = colorLowerBits * 64;
-                raster->backgroundMask[Y * 256 + screenX] += 0xf0;
-            }
+                    // write final color output
+                    ((int *) raster->screenBuffer)[Y * 256 + screenX] = color.ColorValue;
+                    // write mask
+                    raster->spriteMask[Y * 256 + screenX] = colorLowerBits * 64;
+                    raster->backgroundMask[Y * 256 + screenX] += 0xf0;
+                }
 
-            // test sprite-0 hit detection against background mask
-            if (!sprite0HitInThisFrame && !sprite0HitInThisScanline && i == 0) {
-                // if we got a sprite0 color pixel over a non-transparent background pixel
-                // a transparent pixel has lower two bits = 0 (should do 'bg & 0x3')
-                if ((raster->backgroundMask[Y * 256 + screenX]) != 0 && colorLowerBits != 0) {
-                    sprite0HitInThisScanline = true;
+                // test sprite-0 hit detection against background mask
+                if (!sprite0HitInThisFrame && !sprite0HitInThisScanline && i == 0) {
+                    // if we got a sprite0 color pixel over a non-transparent background pixel
+                    // a transparent pixel has lower two bits = 0 (should do 'bg & 0x3')
+                    if ((raster->backgroundMask[Y * 256 + screenX]) != 0 && colorLowerBits != 0) {
+                        sprite0HitInThisScanline = true;
 //                    PrintInfo("Sprite-0 collision detected");
+                    }
                 }
             }
         }
-    }
 
     if (numSpritesDrawn >= 8) {
         //PrintPpu("sprite overflow!" );
@@ -556,7 +556,7 @@ tCPU::byte
 PPU::GetColorFromPalette(int paletteType, int upperBits, int lowerBits) {
     tCPU::byte Color = 0;
 
-    if(lowerBits == 0) {
+    if (lowerBits == 0) {
         // specifically for super mario brothers
         return ReadByteFromPPU(0x3F00);
     }
@@ -686,8 +686,8 @@ PPU::GetEffectiveAddress(tCPU::word address) {
         // pattern table chr-rom page
 
         // use a memory mapper if one is available
-        if(mapper != nullptr) {
-           address = mapper->getEffectivePPUAddress(address);
+        if (mapper != nullptr) {
+            address = mapper->getEffectivePPUAddress(address);
         }
 
 //        PrintInfo("Address is < 0x2000; Referencing CHR-ROM @ $%04X", address);
@@ -789,7 +789,7 @@ PPU::WriteByteToPPU(tCPU::word Address, tCPU::byte Value) {
     tCPU::word EffectiveAddress = GetEffectiveAddress(Address);
     PPU_RAM[EffectiveAddress] = Value;
 
-    if(Address >= 0x8000) {
+    if (Address >= 0x8000) {
         PrintInfo("Wrote 0x%02X to PPU RAM @ 0x%04X (0x%04X)", Value, EffectiveAddress, Address);
     }
     if (EffectiveAddress >= 0x3f00 && EffectiveAddress < 0x4000) {
@@ -896,14 +896,15 @@ void PPU::clear() {
     // clear palette table debug view (256x32@32bit)
     memset_pattern4(raster->palette, &clearPattern, 256 * 32 * 4);
 
-    // clear sprite mask debug view (256x256@8bit)
-    memset(raster->spriteMask, 0, 256 * 256);
+    // clear sprite mask debug view (256x256@16bit)
+    memset(raster->spriteMask, 128, 256 * 256 * 2);
 
-    // clear background mask debug view (256x256@8bit)
-    memset(raster->backgroundMask, 0, 256 * 256);
+    // clear background mask debug view (256x256@16bit)
+    memset(raster->backgroundMask, 128, 256 * 256 * 2);
 }
 
 void PPU::renderDebug() {
+    auto now = std::chrono::high_resolution_clock::now();
 //    RenderBackgroundTiles();
 //    RenderSpriteTiles();
 
@@ -911,6 +912,9 @@ void PPU::renderDebug() {
     RenderDebugAttributes(settings.NameTableAddress);
     RenderDebugPatternTables();
     RenderDebugColorPalette();
+
+    auto span = std::chrono::high_resolution_clock::now() - now;
+    PrintDbg("Preparing Debug Data took %d msec", std::chrono::duration_cast<std::chrono::milliseconds>(span));
 }
 
 /**
@@ -944,12 +948,12 @@ void PPU::RenderSpriteTiles() {
         // TODO: handle 8x16 sprites
         auto tileIdx = tileNumber;
         auto patternTable = settings.SpritePatternTableAddress;
-        if(settings.SpriteSize == SPRITE_SIZE_8x16) {
-            if((tileNumber & 1) == 0) {
+        if (settings.SpriteSize == SPRITE_SIZE_8x16) {
+            if ((tileNumber & 1) == 0) {
                 patternTable = settings.BackgroundPatternTableAddress;
             }
 
-            tileIdx --;
+            tileIdx--;
         }
 
         // row
@@ -981,13 +985,13 @@ void PPU::RenderSpriteTiles() {
             }
         }
 
-        if(settings.SpriteSize == SPRITE_SIZE_8x16) {
-            if((tileNumber & 1) == 0) {
+        if (settings.SpriteSize == SPRITE_SIZE_8x16) {
+            if ((tileNumber & 1) == 0) {
                 patternTable = settings.BackgroundPatternTableAddress;
             } else {
                 patternTable = settings.SpritePatternTableAddress;
             }
-            tileIdx ++;
+            tileIdx++;
 
             int offsetY = (y + 8) * 256 * 4;
             for (auto k = 0; k < 8; k++) {
@@ -1281,7 +1285,7 @@ void PPU::RenderDebugNametables() {
     uint32_t clearPattern = 0xff333333;
     memset_pattern4(raster->nametables, &clearPattern, 512 * 512 * 4);
 
-    uint32_t* nametables = (uint32_t*) raster->nametables;
+    uint32_t *nametables = (uint32_t *) raster->nametables;
 
     // two rows of nametables
     for (auto a = 0; a < 2; a++) {

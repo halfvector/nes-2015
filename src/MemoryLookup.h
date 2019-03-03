@@ -253,8 +253,5 @@ struct MemoryAddressResolve<ADDR_MODE_INDEXED_INDIRECT> : MemoryAddressResolveBa
  */
 template<ProcessorStatusFlags T>
 struct ProcessorStatusFlag {
-    static bool getState(InstructionContext *ctx) {
-        PrintError("Unknown ProcessorStatusFlag Requested");
-        throw std::runtime_error("Unknown processor status flag");
-    }
+    static bool getState(InstructionContext *ctx);
 };
