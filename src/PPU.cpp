@@ -317,14 +317,12 @@ void PPU::renderScanline(const tCPU::word Y) {
 
     tCPU::word nametableAddy = settings.NameTableAddress;
 
-    unsigned short int tileScroll = vramAddress14bit & 0xFF;
+    unsigned short int tileScroll = vramAddress14bit & 0x1F;
     unsigned short int attributeScroll = (vramAddress14bit & 0x0C00)
                              | ((vramAddress14bit >> 4) & 0x38)
                              | ((vramAddress14bit >> 2) & 0x07);
 
-//    tileScroll = 0;
     attributeScroll = 0; // ignoring attribute scroll from vram, using tile instead
-
 
     int *backgroundRender = (int *) raster->screenBuffer + Y * 256;
     tCPU::byte *backgroundMask = raster->backgroundMask + Y * 256;
