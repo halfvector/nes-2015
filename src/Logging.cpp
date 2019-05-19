@@ -15,8 +15,13 @@ Loggy::log(const char *name, Type type) {
 void
 Loggy::simplifyFunctionName(const char *name, char *shorter, size_t maxLength) {
     size_t nameLength = strlen(name);
-    const char *start = std::find(name, name + nameLength, ' ');
+    // remove return type from call signature
+    // a space before the first ( or :: likely indicates a return type
     const char *end = std::find(name, name + nameLength, '(');
+    const char *start = std::find(name, end, ' ');
+    if(start == end) {
+        start = name;
+    }
 
     // if next token is an attribute, skip it
     if (!strcmp(start, "static")) {
