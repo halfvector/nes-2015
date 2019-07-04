@@ -5,6 +5,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/transform.hpp>
+#include <chrono>
 
 //#include <SDL2/SDL_opengl.h>
 #include "GUI.h"
@@ -12,7 +13,7 @@
 
 GLenum glCheckError_(const char *file, int line) {
     GLenum errorCode;
-    while ((errorCode = glGetError()) != GL_NO_ERROR) {
+    if ((errorCode = glGetError()) != GL_NO_ERROR) {
         std::string error;
         switch (errorCode) {
             case GL_INVALID_ENUM:
@@ -40,35 +41,35 @@ GLenum glCheckError_(const char *file, int line) {
 
 #define glCheckError() glCheckError_(__FILE__, __LINE__)
 
-GUI::GUI(Raster *raster)
-        : raster(raster) {
+GUI::GUI(Raster* raster)
+	: raster(raster) {
 
-    showEnhancedPPU = false;
-    showDebuggerPPU = true;
-    showDebuggerAPU = true;
+	showEnhancedPPU = false;
+	showDebuggerPPU = true;
+	showDebuggerAPU = true;
 
-    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
-        PrintError("SDL_Init failed: %s", SDL_GetError());
-        throw std::runtime_error("SDL_Init failed");
-    }
+	if (SDL_Init(SDL_INIT_VIDEO) < 0) {
+		PrintError("SDL_Init failed: %s", SDL_GetError());
+		throw std::runtime_error("SDL_Init failed");
+	}
 
     if (showDebuggerAPU) {
         // Create software-rendering Window
         apuDebugWindow = SDL_CreateWindow("APU Debugger", 0, 0, 520, 828, SDL_WINDOW_ALLOW_HIGHDPI);
-        if (apuDebugWindow == nullptr) {
+	    if (apuDebugWindow == nullptr) {
             PrintError("SDL_CreateWindow#1 failed: %s", SDL_GetError());
             throw std::runtime_error("SDL_CreateWindow#1 failed");
         }
 
         // This will create an OpenGL 2.1 context behind the scenes.
         apuDebugRenderer = SDL_CreateRenderer(apuDebugWindow, -1, SDL_RENDERER_PRESENTVSYNC);
-        if (apuDebugRenderer == nullptr) {
+	    if (apuDebugRenderer == nullptr) {
             PrintError("SDL_CreateRenderer failed: %s", SDL_GetError());
             throw std::runtime_error("SDL_CreateRenderer failed");
         }
 
         SDL_RaiseWindow(apuDebugWindow);
-
+	
         // set logical size equal to window size
         // this allows for unscaled/nearest-neighbor pixel-accurate output
         // on hi-dpi screens where renderer output size != window size
@@ -76,7 +77,6 @@ GUI::GUI(Raster *raster)
         SDL_GetWindowSize(apuDebugWindow, &w, &h);
         PrintInfo("APU Debug Window size: %d x %d", w, h);
         SDL_RenderSetLogicalSize(apuDebugRenderer, w, h);
-        glCheckError();
 
         square1FFTTexture = SDL_CreateTexture(apuDebugRenderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 512, 64);
         square1WaveformTexture = SDL_CreateTexture(apuDebugRenderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 1024, 64);
@@ -88,83 +88,78 @@ GUI::GUI(Raster *raster)
         noiseWaveformTexture = SDL_CreateTexture(apuDebugRenderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 1024, 64);
     }
 
-    if (showDebuggerPPU) {
-        // Create software-rendering Window
-        ppuDebugWindow = SDL_CreateWindow("NES - Debug", 0, 330, 1320, 564, SDL_WINDOW_ALLOW_HIGHDPI);
-        if (ppuDebugWindow == nullptr) {
-            PrintError("SDL_CreateWindow#1 failed: %s", SDL_GetError());
-            throw std::runtime_error("SDL_CreateWindow#1 failed");
-        }
+	if (showDebuggerPPU) {
+		// Create software-rendering Window
+		ppuDebugWindow = SDL_CreateWindow("NES - Debug", 0, 330, 1320, 564, SDL_WINDOW_ALLOW_HIGHDPI);
+		if (ppuDebugWindow == nullptr) {
+			PrintError("SDL_CreateWindow#1 failed: %s", SDL_GetError());
+			throw std::runtime_error("SDL_CreateWindow#1 failed");
+		}
 
-        // This will create an OpenGL 2.1 context behind the scenes.
-        ppuDebugRenderer = SDL_CreateRenderer(ppuDebugWindow, -1, SDL_RENDERER_PRESENTVSYNC);
-        if (ppuDebugRenderer == nullptr) {
-            PrintError("SDL_CreateRenderer failed: %s", SDL_GetError());
-            throw std::runtime_error("SDL_CreateRenderer failed");
-        }
+		// This will create an OpenGL 2.1 context behind the scenes.
+		ppuDebugRenderer = SDL_CreateRenderer(ppuDebugWindow, -1, SDL_RENDERER_PRESENTVSYNC);
+		if (ppuDebugRenderer == nullptr) {
+			PrintError("SDL_CreateRenderer failed: %s", SDL_GetError());
+			throw std::runtime_error("SDL_CreateRenderer failed");
+		}
 
-        SDL_RendererInfo info;
-        SDL_GetRendererInfo(ppuDebugRenderer, &info);
-        PrintInfo("info.num_texture_formats = %d", info.num_texture_formats);
-        for (int i = 0; i < info.num_texture_formats; i++) {
-            PrintInfo("  %s = %d bytes/pixel", SDL_GetPixelFormatName(info.texture_formats[i]),
-                      SDL_BYTESPERPIXEL(info.texture_formats[i]));
-        }
+		SDL_RendererInfo info;
+		SDL_GetRendererInfo(ppuDebugRenderer, &info);
+		PrintInfo("info.num_texture_formats = %d", info.num_texture_formats);
+		for (int i = 0; i < info.num_texture_formats; i++) {
+			PrintInfo("  %s = %d bytes/pixel", SDL_GetPixelFormatName(info.texture_formats[i]),
+				SDL_BYTESPERPIXEL(info.texture_formats[i]));
+		}
 
-        finalTexture = SDL_CreateTexture(ppuDebugRenderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 256, 256);
-        patternTexture = SDL_CreateTexture(ppuDebugRenderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 128, 256);
-        attributeTexture = SDL_CreateTexture(ppuDebugRenderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 256, 256);
-        paletteTexture = SDL_CreateTexture(ppuDebugRenderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 256, 32);
-        nametableTexture = SDL_CreateTexture(ppuDebugRenderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 512, 512);
-        backgroundMaskTexture = SDL_CreateTexture(ppuDebugRenderer, SDL_PIXELFORMAT_NV12, SDL_TEXTUREACCESS_STREAMING, 256, 256);
-        spriteMaskTexture = SDL_CreateTexture(ppuDebugRenderer, SDL_PIXELFORMAT_NV12, SDL_TEXTUREACCESS_STREAMING, 256, 256);
+		finalTexture = SDL_CreateTexture(ppuDebugRenderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 256, 256);
+		patternTexture = SDL_CreateTexture(ppuDebugRenderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 128, 256);
+		attributeTexture = SDL_CreateTexture(ppuDebugRenderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 256, 256);
+		paletteTexture = SDL_CreateTexture(ppuDebugRenderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 256, 32);
+		nametableTexture = SDL_CreateTexture(ppuDebugRenderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 512, 512);
+		backgroundMaskTexture = SDL_CreateTexture(ppuDebugRenderer, SDL_PIXELFORMAT_NV12, SDL_TEXTUREACCESS_STREAMING, 256, 256);
+		spriteMaskTexture = SDL_CreateTexture(ppuDebugRenderer, SDL_PIXELFORMAT_NV12, SDL_TEXTUREACCESS_STREAMING, 256, 256);
 
-        if (finalTexture == nullptr) {
-            PrintError("SDL_CreateTexture failed: %s", SDL_GetError());
-            throw std::runtime_error("SDL_CreateTexture failed");
-        }
+		if (finalTexture == nullptr) {
+			PrintError("SDL_CreateTexture failed: %s", SDL_GetError());
+			throw std::runtime_error("SDL_CreateTexture failed");
+		}
 
-        if (backgroundMaskTexture == nullptr) {
-            PrintError("SDL_CreateTexture failed: %s", SDL_GetError());
-            throw std::runtime_error("SDL_CreateTexture failed");
-        }
+		if (backgroundMaskTexture == nullptr) {
+			PrintError("SDL_CreateTexture failed: %s", SDL_GetError());
+			throw std::runtime_error("SDL_CreateTexture failed");
+		}
 
-        SDL_RaiseWindow(ppuDebugWindow);
+		SDL_RaiseWindow(ppuDebugWindow);
 
-        int w, h;
+		int w, h;
 
-        // set logical size equal to window size
-        // this allows for unscaled/nearest-neighbor pixel-accurate output
-        // on hi-dpi screens where renderer output size != window size
-        SDL_GetWindowSize(ppuDebugWindow, &w, &h);
-        PrintInfo("Debug Window size: %d x %d", w, h);
-        SDL_RenderSetLogicalSize(ppuDebugRenderer, w, h);
-        glCheckError();
+		// set logical size equal to window size
+		// this allows for unscaled/nearest-neighbor pixel-accurate output
+		// on hi-dpi screens where renderer output size != window size
+		SDL_GetWindowSize(ppuDebugWindow, &w, &h);
+		PrintInfo("Debug Window size: %d x %d", w, h);
+		SDL_RenderSetLogicalSize(ppuDebugRenderer, w, h);
 
-//    SDL_GetWindowSize(glWindow, &w, &h);
-//    PrintInfo("OpenGL Window size: %d x %d", w, h);
+		//    SDL_GetWindowSize(glWindow, &w, &h);
+		//    PrintInfo("OpenGL Window size: %d x %d", w, h);
 
-        SDL_GL_GetDrawableSize(ppuDebugWindow, &w, &h);
-        PrintInfo("Debug Window drawable size: %d x %d", w, h);
-        glCheckError();
+		SDL_GL_GetDrawableSize(ppuDebugWindow, &w, &h);
+		PrintInfo("Debug Window drawable size: %d x %d", w, h);
 
-//    SDL_GL_GetDrawableSize(glWindow, &w, &h);
-//    PrintInfo("OpenGL Window drawable size: %d x %d", w, h);
-//    glCheckError();
+		//    SDL_GL_GetDrawableSize(glWindow, &w, &h);
+		//    PrintInfo("OpenGL Window drawable size: %d x %d", w, h);
+		//    glCheckError();
 
-        SDL_GetRendererOutputSize(ppuDebugRenderer, &w, &h);
-        PrintInfo("Debug Window Renderer output size: %d x %d", w, h);
-        glCheckError();
+		SDL_GetRendererOutputSize(ppuDebugRenderer, &w, &h);
+		PrintInfo("Debug Window Renderer output size: %d x %d", w, h);
 
-        SDL_Rect rect;
-        SDL_RenderGetViewport(ppuDebugRenderer, &rect);
-        PrintInfo("Debug Window Renderer viewport: %d x %d @ %d, %d", rect.w, rect.h, rect.x, rect.y);
-        glCheckError();
+		SDL_Rect rect;
+		SDL_RenderGetViewport(ppuDebugRenderer, &rect);
+		PrintInfo("Debug Window Renderer viewport: %d x %d @ %d, %d", rect.w, rect.h, rect.x, rect.y);
 
-        SDL_RenderGetLogicalSize(ppuDebugRenderer, &w, &h);
-        PrintInfo("Debug Window Renderer logical size: %d x %d", w, h);
-        glCheckError();
-    }
+		SDL_RenderGetLogicalSize(ppuDebugRenderer, &w, &h);
+		PrintInfo("Debug Window Renderer logical size: %d x %d", w, h);
+	}
 
     if (showEnhancedPPU) {
         // Reconfigure preferred OpenGL settings: Profile = Core and Version = 3.1
@@ -195,6 +190,12 @@ GUI::GUI(Raster *raster)
             PrintError("SDL_GL_CreateContext failed: %s", SDL_GetError());
         }
 
+		// initialize OpenGL driver
+		GLenum glewErr = glewInit();
+		if (glewErr != GLEW_OK) {
+			std::cout << "glew error: " << glewGetErrorString(glewErr) << std::endl;
+		}
+		
         // Dump OpenGL versioning info
 
         PrintInfo("OpenGL Vendor: %s", glGetString(GL_VENDOR));
@@ -210,9 +211,9 @@ GUI::GUI(Raster *raster)
 
 //    SDL_WM_SetCaption( "TTF Test", NULL );
 
-        SDL_GL_SetSwapInterval(1);
-        int swapInterval = SDL_GL_GetSwapInterval();
-        PrintInfo("VSync interval: %d", swapInterval);
+        //SDL_GL_SetSwapInterval(1);
+        //int swapInterval = SDL_GL_GetSwapInterval();
+        //PrintInfo("VSync interval: %d", swapInterval);
 
         SDL_RaiseWindow(glWindow);
 
@@ -226,7 +227,7 @@ GUI::GUI(Raster *raster)
         exit(1);
     }
 
-    font = TTF_OpenFont("../../fonts/visitor2.ttf", 19);
+    font = TTF_OpenFont("../../../../fonts/visitor2.ttf", 19);
     if (font == nullptr) {
         PrintError("Failed to open font: %s", TTF_GetError());
         exit(1);
@@ -256,7 +257,7 @@ GUI::render() {
         // render into debug window
         renderDebugViews();
         auto span = std::chrono::high_resolution_clock::now() - now;
-        PrintInfo("Rendering PPU Debugger took %d msec", std::chrono::duration_cast<std::chrono::milliseconds>(span));
+        //PrintInfo("Rendering PPU Debugger took %d msec", std::chrono::duration_cast<std::chrono::milliseconds>(span));
     }
 
     if (showEnhancedPPU) {
@@ -469,20 +470,20 @@ GLuint loadShader(GLenum type, const char *shaderName, const char *shaderFilePat
 void checkShaderCompilationError(const char *shaderName, GLuint shaderId);
 
 void GUI::createShaders() {
-    GLuint passthruVertex = loadShader(GL_VERTEX_SHADER, "vertex shader", "../../src/shaders/passthru.vert");
-    GLuint passthroughFragment = loadShader(GL_FRAGMENT_SHADER, "fragment shader", "../../src/shaders/passthru.frag");
+    GLuint passthruVertex = loadShader(GL_VERTEX_SHADER, "vertex shader", "../../../../src/shaders/passthru.vert");
+    GLuint passthroughFragment = loadShader(GL_FRAGMENT_SHADER, "fragment shader", "../../../../src/shaders/passthru.frag");
     passThruShader = createProgram(passthruVertex, passthroughFragment);
 
-    GLuint gBufferVertex = loadShader(GL_VERTEX_SHADER, "vertex shader", "../../src/shaders/create-gbuffer.vert");
-    GLuint gBufferFragment = loadShader(GL_FRAGMENT_SHADER, "fragment shader", "../../src/shaders/create-gbuffer.frag");
+    GLuint gBufferVertex = loadShader(GL_VERTEX_SHADER, "vertex shader", "../../../../src/shaders/create-gbuffer.vert");
+    GLuint gBufferFragment = loadShader(GL_FRAGMENT_SHADER, "fragment shader", "../../../../src/shaders/create-gbuffer.frag");
     createGBufferShader = createProgram(gBufferVertex, gBufferFragment);
 
-    GLuint blurVertex = loadShader(GL_VERTEX_SHADER, "vertex shader", "../../src/shaders/blur.vert");
-    GLuint blurFragment = loadShader(GL_FRAGMENT_SHADER, "fragment shader", "../../src/shaders/blur.frag");
+    GLuint blurVertex = loadShader(GL_VERTEX_SHADER, "vertex shader", "../../../../src/shaders/blur.vert");
+    GLuint blurFragment = loadShader(GL_FRAGMENT_SHADER, "fragment shader", "../../../../src/shaders/blur.frag");
     blurShader = createProgram(blurVertex, blurFragment);
 
-    GLuint composeVertex = loadShader(GL_VERTEX_SHADER, "vertex shader", "../../src/shaders/compose.vert");
-    GLuint composeFragment = loadShader(GL_FRAGMENT_SHADER, "fragment shader", "../../src/shaders/compose.frag");
+    GLuint composeVertex = loadShader(GL_VERTEX_SHADER, "vertex shader", "../../../../src/shaders/compose.vert");
+    GLuint composeFragment = loadShader(GL_FRAGMENT_SHADER, "fragment shader", "../../../../src/shaders/compose.frag");
     composeShader = createProgram(composeVertex, composeFragment);
 
     GLint numAttributes;

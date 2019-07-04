@@ -1,3 +1,4 @@
+#ifndef _WIN32
 #include "Backtrace.h"
 
 #include <regex>
@@ -131,3 +132,4 @@ Backtrace::demangle(const char* mangled, char *unmangled, size_t bufferSize) {
         snprintf(unmangled, bufferSize, "%3s [%s] %s", frameNumber, library, method);
     }
 }
+#endif

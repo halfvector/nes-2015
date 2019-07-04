@@ -303,24 +303,24 @@ void PPU::onEnterHBlank() {
 
 void PPU::renderScanline(const tCPU::word Y) {
     // tiles are 8x8 pixel in size.
-    ushort tileSizePixels = 8;
+    unsigned short int tileSizePixels = 8;
     // row number within tile
-    ushort tileRow = ushort(Y % tileSizePixels);
+    unsigned short int tileRow = Y % tileSizePixels;
     // tile horizontal position within frame
-    ushort tileY = ushort(floor(Y / tileSizePixels));
+    unsigned short int tileY = floor(Y / tileSizePixels);
 
     // attributes are 32x32 pixels in size
-    ushort attributeY = ushort(tileY / 4);
+    unsigned short int attributeY = tileY / 4;
 
     // decode scanline
     // 256 pixels in 32 bytes, each byte a tile consisting of 8 pixels
 
     tCPU::word nametableAddy = settings.NameTableAddress;
 
-    ushort tileScroll = ushort(vramAddress14bit & 0xFF);
-    ushort attributeScroll = ushort(vramAddress14bit & 0x0C00)
-                             | ushort((vramAddress14bit >> 4) & 0x38)
-                             | ushort((vramAddress14bit >> 2) & 0x07);
+    unsigned short int tileScroll = vramAddress14bit & 0xFF;
+    unsigned short int attributeScroll = (vramAddress14bit & 0x0C00)
+                             | ((vramAddress14bit >> 4) & 0x38)
+                             | ((vramAddress14bit >> 2) & 0x07);
 
 //    tileScroll = 0;
     attributeScroll = 0; // ignoring attribute scroll from vram, using tile instead
@@ -334,11 +334,11 @@ void PPU::renderScanline(const tCPU::word Y) {
      * 32 tiles per scanline
      */
 
-    ushort numTiles = 32; // 32 tiles per scanline
-    ushort numAttributes = 8; // 8 attributes per scanline (4 per tile)
+    unsigned short int numTiles = 32; // 32 tiles per scanline
+    unsigned short int numAttributes = 8; // 8 attributes per scanline (4 per tile)
 
     if (settings.BackgroundVisible)
-        for (ushort i = 0; i <= numTiles; i++) {
+        for (unsigned short int i = 0; i <= numTiles; i++) {
             auto nametable = nametableAddy;
             auto nametableAttributeOffset = nametableAddy + 0x3C0;
 
@@ -353,8 +353,8 @@ void PPU::renderScanline(const tCPU::word Y) {
             // each attribute block is 32x32 pixels
             // there are 8 attribute blocks per scanline
             // each attribute block covers 4 tiles
-            ushort attributeBase = nametableAttributeOffset + attributeScroll;
-            ushort attributeX = (((i + tileScroll) % 32) >> 2); // new attribute block every 4 tiles
+            unsigned short int attributeBase = nametableAttributeOffset + attributeScroll;
+            unsigned short int attributeX = (((i + tileScroll) % 32) >> 2); // new attribute block every 4 tiles
             auto attribute = ReadByteFromPPU(attributeBase + attributeY * numAttributes + attributeX);
 //        auto preScaledUpperBits = (attribute >> ((i & 2) | ((tileY & 2) << 1))) & 3;
 //        preScaledUpperBits *= 4;
@@ -382,9 +382,9 @@ void PPU::renderScanline(const tCPU::word Y) {
             // render single row within the 8x8 pixel tile
             // each pattern block is 16 bytes long: two sections of 8 bytes each
             // each byte corresponds to 8 pixels. total: 2 bits per pixel
-            ushort patternBytes = 16;
-            ushort patternSize = 8;
-            ushort patternOffset = settings.BackgroundPatternTableAddress + tileIdx * patternBytes;
+            unsigned short int patternBytes = 16;
+            unsigned short int patternSize = 8;
+            unsigned short int patternOffset = settings.BackgroundPatternTableAddress + tileIdx * patternBytes;
             auto patternByte0 = ReadByteFromPPU(patternOffset + tileRow);
             auto patternByte1 = ReadByteFromPPU(patternOffset + tileRow + patternSize);
 
@@ -885,6 +885,14 @@ PPU::StartSpriteXferDMA(Memory *memory, tCPU::byte address) {
 //    vramAddress14bit = 0;
 }
 
+#ifdef _WIN32
+void memset_pattern4(void* p_destination, const void* p_pattern, size_t p_count) {
+	for (size_t i = 0; i < (p_count / 4); i++) {
+		memcpy((( char*) p_destination) + (i * 4), p_pattern, 4);
+	}
+}
+#endif
+
 void PPU::clear() {
     // clear final output (256x256@32bit)
     uint32_t clearPattern = 0xff333333;
@@ -1363,10 +1371,10 @@ void PPU::RenderDebugNametables() {
     }
 
     // render viewport scrolling
-    ushort tileScroll = ushort(vramAddress14bit & 0x0FFF);
-    ushort tileScrollPixels = tileScroll * 8;
-    ushort nametableOffsetX = ((settings.NameTableAddress - 0x2000) / 0x400) * 256;
-    ushort horizontalScrollPixels = nametableOffsetX + horizontalScrollOrigin + tileScrollPixels;
+    unsigned short int tileScroll = vramAddress14bit & 0x0FFF;
+    unsigned short int tileScrollPixels = tileScroll * 8;
+    unsigned short int nametableOffsetX = ((settings.NameTableAddress - 0x2000) / 0x400) * 256;
+    unsigned short int horizontalScrollPixels = nametableOffsetX + horizontalScrollOrigin + tileScrollPixels;
 
     // rows
     for (auto i = 0; i < 256; i++) {

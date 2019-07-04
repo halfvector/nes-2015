@@ -15,8 +15,9 @@
 #include <cstdlib>
 #include <cstring>
 #include <cstdlib>
-#include <unistd.h>
+//#include <unistd.h>
 #include <thread>
+#include <chrono>
 
 using namespace std::chrono_literals;
 typedef std::chrono::high_resolution_clock clock_type;
@@ -28,7 +29,7 @@ void printLibVersions();
 Cartridge loadCartridge();
 
 int main(int argc, char **argv) {
-    Backtrace::install();
+    //Backtrace::install();
     printLibVersions();
 
     Cartridge rom = loadCartridge();
@@ -144,17 +145,15 @@ int main(int argc, char **argv) {
             auto span = now - last;
             last = now;
 
-            /*
             // throttle to around 60fps
             const std::chrono::milliseconds &goal = 16ms;
-            auto gap = std::chrono::duration_cast<std::chrono::milliseconds>(span - goal);
-            if(gap > 2ms) {
+            auto gap = std::chrono::duration_cast<std::chrono::milliseconds>(goal - span);
+            if(gap > 0ms) {
                 now = std::chrono::high_resolution_clock::now();
                 std::this_thread::sleep_for(gap);
                 auto actual_delay = std::chrono::high_resolution_clock::now() - now;
                 PrintInfo("throttling ppu: wanted=%d msec got=%d msec", gap, std::chrono::duration_cast<std::chrono::milliseconds>(actual_delay));
             }
-            */
         }
     }
 
@@ -168,6 +167,7 @@ int main(int argc, char **argv) {
     delete gui;
 
     audio->close();
+	return 0;
 }
 
 Cartridge loadCartridge() {
@@ -190,7 +190,7 @@ Cartridge loadCartridge() {
 
     /////////////////////////////////////////////////
 // mapper=0 aka NROM
-    Cartridge rom = loader.loadCartridge("../../roms/supermariobros.nes"); // played through at least one level
+    Cartridge rom = loader.loadCartridge("../../../../roms/supermariobros.nes"); // played through at least one level
 //    Cartridge rom = loader.loadCartridge("../roms/donkey_kong.nes"); // draws zeroes instead of sprites
 //    rom.info.memoryMapperId = 0;
 
