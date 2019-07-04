@@ -27,16 +27,26 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 	# generate complete debug type info, tune for GDB (-ggdb) or LLDB (-glldb)
 	# enable address sanitization to easily catch buffer overflows and heap corruptions
 	# -O1 optimizations are compatible with address-sanitizer
-	#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O1 -fno-omit-frame-pointer -g -glldb -fsanitize=address")
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-omit-frame-pointer -g -glldb -fsanitize=address")
+
+# pprof compatible settings
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-omit-frame-pointer -g -glldb")
 
 	# enable speed optimizations
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O1")
 
 	# generate optimization report
 	#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Rpass=inline -fsave-optimization-record")
 
 	# improve template/type error messages
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fdiagnostics-show-template-tree -fno-elide-type")
+
+# enable gperftools profiler support
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I/usr/local/include -I../../tmp/pcm -I/usr/include")
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -v -L../../tmp/pcm -L/usr/lib -lcpucounters.o -lclient_bw.o -lpci.o -lmsr.o -lmmio.o")
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I/usr/local/include -fno-pie -fdebug-info-for-profiling")
+
+#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fasynchronous-unwind-tables -fpie -Wl,-pie -fstack-protector-all -fprofile-instr-generate -fcoverage-mapping")
 
 	# disable optimizations for profiling mode
 	#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer")
@@ -56,6 +66,7 @@ endif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 find_package(OpenGL REQUIRED)
 find_package(GLEW 2.1 REQUIRED)
 find_package(SDL2 2.0.9 REQUIRED)
+find_library(Profiler profiler)
 
 file(GLOB SOURCES "src/*.cpp" "src/*.h")
 add_executable(nes ${SOURCES})
@@ -75,4 +86,4 @@ add_custom_command(TARGET nes POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_direct
 
 # conan macro will link with all dependencies
 conan_target_link_libraries(nes)
-target_link_libraries(nes ${CONAN_LIBS})
+target_link_libraries(nes ${CONAN_LIBS} /usr/lib/libPcmMsr.dylib)

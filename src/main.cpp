@@ -18,6 +18,9 @@
 //#include <unistd.h>
 #include <thread>
 #include <chrono>
+#include <gperftools/profiler.h>
+#include <cpucounters.h>
+#include <x86intrin.h>
 
 using namespace std::chrono_literals;
 typedef std::chrono::high_resolution_clock clock_type;
@@ -28,6 +31,24 @@ void printLibVersions();
 
 Cartridge loadCartridge();
 
+static inline uint64_t rdtsc(void)
+{
+    uint32_t eax = 0, edx;
+
+    __asm__ __volatile__("cpuid;"
+                         "rdtsc;"
+    : "+a" (eax), "=d" (edx)
+    :
+    : "%rcx", "%rbx", "memory");
+
+    __asm__ __volatile__("xorl %%eax, %%eax;"
+                         "cpuid;"
+    :
+    :
+    : "%rax", "%rbx", "%rcx", "%rdx", "memory");
+
+    return (((uint64_t)edx << 32) | eax);
+}
 int main(int argc, char **argv) {
     //Backtrace::install();
     printLibVersions();
@@ -109,6 +130,48 @@ int main(int argc, char **argv) {
     auto start = std::chrono::high_resolution_clock::now();
     auto last = std::chrono::high_resolution_clock::now();
 
+//    ProfilerStart("nes.prof");
+#if 0
+    PCM *m = PCM::getInstance();
+//    m->resetPMU();
+    m->allowMultipleInstances();
+    m->program(PCM::DEFAULT_EVENTS, NULL);
+
+    if (m->program() != PCM::Success) {
+        printf("Exiting due to PCM initialization failure\n");
+        return -1;
+    }
+
+    int *meh = new int[10]{
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 0
+    };
+
+    CoreCounterState before = getCoreCounterState(0);
+
+    auto timestamp1 = rdtsc();
+    for (int a = 0; a < 1; a++) {
+        for (int i = 0; i < 10; i++) {
+            meh[i] = i;
+        }
+    }
+    auto duration = rdtsc() - timestamp1;
+
+    auto timestamp3 = rdtsc();
+    CoreCounterState after = getCoreCounterState(0);
+    auto overhead = rdtsc() - timestamp3;
+
+    printf("Instructions per Clock: %.3f\n", getIPC(before, after));
+    printf("CPU Cycles: %llu\n", getCycles(before, after) - overhead);
+    printf("PCM Overhead: %llu\n", overhead);
+    printf("CPU Cycles (rdtsc): %llu\n", duration);
+    printf("L3 cache hit ratio: %.3f\n", getL3CacheHitRatio(before, after));
+    printf("L2 cache hit ratio: %.3f\n", getL2CacheHitRatio(before, after));
+    printf("Wasted cycles caused by L3 misses: %.3f\n", getCyclesLostDueL3CacheMisses(before, after));
+//    printf("Bytes read from DRAM: %llu\n", getBytesReadFromMC(before, after));
+
+    m->cleanup();
+#endif
+
     bool alive = true;
     while (alive) {
         // grab next instruction
@@ -145,6 +208,7 @@ int main(int argc, char **argv) {
             auto span = now - last;
             last = now;
 
+            /*
             // throttle to around 60fps
             const std::chrono::milliseconds &goal = 16ms;
             auto gap = std::chrono::duration_cast<std::chrono::milliseconds>(goal - span);
@@ -154,8 +218,11 @@ int main(int argc, char **argv) {
                 auto actual_delay = std::chrono::high_resolution_clock::now() - now;
                 PrintInfo("throttling ppu: wanted=%d msec got=%d msec", gap, std::chrono::duration_cast<std::chrono::milliseconds>(actual_delay));
             }
+            */
         }
     }
+
+//    ProfilerStop();
 
     auto stop = clock_type::now();
     auto span = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count();
@@ -190,7 +257,7 @@ Cartridge loadCartridge() {
 
     /////////////////////////////////////////////////
 // mapper=0 aka NROM
-    Cartridge rom = loader.loadCartridge("roms/supermariobros.nes"); // played through at least one level
+    Cartridge rom = loader.loadCartridge("../../roms/supermariobros.nes"); // played through at least one level
 //    Cartridge rom = loader.loadCartridge("../roms/donkey_kong.nes"); // draws zeroes instead of sprites
 //    rom.info.memoryMapperId = 0;
 
@@ -235,75 +302,77 @@ void printLibVersions() {
 void collectInputEvents(Joypad *joypad, bool *alive) {
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
-                switch (e.type) {
-                    case SDL_KEYDOWN: {
-                        switch (e.key.keysym.sym) {
-                            case SDLK_SPACE:
-                                joypad->buttonDown(Select);
-                                break;
-                            case SDLK_c:
-                                joypad->buttonDown(Start);
-                                break;
-                            case SDLK_RIGHT:
-                                joypad->buttonDown(Right);
-                                break;
-                            case SDLK_LEFT:
-                                joypad->buttonDown(Left);
-                                break;
-                            case SDLK_UP:
-                                joypad->buttonDown(Up);
-                                break;
-                            case SDLK_DOWN:
-                                joypad->buttonDown(Down);
-                                break;
-                            case SDLK_a:
-                                joypad->buttonDown(A);
-                                break;
-                            case SDLK_b:
-                                joypad->buttonDown(B);
-                                break;
-                            case SDLK_q:
-                                *alive = false;
-                                break;
-                            case SDLK_d:
-                                if(Loggy::Enabled == Loggy::INFO) {
-                                    printf("Debug output enabled\n");
-                                    Loggy::Enabled = Loggy::DEBUG;
-                                } else {
-                                    printf("Debug output disabled\n");
-                                    Loggy::Enabled = Loggy::INFO;
-                                }
+        switch (e.type) {
+            case SDL_KEYDOWN: {
+                switch (e.key.keysym.sym) {
+                    case SDLK_SPACE:
+                        joypad->buttonDown(Select);
+                        break;
+                    case SDLK_c:
+                        joypad->buttonDown(Start);
+                        break;
+                    case SDLK_RIGHT:
+                        joypad->buttonDown(Right);
+                        break;
+                    case SDLK_LEFT:
+                        joypad->buttonDown(Left);
+                        break;
+                    case SDLK_UP:
+                        joypad->buttonDown(Up);
+                        break;
+                    case SDLK_DOWN:
+                        joypad->buttonDown(Down);
+                        break;
+                    case SDLK_a:
+                        joypad->buttonDown(A);
+                        break;
+                    case SDLK_b:
+                        joypad->buttonDown(B);
+                        break;
+                    case SDLK_q:
+                        *alive = false;
+                        break;
+                    case SDLK_d:
+                        if (Loggy::Enabled == Loggy::INFO) {
+                            printf("Debug output enabled\n");
+                            Loggy::Enabled = Loggy::DEBUG;
+                        } else {
+                            printf("Debug output disabled\n");
+                            Loggy::Enabled = Loggy::INFO;
                         }
-                    } break;
-                    case SDL_KEYUP: {
-                        switch (e.key.keysym.sym) {
-                            case SDLK_SPACE:
-                                joypad->buttonUp(Select);
-                                break;
-                            case SDLK_c:
-                                joypad->buttonUp(Start);
-                                break;
-                            case SDLK_RIGHT:
-                                joypad->buttonUp(Right);
-                                break;
-                            case SDLK_LEFT:
-                                joypad->buttonUp(Left);
-                                break;
-                            case SDLK_UP:
-                                joypad->buttonUp(Up);
-                                break;
-                            case SDLK_DOWN:
-                                joypad->buttonUp(Down);
-                                break;
-                            case SDLK_a:
-                                joypad->buttonUp(A);
-                                break;
-                            case SDLK_b:
-                                joypad->buttonUp(B);
-                                break;
-                        }
-                    } break;
                 }
             }
+                break;
+            case SDL_KEYUP: {
+                switch (e.key.keysym.sym) {
+                    case SDLK_SPACE:
+                        joypad->buttonUp(Select);
+                        break;
+                    case SDLK_c:
+                        joypad->buttonUp(Start);
+                        break;
+                    case SDLK_RIGHT:
+                        joypad->buttonUp(Right);
+                        break;
+                    case SDLK_LEFT:
+                        joypad->buttonUp(Left);
+                        break;
+                    case SDLK_UP:
+                        joypad->buttonUp(Up);
+                        break;
+                    case SDLK_DOWN:
+                        joypad->buttonUp(Down);
+                        break;
+                    case SDLK_a:
+                        joypad->buttonUp(A);
+                        break;
+                    case SDLK_b:
+                        joypad->buttonUp(B);
+                        break;
+                }
+            }
+                break;
+        }
+    }
 }
 

@@ -46,7 +46,7 @@ GUI::GUI(Raster *raster)
 
     showEnhancedPPU = false;
     showDebuggerPPU = true;
-    showDebuggerAPU = true;
+    showDebuggerAPU = false;
 
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
         PrintError("SDL_Init failed: %s", SDL_GetError());
