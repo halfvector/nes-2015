@@ -1,0 +1,1 @@
+(cd out\build\x64-Debug && conan install ../../../ -s compiler.version=15)
