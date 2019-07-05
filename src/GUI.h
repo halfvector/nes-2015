@@ -2,8 +2,7 @@
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
-#include <OpenGL/gl3.h>
-#include <OpenGL/gl3ext.h>
+#include <GL/glew.h>
 #include "Platform.h"
 #include "PPU.h"
 #include <map>

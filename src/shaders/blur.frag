@@ -13,7 +13,7 @@ const float weight[] = float[] (0.198596,0.175713,0.121703,0.065984,0.028002,0.0
 
 void main()
 {
-    vec2 tex_offset = 1.0 / textureSize(texSampler, 0);
+    vec2 tex_offset = 0.2 / textureSize(texSampler, 0);
     vec2 uv = inTexCoord;
     uv.y = 1 - uv.y;
 

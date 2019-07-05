@@ -29,6 +29,7 @@ Loggy::simplifyFunctionName(const char *name, char *shorter, size_t maxLength) {
     snprintf(shorter, maxLength, "%s%.*s%s(); ", prefix, int(end - start), start, postfix);
 }
 
+
 void
 Loggy::println(const char *fmt, ...) {
     if (Enabled > type) {

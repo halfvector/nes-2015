@@ -5,7 +5,8 @@
 const unsigned int PRG_ROM_PAGE_SIZE = 0x4000;
 const unsigned int CHR_ROM_PAGE_SIZE = 0x2000;
 
-struct __attribute__((packed)) RomHeader {
+#pragma pack(push, 1)
+struct RomHeader {
     uint8_t signature[4];
     uint8_t numPrgPages;
     uint8_t numChrPages;
@@ -14,6 +15,7 @@ struct __attribute__((packed)) RomHeader {
 
     uint8_t reserved[8];
 };
+#pragma pack(pop)
 
 enum eMirroringType {
     VERTICAL_MIRRORING, HORIZONTAL_MIRRORING

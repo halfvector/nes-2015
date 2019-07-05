@@ -272,7 +272,7 @@ MemoryIO::MemoryIO(PPU *ppu, Joypad *joypad, Audio *apu)
 
 class MemoryIOPortException : public ExceptionBase<MemoryIOPortException> {
 public:
-    MemoryIOPortException(const char* str)
+    MemoryIOPortException(const char *str)
             : ExceptionBase(str) {}
 };
 
@@ -330,7 +330,7 @@ MemoryIO::write(tCPU::word address, tCPU::byte value) {
             MemoryIOHandler<0x4003>::write(apu, value);
             break;
 
-        // Audio - square waveform channel 2
+            // Audio - square waveform channel 2
         case 0x4004:
             MemoryIOHandler<0x4004>::write(apu, value);
             break;
@@ -376,8 +376,9 @@ MemoryIO::write(tCPU::word address, tCPU::byte value) {
             MemoryIOHandler<0x400F>::write(apu, value);
             break;
 
-        case 0x4010 ... 0x4010:
-        case 0x4012 ... 0x4013:
+        case 0x4010:
+        case 0x4012:
+        case 0x4013:
 //            PrintUnimplementedIO("Skipping Unimplemented I/O Port: APU $%04X - APU", address);
             break;
 

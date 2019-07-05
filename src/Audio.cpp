@@ -6,7 +6,7 @@
 #include <fftw3.h>
 #include <algorithm>
 
-#define AUDIO_ENABLED true
+#define AUDIO_ENABLED false
 
 /**
  * References:
@@ -222,8 +222,8 @@ Audio::Audio(Raster *raster) {
     SDL_AudioSpec spec = {
             .freq = 44100,
             .format = AUDIO_U8,
-            .samples = 2048,
             .channels = 1,
+            .samples = 2048,
 
             // functor
 //            .callback = populateFuncPtr,
@@ -601,6 +601,7 @@ void Audio::execute(int cpuCycles) {
         const int writeSize = 441; // 10 msec worth of samples @ 44.1khz
 
         if (bufferWriteIdx >= writeSize) {
+			#if AUDIO_ENABLED
             int queued = SDL_GetQueuedAudioSize(1);
 
 //            PrintApu("Soundcard has %d bytes queued. sampleInterval = %d", queued, sampleInterval);
@@ -627,9 +628,10 @@ void Audio::execute(int cpuCycles) {
                     std::this_thread::sleep_for(std::chrono::milliseconds(delay));
                     auto actual_sleep = std::chrono::duration_cast<std::chrono::milliseconds>(
                             std::chrono::high_resolution_clock::now() - now);
-//                    PrintApu("throttling apu: wanted=%d msec got=%d msec", delay, actual_sleep);
+                    PrintApu("throttling apu: wanted=%d msec got=%d msec (queued=%d samples)", delay, actual_sleep, queued);
                 }
             }
+			#endif
 
             bufferWriteIdx -= writeSize;
         }

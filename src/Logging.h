@@ -1,6 +1,11 @@
 #pragma once
 
 #include <iostream>
+#ifdef _WIN32
+	#include <cassert> // assert()
+	#include <stdarg.h> // va_start()
+	#define __PRETTY_FUNCTION__ __FUNCSIG__
+#endif
 
 struct Loggy {
     enum Type {

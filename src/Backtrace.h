@@ -1,3 +1,4 @@
+#ifndef _WIN32
 #pragma once
 
 #include <cstring>
@@ -10,3 +11,4 @@ public:
     static void demangle(const char* mangled, char* unmangled, size_t bufferSize);
     static void* getCallerAddress(ucontext_t *uc);
 };
+#endif
