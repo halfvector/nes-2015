@@ -7,7 +7,13 @@ glew/2.1.0@bincrafters/stable
 
 [options]
 sdl2:shared=False
+glew:shared=False
 #sdl2_ttf:shared=False
 
 [generators]
 cmake
+
+# copy all shared libs to bin build folder
+[imports]
+bin, *.dll -> ./bin
+lib, *.dylib* -> ./bin

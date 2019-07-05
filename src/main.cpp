@@ -190,7 +190,7 @@ Cartridge loadCartridge() {
 
     /////////////////////////////////////////////////
 // mapper=0 aka NROM
-    Cartridge rom = loader.loadCartridge("../../../../roms/supermariobros.nes"); // played through at least one level
+    Cartridge rom = loader.loadCartridge("roms/supermariobros.nes"); // played through at least one level
 //    Cartridge rom = loader.loadCartridge("../roms/donkey_kong.nes"); // draws zeroes instead of sprites
 //    rom.info.memoryMapperId = 0;
 

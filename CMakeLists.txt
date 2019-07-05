@@ -12,7 +12,7 @@ else()
     message(WARNING "The file conanbuildinfo.cmake doesn't exist, you have to run conan install first")
 endif()
 
-if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 	set(CMAKE_CXX_STANDARD 17)
 	# enable C++ x14
 	#add_definitions(-std=c++1y)
@@ -51,31 +51,28 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 	set(CMAKE_CXX_STANDARD 17)
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-function -Wno-unused-variable")
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2 -Wno-pragma-pack -Wno-missing-braces -D_CRT_SECURE_NO_WARNINGS /GS- /O2 /Ob2")
-endif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+endif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+
+find_package(OpenGL REQUIRED)
+find_package(GLEW 2.1 REQUIRED)
+find_package(SDL2 2.0.9 REQUIRED)
 
 file(GLOB SOURCES "src/*.cpp" "src/*.h")
 add_executable(nes ${SOURCES})
 
-find_package(OpenGL REQUIRED)
-find_package(GLEW 2.0 REQUIRED)
-find_package(SDL2 2.0.9 REQUIRED)
+# copy non-comiling dependencies
+add_custom_command(TARGET nes POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory
+		${CMAKE_SOURCE_DIR}/src/shaders
+		${CMAKE_CURRENT_BINARY_DIR}/bin/shaders)
 
-# add dependency on shaders to ensure they are included in every build/run
-#file(GLOB_RECURSE GLSL_SOURCE_FILES
-#        "src/shaders/*.frag"
-#        "src/shaders/*.vert")
+add_custom_command(TARGET nes POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory
+		${CMAKE_SOURCE_DIR}/fonts
+		${CMAKE_CURRENT_BINARY_DIR}/bin/fonts)
 
-#add_custom_target(nes_shaders
-#        COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/src/shaders $<TARGET_FILE_DIR:nes>/shaders
-#        DEPENDS ${GLSL_SOURCE_FILES})
-
-#add_dependencies(nes nes_shaders)
+add_custom_command(TARGET nes POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory
+		${CMAKE_SOURCE_DIR}/roms
+		${CMAKE_CURRENT_BINARY_DIR}/bin/roms)
 
 # conan macro will link with all dependencies
 conan_target_link_libraries(nes)
-target_link_libraries(nes ${OPENGL_LIBRARIES} GLEW::GLEW SDL2)
-
-# copy shaders into build folder (doesn't get called when hitting cmd-r in clion with no code-changes
-#add_custom_command(TARGET nes POST_BUILD
-#        COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/src/shaders $<TARGET_FILE_DIR:nes>/shaders)
-
+target_link_libraries(nes ${CONAN_LIBS})

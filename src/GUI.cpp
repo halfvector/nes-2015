@@ -227,7 +227,7 @@ GUI::GUI(Raster* raster)
         exit(1);
     }
 
-    font = TTF_OpenFont("../../../../fonts/visitor2.ttf", 19);
+    font = TTF_OpenFont("fonts/visitor2.ttf", 19);
     if (font == nullptr) {
         PrintError("Failed to open font: %s", TTF_GetError());
         exit(1);
@@ -470,20 +470,20 @@ GLuint loadShader(GLenum type, const char *shaderName, const char *shaderFilePat
 void checkShaderCompilationError(const char *shaderName, GLuint shaderId);
 
 void GUI::createShaders() {
-    GLuint passthruVertex = loadShader(GL_VERTEX_SHADER, "vertex shader", "../../../../src/shaders/passthru.vert");
-    GLuint passthroughFragment = loadShader(GL_FRAGMENT_SHADER, "fragment shader", "../../../../src/shaders/passthru.frag");
+    GLuint passthruVertex = loadShader(GL_VERTEX_SHADER, "vertex shader", "shaders/passthru.vert");
+    GLuint passthroughFragment = loadShader(GL_FRAGMENT_SHADER, "fragment shader", "shaders/passthru.frag");
     passThruShader = createProgram(passthruVertex, passthroughFragment);
 
-    GLuint gBufferVertex = loadShader(GL_VERTEX_SHADER, "vertex shader", "../../../../src/shaders/create-gbuffer.vert");
-    GLuint gBufferFragment = loadShader(GL_FRAGMENT_SHADER, "fragment shader", "../../../../src/shaders/create-gbuffer.frag");
+    GLuint gBufferVertex = loadShader(GL_VERTEX_SHADER, "vertex shader", "shaders/create-gbuffer.vert");
+    GLuint gBufferFragment = loadShader(GL_FRAGMENT_SHADER, "fragment shader", "shaders/create-gbuffer.frag");
     createGBufferShader = createProgram(gBufferVertex, gBufferFragment);
 
-    GLuint blurVertex = loadShader(GL_VERTEX_SHADER, "vertex shader", "../../../../src/shaders/blur.vert");
-    GLuint blurFragment = loadShader(GL_FRAGMENT_SHADER, "fragment shader", "../../../../src/shaders/blur.frag");
+    GLuint blurVertex = loadShader(GL_VERTEX_SHADER, "vertex shader", "shaders/blur.vert");
+    GLuint blurFragment = loadShader(GL_FRAGMENT_SHADER, "fragment shader", "shaders/blur.frag");
     blurShader = createProgram(blurVertex, blurFragment);
 
-    GLuint composeVertex = loadShader(GL_VERTEX_SHADER, "vertex shader", "../../../../src/shaders/compose.vert");
-    GLuint composeFragment = loadShader(GL_FRAGMENT_SHADER, "fragment shader", "../../../../src/shaders/compose.frag");
+    GLuint composeVertex = loadShader(GL_VERTEX_SHADER, "vertex shader", "shaders/compose.vert");
+    GLuint composeFragment = loadShader(GL_FRAGMENT_SHADER, "fragment shader", "shaders/compose.frag");
     composeShader = createProgram(composeVertex, composeFragment);
 
     GLint numAttributes;
