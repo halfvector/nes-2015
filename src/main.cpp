@@ -30,7 +30,7 @@ Cartridge loadCartridge();
 
 int main(int argc, char **argv) {
     //Backtrace::install();
-    printLibVersions();
+//    printLibVersions();
 
     Cartridge rom = loadCartridge();
 
@@ -133,7 +133,7 @@ int main(int argc, char **argv) {
 //        }
 
         if (ppu->enteredVBlank()) {
-            if(gui->showDebuggerPPU) {
+            if (gui->showDebuggerPPU) {
                 ppu->renderDebug();
             }
             gui->render();
@@ -148,7 +148,7 @@ int main(int argc, char **argv) {
             // throttle to around 60fps
             const std::chrono::milliseconds &goal = 16ms;
             auto gap = std::chrono::duration_cast<std::chrono::milliseconds>(goal - span);
-            if(gap > 0ms) {
+            if (gap > 0ms) {
                 now = std::chrono::high_resolution_clock::now();
                 std::this_thread::sleep_for(gap);
                 auto actual_delay = std::chrono::high_resolution_clock::now() - now;
@@ -167,7 +167,7 @@ int main(int argc, char **argv) {
     delete gui;
 
     audio->close();
-	return 0;
+    return 0;
 }
 
 Cartridge loadCartridge() {
@@ -235,75 +235,77 @@ void printLibVersions() {
 void collectInputEvents(Joypad *joypad, bool *alive) {
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
-                switch (e.type) {
-                    case SDL_KEYDOWN: {
-                        switch (e.key.keysym.sym) {
-                            case SDLK_SPACE:
-                                joypad->buttonDown(Select);
-                                break;
-                            case SDLK_c:
-                                joypad->buttonDown(Start);
-                                break;
-                            case SDLK_RIGHT:
-                                joypad->buttonDown(Right);
-                                break;
-                            case SDLK_LEFT:
-                                joypad->buttonDown(Left);
-                                break;
-                            case SDLK_UP:
-                                joypad->buttonDown(Up);
-                                break;
-                            case SDLK_DOWN:
-                                joypad->buttonDown(Down);
-                                break;
-                            case SDLK_a:
-                                joypad->buttonDown(A);
-                                break;
-                            case SDLK_b:
-                                joypad->buttonDown(B);
-                                break;
-                            case SDLK_q:
-                                *alive = false;
-                                break;
-                            case SDLK_d:
-                                if(Loggy::Enabled == Loggy::INFO) {
-                                    printf("Debug output enabled\n");
-                                    Loggy::Enabled = Loggy::DEBUG;
-                                } else {
-                                    printf("Debug output disabled\n");
-                                    Loggy::Enabled = Loggy::INFO;
-                                }
+        switch (e.type) {
+            case SDL_KEYDOWN: {
+                switch (e.key.keysym.sym) {
+                    case SDLK_SPACE:
+                        joypad->buttonDown(Select);
+                        break;
+                    case SDLK_c:
+                        joypad->buttonDown(Start);
+                        break;
+                    case SDLK_RIGHT:
+                        joypad->buttonDown(Right);
+                        break;
+                    case SDLK_LEFT:
+                        joypad->buttonDown(Left);
+                        break;
+                    case SDLK_UP:
+                        joypad->buttonDown(Up);
+                        break;
+                    case SDLK_DOWN:
+                        joypad->buttonDown(Down);
+                        break;
+                    case SDLK_a:
+                        joypad->buttonDown(A);
+                        break;
+                    case SDLK_b:
+                        joypad->buttonDown(B);
+                        break;
+                    case SDLK_q:
+                        *alive = false;
+                        break;
+                    case SDLK_d:
+                        if (Loggy::Enabled == Loggy::INFO) {
+                            printf("Debug output enabled\n");
+                            Loggy::Enabled = Loggy::DEBUG;
+                        } else {
+                            printf("Debug output disabled\n");
+                            Loggy::Enabled = Loggy::INFO;
                         }
-                    } break;
-                    case SDL_KEYUP: {
-                        switch (e.key.keysym.sym) {
-                            case SDLK_SPACE:
-                                joypad->buttonUp(Select);
-                                break;
-                            case SDLK_c:
-                                joypad->buttonUp(Start);
-                                break;
-                            case SDLK_RIGHT:
-                                joypad->buttonUp(Right);
-                                break;
-                            case SDLK_LEFT:
-                                joypad->buttonUp(Left);
-                                break;
-                            case SDLK_UP:
-                                joypad->buttonUp(Up);
-                                break;
-                            case SDLK_DOWN:
-                                joypad->buttonUp(Down);
-                                break;
-                            case SDLK_a:
-                                joypad->buttonUp(A);
-                                break;
-                            case SDLK_b:
-                                joypad->buttonUp(B);
-                                break;
-                        }
-                    } break;
                 }
             }
+                break;
+            case SDL_KEYUP: {
+                switch (e.key.keysym.sym) {
+                    case SDLK_SPACE:
+                        joypad->buttonUp(Select);
+                        break;
+                    case SDLK_c:
+                        joypad->buttonUp(Start);
+                        break;
+                    case SDLK_RIGHT:
+                        joypad->buttonUp(Right);
+                        break;
+                    case SDLK_LEFT:
+                        joypad->buttonUp(Left);
+                        break;
+                    case SDLK_UP:
+                        joypad->buttonUp(Up);
+                        break;
+                    case SDLK_DOWN:
+                        joypad->buttonUp(Down);
+                        break;
+                    case SDLK_a:
+                        joypad->buttonUp(A);
+                        break;
+                    case SDLK_b:
+                        joypad->buttonUp(B);
+                        break;
+                }
+            }
+                break;
+        }
+    }
 }
 

@@ -14,6 +14,11 @@ endif()
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 	set(CMAKE_CXX_STANDARD 17)
+
+	# enable optimal config for valgrind
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O0 -fno-omit-frame-pointer -g -glldb")
+	# end of valgrind config
+
 	# enable C++ x14
 	#add_definitions(-std=c++1y)
 	#TARGET_COMPILE_OPTIONS(${BII_main_TARGET} INTERFACE "-std=c++1y")
@@ -27,10 +32,10 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 	# generate complete debug type info, tune for GDB (-ggdb) or LLDB (-glldb)
 	# enable address sanitization to easily catch buffer overflows and heap corruptions
 	# -O1 optimizations are compatible with address-sanitizer
-	#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O1 -fno-omit-frame-pointer -g -glldb -fsanitize=address")
+#	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O1 -fno-omit-frame-pointer -g -glldb -fsanitize=address")
 
 	# enable speed optimizations
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2")
+#	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2")
 
 	# generate optimization report
 	#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Rpass=inline -fsave-optimization-record")

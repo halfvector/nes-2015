@@ -41,3 +41,14 @@ Compatibility Goals:
 * Primary: Super Mario Bros & Donkey Kong
 * Secondary: other 32kB ROM + 8kB VROM games
 * Stretch: Official Nintendo memory mapper powered games
+
+# Using valgrind/cachegrind
+## Run cachegrind to generate L1/L3 cache miss ratios, and enable branch miss calculation as well.
+```
+valgrind --tool=cachegrind --branch-sim=yes --cachegrind-out-file=nes.grind ./nes
+```
+
+## Output L1/L3/branch stats per line of source code
+```
+cg_annotate nes.grind absolute_path.cpp --show-percs=yes --show=D1mr,D1mw,DLmr,DLmw,Bc,Bcm,Bi,Bim
+```
