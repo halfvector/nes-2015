@@ -26,6 +26,8 @@ private:
     int prgBank;
     int prgBankMask;
 
+    int numPrgBanks;
+
     // MMC1
     int control, chrBank0, chrBank1, shiftRegister;
     int prgBankMode, chrBankMode, mirroring;

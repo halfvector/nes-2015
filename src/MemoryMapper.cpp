@@ -10,6 +10,8 @@ MemoryMapper::MemoryMapper(unsigned char *ppuRam, unsigned char *cpuRam) {
     chrBank0 = 0;
     chrBank1 = 0;
     shiftRegister = 0x10; // 5th bit set
+    control = 0xC;
+    prgBankMode = 0x3;
 }
 
 void
@@ -27,6 +29,7 @@ MemoryMapper::loadRom(Cartridge &rom) {
 
     PrintInfo("Initializing Memory Mapper #%d", rom.info.memoryMapperId);
     memoryMapperId = rom.info.memoryMapperId;
+    numPrgBanks = rom.header.numPrgPages;
 
     switch(memoryMapperId) {
         case MEMORY_MAPPER_UNROM: {
@@ -146,6 +149,10 @@ MemoryMapper::writeByteCPUMemory(tCPU::word address, tCPU::byte value) {
                     // writing a value with bit 7 set, clears shift register to default state
                     shiftRegister = 0x10;
                     PrintInfo("Reset shift register");
+
+                    // reset prg rom bank mode
+                    control |= 0xC;
+                    prgBankMode = 0x3;
                 } else {
                     // writing a value with bit 7 clear, shifts bit 0 into shift register
                     bool commit = (shiftRegister & 0x1); // has register has been shifted 4 times?
@@ -196,12 +203,14 @@ MemoryMapper::writeByteCPUMemory(tCPU::word address, tCPU::byte value) {
                             } break;
                             case 0xE000 ... 0xFFFF: {
                                 prgBank = shiftRegister;
-                                PrintInfo("MMC1: PRG bank = 0x%02X", shiftRegister);
-                                if(prgBank & 0x10) {
-                                    PrintInfo("MMC1: PRG RAM chip disabled");
-                                } else {
-                                    PrintInfo("MMC1: PRG RAM chip enabled");
-                                }
+                                prgBank &= ~0x10; // remove 5th bit
+//                                PrintInfo("MMC1: PRG bank = 0x%02X",prgBank);
+//                                if(shiftRegister & 0x10) {
+//                                    PrintInfo("MMC1: PRG RAM chip disabled");
+//                                } else {
+//                                    PrintInfo("MMC1: PRG RAM chip enabled");
+//                                }
+
                             } break;
                             default:
                                 PrintError("Unexpected address: %x with value %d", address, value);
@@ -252,11 +261,29 @@ MemoryMapper::readByteCPUMemory(tCPU::word address) {
 
         case MEMORY_MAPPER_SXROM: {
             // switch between four 16KiB PRG banks for the first ROM bank
-            if(address >= 0x8000 && address < 0xC000) {
-                auto relative = address - 0x8000;
-                auto adjusted = relative + PRG_ROM_OFFSET + prgBank * PRG_ROM_PAGE_SIZE;
-                auto value = CPU_RAM[adjusted];
-                return value;
+            if(prgBankMode <= 1) {
+                int bigPrgBank = prgBank & ~0x1; // drop low bit
+                PrintInfo("MMC1: PRG ROM bank mode = switch 32KB at $8000 (%d)", bigPrgBank);
+                if(address >= 0x8000 && address < 0xFFFF) {
+                    auto relative = address - 0x8000;
+                    auto adjusted = relative + PRG_ROM_OFFSET + bigPrgBank * PRG_ROM_PAGE_SIZE * 2;
+                    auto value = CPU_RAM[adjusted];
+                    return value;
+                }
+            } else if (prgBankMode == 2) {
+                PrintInfo("MMC1: PRG ROM bank mode = fix first bank at $8000 and switch 16KB bank at $C000");
+            } else if (prgBankMode == 3) {
+                if(address >= 0x8000 && address < 0xC000) {
+                    auto relative = address - 0x8000;
+                    auto adjusted = relative + PRG_ROM_OFFSET + prgBank * PRG_ROM_PAGE_SIZE;
+                    auto value = CPU_RAM[adjusted];
+                    return value;
+                } else if(address >= 0xC000) {
+                    auto relative = address - 0xC000;
+                    auto adjusted = relative + PRG_ROM_OFFSET + (numPrgBanks-1) * PRG_ROM_PAGE_SIZE;
+                    auto value = CPU_RAM[adjusted];
+                    return value;
+                }
             }
         } break;
 
