@@ -6,7 +6,7 @@
 #include <fftw3.h>
 #include <algorithm>
 
-#define AUDIO_ENABLED false
+#define AUDIO_ENABLED true
 
 /**
  * References:

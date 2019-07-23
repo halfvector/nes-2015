@@ -23,10 +23,10 @@ struct Loggy {
     void println(const char *fmt, ...);
 };
 
-#define LOG_DBG false
-#define LOG_INFO true
-#define LOG_WARNING true
-#define LOG_ERROR true
+#define LOG_DBG Loggy::Enabled <= Loggy::DEBUG
+#define LOG_INFO Loggy::Enabled <= Loggy::INFO
+#define LOG_WARNING Loggy::Enabled <= Loggy::WARNING
+#define LOG_ERROR Loggy::Enabled <= Loggy::ERROR
 
 #define PrintDbg               if(LOG_DBG) Loggy::log(__PRETTY_FUNCTION__, Loggy::DEBUG).println
 #define PrintInfo              if(LOG_INFO) Loggy::log(__PRETTY_FUNCTION__, Loggy::INFO).println

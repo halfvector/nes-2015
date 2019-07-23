@@ -1,5 +1,4 @@
 #include "Joypad.h"
-#include "Logging.h"
 
 tCPU::byte
 Joypad::getStatePlayerOne() {

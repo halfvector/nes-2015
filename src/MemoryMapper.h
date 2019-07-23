@@ -3,6 +3,8 @@
 #include "Platform.h"
 #include "Cartridge.h"
 
+static const int PRG_ROM_OFFSET = 0x10000;
+
 class MemoryMapper {
 public:
     MemoryMapper(unsigned char *ppuRam, unsigned char *cpuRam);
@@ -23,4 +25,8 @@ private:
     int chrBank;
     int prgBank;
     int prgBankMask;
+
+    // MMC1
+    int control, chrBank0, chrBank1, shiftRegister;
+    int prgBankMode, chrBankMode, mirroring;
 };

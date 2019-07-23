@@ -7,23 +7,25 @@ MemoryMapper::MemoryMapper(unsigned char *ppuRam, unsigned char *cpuRam) {
     this->PRG_BANKS = new unsigned char[0x20000]; // 128KiB (ie megaman1)
     chrBank = 0;
     prgBank = 0;
+    chrBank0 = 0;
+    chrBank1 = 0;
+    shiftRegister = 0x10; // 5th bit set
 }
 
 void
 MemoryMapper::loadRom(Cartridge &rom) {
-    PrintInfo("Initializing Memory Mapper #%d", rom.info.memoryMapperId);
-
     for (uint8_t i = 0; i < rom.header.numChrPages; i++) {
-        PrintInfo("  Writing chr page %d to CPU @ 0x%X", i, 0x8000 + CHR_ROM_PAGE_SIZE * i);
+        PrintInfo("  Writing chr page %d to PPU @ 0x%X", i, 0x8000 + CHR_ROM_PAGE_SIZE * i);
         memcpy(PPU_RAM + 0x8000 + CHR_ROM_PAGE_SIZE * i, rom.characterDataPages[i].buffer, CHR_ROM_PAGE_SIZE);
     }
 
     for (uint8_t i = 0; i < rom.header.numPrgPages; i++) {
-        PrintInfo("  Writing prg page %d to PPU @ 0x%X", i, 0x10000 + PRG_ROM_PAGE_SIZE * i);
-        memcpy(CPU_RAM + 0x10000 + PRG_ROM_PAGE_SIZE * i, rom.programDataPages[i].buffer, PRG_ROM_PAGE_SIZE);
+        PrintInfo("  Writing prg page %d to CPU @ 0x%X", i, PRG_ROM_OFFSET + PRG_ROM_PAGE_SIZE * i);
+        memcpy(CPU_RAM + PRG_ROM_OFFSET + PRG_ROM_PAGE_SIZE * i, rom.programDataPages[i].buffer, PRG_ROM_PAGE_SIZE);
         memcpy(PRG_BANKS + PRG_ROM_PAGE_SIZE * i, rom.programDataPages[i].buffer, PRG_ROM_PAGE_SIZE);
     }
 
+    PrintInfo("Initializing Memory Mapper #%d", rom.info.memoryMapperId);
     memoryMapperId = rom.info.memoryMapperId;
 
     switch(memoryMapperId) {
@@ -38,6 +40,12 @@ MemoryMapper::loadRom(Cartridge &rom) {
             prgBankMask = rom.header.numPrgPages > 4 ? 0x7 : 0x3;
         } break;
 
+        case MEMORY_MAPPER_SXROM: {
+            PrintInfo("Loading last PRG ROM into CPU 0xC000");
+            memcpy(CPU_RAM + 0xC000, rom.programDataPages[rom.header.numPrgPages - 1].buffer, PRG_ROM_PAGE_SIZE);
+            prgBank = rom.header.numPrgPages - 1;
+        } break;
+
         case MEMORY_MAPPER_CNROM: {
             // last bank into second CHR ROM position
             PrintInfo("Loading last CHR ROM into PPU 0x0000");
@@ -48,6 +56,7 @@ MemoryMapper::loadRom(Cartridge &rom) {
 
         default: {
             PrintInfo("Unsupported memory mapper %d", memoryMapperId);
+            exit(1);
         } break;
     }
 }
@@ -64,6 +73,10 @@ MemoryMapper::getEffectivePPUAddress(tCPU::word address) {
 
         case MEMORY_MAPPER_UNROM: {
             // address is unchanged
+        } break;
+
+        case MEMORY_MAPPER_SXROM: {
+
         } break;
 
         case MEMORY_MAPPER_CNROM: {
@@ -127,6 +140,81 @@ MemoryMapper::writeByteCPUMemory(tCPU::word address, tCPU::byte value) {
             }
         } break;
 
+        case MEMORY_MAPPER_SXROM: {
+            if(address >= 0x8000 && address <= 0xFFFF) {
+                if(value & 0x80) {
+                    // writing a value with bit 7 set, clears shift register to default state
+                    shiftRegister = 0x10;
+                    PrintInfo("Reset shift register");
+                } else {
+                    // writing a value with bit 7 clear, shifts bit 0 into shift register
+                    bool commit = (shiftRegister & 0x1); // has register has been shifted 4 times?
+
+                    shiftRegister >>= 1;
+                    shiftRegister |= (value & 0x1) << 4;
+//                    PrintInfo("Wrote to shift register: %d%d%d%d%db (0x%02X)",
+//                             (shiftRegister & 0x10) >> 4, (shiftRegister & 0x08) >> 3, (shiftRegister & 0x04) >> 2, (shiftRegister & 0x02) >> 1,
+//                             shiftRegister & 0x01,
+//                             shiftRegister);
+
+                    if(commit) {
+                        switch(address) {
+                            // bits 14 and 13 select which register to save to
+                            case 0x8000 ... 0x9FFF: {
+                                control = shiftRegister;
+                                PrintInfo("MMC1: Control = 0x%02X", shiftRegister);
+                                prgBankMode = (control >> 2) & 3;
+                                if(prgBankMode <= 1) {
+                                    PrintInfo("MMC1: PRG ROM bank mode = switch 32KB at $8000");
+                                } else if (prgBankMode == 2) {
+                                    PrintInfo("MMC1: PRG ROM bank mode = fix first bank at $8000 and switch 16KB bank at $C000");
+                                } else if (prgBankMode == 3) {
+                                    PrintInfo("MMC1: PRG ROM bank mode = fix last bank at $C000 and switch 16KB bank at $8000");
+                                }
+                                chrBankMode = (control >> 4) & 1;
+                                if(chrBankMode) {
+                                    PrintInfo("MMC1: CHR ROM bank mode = switch 8KB at a time");
+                                } else {
+                                    PrintInfo("MMC1: CHR ROM bank mode = switch two separate 4KB banks");
+                                }
+                                mirroring = (control & 3);
+                                if(mirroring <= 1) {
+                                    PrintInfo("MMC1: mirroring = one-screen, upper bank");
+                                } else if (mirroring == 2) {
+                                    PrintInfo("MMC1: mirroring = vertical");
+                                } else if (mirroring == 3) {
+                                    PrintInfo("MMC1: mirroring = horizontal");
+                                }
+                            } break;
+                            case 0xA000 ... 0xBFFF: {
+                                chrBank0 = shiftRegister;
+                                PrintInfo("MMC1: CHR bank 0 =  0x%02X", shiftRegister);
+                            } break;
+                            case 0xC000 ... 0xDFFF: {
+                                chrBank1 = shiftRegister;
+                                PrintInfo("MMC1: CHR bank 1 =  0x%02X", shiftRegister);
+                            } break;
+                            case 0xE000 ... 0xFFFF: {
+                                prgBank = shiftRegister;
+                                PrintInfo("MMC1: PRG bank = 0x%02X", shiftRegister);
+                                if(prgBank & 0x10) {
+                                    PrintInfo("MMC1: PRG RAM chip disabled");
+                                } else {
+                                    PrintInfo("MMC1: PRG RAM chip enabled");
+                                }
+                            } break;
+                            default:
+                                PrintError("Unexpected address: %x with value %d", address, value);
+                        }
+
+                        shiftRegister = 0x10;
+                    }
+                }
+            } else {
+                CPU_RAM[address] = value;
+            }
+        } break;
+
         case MEMORY_MAPPER_CNROM: {
             if(address >= 0x8000 && address <= 0xFFFF) {
                 auto newBank = value & 0x3; // only lower 2 bits
@@ -156,7 +244,17 @@ MemoryMapper::readByteCPUMemory(tCPU::word address) {
             // switch between four 16KiB PRG banks for the first ROM bank
             if(address < 0xC000) {
                 auto relative = address - 0x8000;
-                auto adjusted = relative + 0x10000 + prgBank * PRG_ROM_PAGE_SIZE;
+                auto adjusted = relative + PRG_ROM_OFFSET + prgBank * PRG_ROM_PAGE_SIZE;
+                auto value = CPU_RAM[adjusted];
+                return value;
+            }
+        } break;
+
+        case MEMORY_MAPPER_SXROM: {
+            // switch between four 16KiB PRG banks for the first ROM bank
+            if(address >= 0x8000 && address < 0xC000) {
+                auto relative = address - 0x8000;
+                auto adjusted = relative + PRG_ROM_OFFSET + prgBank * PRG_ROM_PAGE_SIZE;
                 auto value = CPU_RAM[adjusted];
                 return value;
             }

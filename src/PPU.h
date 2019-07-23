@@ -85,6 +85,7 @@ public:
 
 enum MemoryMappers {
     MEMORY_MAPPER_NROM = 0,
+    MEMORY_MAPPER_SXROM = 1, // MMC1
     MEMORY_MAPPER_UNROM = 2,
     MEMORY_MAPPER_CNROM = 3,
 };

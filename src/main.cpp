@@ -8,14 +8,7 @@
 #include "Joypad.h"
 #include "Audio.h"
 
-#include <iostream>
-#include <typeinfo>
-
 #include <cstdio>
-#include <cstdlib>
-#include <cstring>
-#include <cstdlib>
-//#include <unistd.h>
 #include <thread>
 #include <chrono>
 #include <gperftools/profiler.h>
@@ -196,7 +189,7 @@ int main(int argc, char **argv) {
 //        }
 
         if (ppu->enteredVBlank()) {
-            if(gui->showDebuggerPPU) {
+            if (gui->showDebuggerPPU) {
                 ppu->renderDebug();
             }
             gui->render();
@@ -208,21 +201,17 @@ int main(int argc, char **argv) {
             auto span = now - last;
             last = now;
 
-            /*
             // throttle to around 60fps
             const std::chrono::milliseconds &goal = 16ms;
             auto gap = std::chrono::duration_cast<std::chrono::milliseconds>(goal - span);
-            if(gap > 0ms) {
+            if (gap > 0ms) {
                 now = std::chrono::high_resolution_clock::now();
                 std::this_thread::sleep_for(gap);
                 auto actual_delay = std::chrono::high_resolution_clock::now() - now;
                 PrintInfo("throttling ppu: wanted=%d msec got=%d msec", gap, std::chrono::duration_cast<std::chrono::milliseconds>(actual_delay));
             }
-            */
         }
     }
-
-//    ProfilerStop();
 
     auto stop = clock_type::now();
     auto span = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count();
@@ -234,7 +223,7 @@ int main(int argc, char **argv) {
     delete gui;
 
     audio->close();
-	return 0;
+    return 0;
 }
 
 Cartridge loadCartridge() {
@@ -257,7 +246,7 @@ Cartridge loadCartridge() {
 
     /////////////////////////////////////////////////
 // mapper=0 aka NROM
-    Cartridge rom = loader.loadCartridge("../../roms/supermariobros.nes"); // played through at least one level
+    Cartridge rom = loader.loadCartridge("roms/supermariobros.nes"); // played through at least one level
 //    Cartridge rom = loader.loadCartridge("../roms/donkey_kong.nes"); // draws zeroes instead of sprites
 //    rom.info.memoryMapperId = 0;
 
