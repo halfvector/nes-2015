@@ -133,8 +133,9 @@ struct MemoryAddressResolve<ADDR_MODE_ABSOLUTE_INDEXED_Y> : MemoryAddressResolve
         if ((AbsoluteAddress & 0xFF00) != (EffectiveAddress & 0xFF00)) {    // page boundary crossed?
             PageBoundaryCrossed = true;
 //			PrintNotice( "ADDR_MODE_ABSOLUTE_INDEXED_Y; Page Boundary Crossed: $%04X + $%02X -> $%04X", AbsoluteAddress, g_Registers.X, EffectiveAddress );
-        } else
+        } else {
             PageBoundaryCrossed = false;
+        }
 
         NumOfCalls++;
 
@@ -151,23 +152,25 @@ struct MemoryAddressResolve<ADDR_MODE_INDIRECT_INDEXED> : MemoryAddressResolveBa
         // the zeropage 8bit address contains the full 16bit address
         tCPU::word ZeroPageAddress = ctx->mem->readByte(ctx->registers->LastPC + 1);
 
-        // fetch the 16bit address from zeropage address stored in the operand
-        tCPU::word IndirectAddress = ctx->mem->readWord(ZeroPageAddress);
+        // fetch the 16bit address from address
+        tCPU::word lowByte = ctx->mem->readByte(ZeroPageAddress);
+        tCPU::word highByte = ctx->mem->readByte((ZeroPageAddress + 1) % 256);
+        tCPU::word IndirectAddress = ((highByte << 8) & 0xFF00) | lowByte;
 
         // add the indexed offset (from register Y) to calculate the offset address
         tCPU::word IndexedIndirectAddress = IndirectAddress + ctx->registers->Y;
 
-        if ((IndirectAddress & 0xFF00) != (IndexedIndirectAddress & 0xFF00)) {
+        if (ZeroPageAddress == 0xFF) {
             // page boundary crossed
             PageBoundaryCrossed = true;
-//            PrintDbg("ADDR_MODE_INDIRECT_INDEXED; Page Boundary Crossed: $%04X + $%02X -> $%04X")
-//                    % IndirectAddress % ctx->registers->Y % IndexedIndirectAddress;
+//            PrintInfo("ADDR_MODE_INDIRECT_INDEXED; Page Boundary Crossed: $%04X + $%02X = $%04X",
+//                     IndirectAddress, ctx->registers->Y, IndexedIndirectAddress);
         } else {
             PageBoundaryCrossed = false;
         }
 
-//		PrintDbg("ADDR_MODE_INDIRECT_INDEXED; ZPA: $%04X, IA: $%04X, IIA: $%04X")
-//            % ZeroPageAddress % IndirectAddress % IndexedIndirectAddress;
+//        PrintInfo("ADDR_MODE_INDIRECT_INDEXED; ($%04X), $%04X = $%04X + $%04X = $%04X",
+//                  ZeroPageAddress, ctx->registers->Y, IndirectAddress, ctx->registers->Y, IndexedIndirectAddress);
 
         NumOfCalls++;
 
@@ -224,26 +227,27 @@ struct MemoryAddressResolve<ADDR_MODE_INDEXED_INDIRECT> : MemoryAddressResolveBa
 
         // add the indexed offset (from register X) to calculate
         // the zeropage 8bit address that contains the full 16bit address
-        tCPU::word IndexedIndirectAddress = ZeroPageAddress + ctx->registers->X;
+        tCPU::word IndexedAddress = ZeroPageAddress + ctx->registers->X;
 
-        // fetch the 16bit address from zeropage address stored in the operand
-        tCPU::word IndirectAddress = ctx->mem->readWord(IndexedIndirectAddress);
+        // fetch the 16bit address from indexed address
+        tCPU::word lowByte = ctx->mem->readByte(IndexedAddress % 256);
+        tCPU::word highByte = ctx->mem->readByte((IndexedAddress + 1) % 256);
+        tCPU::word IndexedIndirectAddress = ((highByte << 8) & 0xFF00) | lowByte;
 
-        if ((IndirectAddress & 0xFF00) != (IndexedIndirectAddress & 0xFF00)) {
+        if ((IndexedAddress & 0xFF00) != ((IndexedAddress+1) & 0xFF00)) {
             // page boundary crossed
             PageBoundaryCrossed = true;
-//            PrintDbg("ADDR_MODE_INDIRECT_INDEXED; Page Boundary Crossed: $%04X + $%02X -> $%04X")
-//                    % IndirectAddress % ctx->registers->Y % IndexedIndirectAddress;
+//            PrintInfo("ADDR_MODE_INDEXED_INDIRECT; Page Boundary Crossed: ($%04X, $%02X) -> $%04X",
+//                      IndexedAddress, ctx->registers->Y, IndexedIndirectAddress);
         } else {
             PageBoundaryCrossed = false;
         }
 
-//        PrintDbg("ADDR_MODE_INDIRECT_INDEXED; ZPA: $%04X, IA: $%04X, IIA: $%04X")
-//                % ZeroPageAddress % IndirectAddress % IndexedIndirectAddress;
+//        PrintInfo("ADDR_MODE_INDEXED_INDIRECT; ZeroPageAddress: $%04X, IndexedAddress: $%04X, IndexedIndirectAddress: $%04X",
+//                  ZeroPageAddress, IndexedAddress, IndexedIndirectAddress);
 
         NumOfCalls++;
 
-        // whew :D
         return IndexedIndirectAddress;
     }
 };
