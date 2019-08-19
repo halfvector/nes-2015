@@ -319,8 +319,8 @@ void PPU::renderScanline(const tCPU::word Y) {
 
     unsigned short int tileScroll = vramAddress14bit & 0x1F;
     unsigned short int attributeScroll = (vramAddress14bit & 0x0C00)
-                             | ((vramAddress14bit >> 4) & 0x38)
-                             | ((vramAddress14bit >> 2) & 0x07);
+                                         | ((vramAddress14bit >> 4) & 0x38)
+                                         | ((vramAddress14bit >> 2) & 0x07);
 
     attributeScroll = 0; // ignoring attribute scroll from vram, using tile instead
 
@@ -722,8 +722,13 @@ PPU::GetEffectiveAddress(tCPU::word address) {
         int nametableId = floor((address - 0x2000) / 0x400);
         int offset = address % 0x400;
 
+        if (this->mapper->supportsMirroringMode()) {
+            settings.mirroring = this->mapper->getMirroringMode();
+        }
+
         // nametables mirroring
         if (settings.mirroring == VERTICAL_MIRRORING) {
+            // bottom tables are copies of top tables
             if (nametableId == 2)
                 nametableId = 0;
             if (nametableId == 3)
@@ -731,6 +736,7 @@ PPU::GetEffectiveAddress(tCPU::word address) {
         }
 
         if (settings.mirroring == HORIZONTAL_MIRRORING) {
+            // right tables are copies of left tables
             if (nametableId == 1)
                 nametableId = 0;
             if (nametableId == 3)
@@ -885,9 +891,9 @@ PPU::StartSpriteXferDMA(Memory *memory, tCPU::byte address) {
 
 #ifdef _WIN32
 void memset_pattern4(void* p_destination, const void* p_pattern, size_t p_count) {
-	for (size_t i = 0; i < (p_count / 4); i++) {
-		memcpy((( char*) p_destination) + (i * 4), p_pattern, 4);
-	}
+    for (size_t i = 0; i < (p_count / 4); i++) {
+        memcpy((( char*) p_destination) + (i * 4), p_pattern, 4);
+    }
 }
 #endif
 
@@ -1201,18 +1207,14 @@ void PPU::RenderDebugAttributes(tCPU::word NametableAddress) {
 
     auto attrScrollOffset = 0;//(vramAddress14bit & 0x0C00) | ((vramAddress14bit >> 4) & 0x38) | ((vramAddress14bit >> 2) & 0x07);
 
+    // calculate attribute scroll using tile scroll
+    auto tileScroll = vramAddress14bit & 0xFF;
+    auto attrScroll = tileScroll / 4;
+
     // rows
     for (int i = 0; i < 8; i++) {
         // columns
         for (int j = 0; j < 8; j++) {
-            // 32x32 tile attributes, 2 bits for each 16x16 sub-tile (which in effect is 4 pattern tiles)
-            tCPU::byte attribute = PPU_RAM[NametableAddress + attrScrollOffset + 0x3C0 + i * 8 + j];
-
-            tCPU::byte upperLeft = Bits<0, 1>::Get(attribute);
-            tCPU::byte upperRight = Bits<2, 3>::Get(attribute);
-            tCPU::byte lowerLeft = Bits<4, 5>::Get(attribute);
-            tCPU::byte lowerRight = Bits<6, 7>::Get(attribute);
-
             // destination is a 256x256 grid
             unsigned int dstAddr = (i * 256 + j) * 32;
             tCPU::byte color = 0;
@@ -1221,6 +1223,20 @@ void PPU::RenderDebugAttributes(tCPU::word NametableAddress) {
             for (unsigned int b = 0; b < 2; b++) {
                 for (unsigned int c = 0; c < 2; c++) {
                     unsigned int blockAddr = dstAddr + (b * 256 + c) * 16;
+
+                    auto nametableAddressScroll = NametableAddress;
+
+                    if (j + attrScroll >= 8) {
+                        nametableAddressScroll += 0x400;
+                    }
+
+                    // 32x32 tile attributes, 2 bits for each 16x16 sub-tile (which in effect is 4 pattern tiles)
+                    tCPU::byte attribute = PPU_RAM[nametableAddressScroll + attrScrollOffset + 0x3C0 + i * 8 + (j + attrScroll) % 8];
+
+                    tCPU::byte upperLeft = Bits<0, 1>::Get(attribute);
+                    tCPU::byte upperRight = Bits<2, 3>::Get(attribute);
+                    tCPU::byte lowerLeft = Bits<4, 5>::Get(attribute);
+                    tCPU::byte lowerRight = Bits<6, 7>::Get(attribute);
 
                     if (!b && !c)
                         color = upperLeft;
@@ -1408,9 +1424,9 @@ void PPU::RenderDebugNametables() {
 
 void
 PPU::loadRom(Cartridge &rom) {
-    for (uint8_t i = 0; i < rom.header.numChrPages; i++) {
-        writeChrPage(i, rom.characterDataPages[i].buffer);
-    }
+//    for (uint8_t i = 0; i < rom.header.numChrPages; i++) {
+//        writeChrPage(i, rom.characterDataPages[i].buffer);
+//    }
 
     settings.mirroring = rom.info.mirroring;
 }
