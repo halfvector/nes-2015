@@ -4,16 +4,16 @@
 template<unsigned char BitPlace>
 struct Bit {
     // get a bool that indicates if that bit is set
-    static inline bool IsSet(tCPU::byte Byte) {
-        return (Byte & (1 << BitPlace)) != 0;
-    }
+//    static inline bool IsSet(tCPU::byte Byte) {
+//        return (Byte & (1 << BitPlace)) != 0;
+//    }
 
     static inline tCPU::byte QuickIsSet(tCPU::byte Byte) {
         return (Byte >> BitPlace) & 1;
     }
 
-    static inline tCPU::byte IsSet(int Integer) {
-        return (Integer >> BitPlace) & 1;
+    static inline tCPU::byte IsSet(unsigned int Integer) {
+        return (Integer >> BitPlace) & 1u;
     }
 
     // get just that bit
@@ -114,7 +114,7 @@ struct Registers {
 
     // is bit 7 set
     void setSignBit(uint16_t value) {
-        P.N = (value >> 7) & 0x1;
+        P.N = Bit<7>::IsSet(value);
     }
 
     // value is zero

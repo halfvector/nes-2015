@@ -83,13 +83,6 @@ public:
     tCPU::byte *noiseFFT, *noiseWaveform;
 };
 
-enum MemoryMappers {
-    MEMORY_MAPPER_NROM = 0,
-    MEMORY_MAPPER_SXROM = 1, // MMC1
-    MEMORY_MAPPER_UNROM = 2,
-    MEMORY_MAPPER_CNROM = 3,
-};
-
 class PPU {
 public:
     PPU(Raster *);
@@ -177,7 +170,7 @@ protected:
     // memory
     tCPU::byte *WRAM = new tCPU::byte[2000];
     tCPU::byte *VRAM = new tCPU::byte[2000];
-    tCPU::byte *PPU_RAM = new tCPU::byte[0x10000]; // 65KiB memory. can hold MMC roms.
+    tCPU::byte *PPU_RAM = new tCPU::byte[0x100000]; // 1MiB memory to hold any rom
     tCPU::byte *SPR_RAM = new tCPU::byte[0x100];
 
     Raster *raster;
