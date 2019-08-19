@@ -20,45 +20,6 @@ CPU::load(Cartridge &rom) {
     ctx->mem = memory;
     ctx->registers = registers;
     ctx->stack = stack;
-
-    // write program pages
-    if (rom.header.numPrgPages == 1) {
-        // special case: we have just one program data page (16kB ROM)
-        // duplicate page so reset address will work from page 2
-        writePrgPage(0, rom.programDataPages[0].buffer);
-        writePrgPage(1, rom.programDataPages[0].buffer);
-    } else {
-        // write both pages of the 32kB rom
-        writePrgPage(0, rom.programDataPages[0].buffer);
-        writePrgPage(1, rom.programDataPages[1].buffer);
-    }
-}
-
-/**
- * Write 16kB page to CPU memory
- */
-void
-CPU::writePrgPage(int pageIdx, uint8_t buffer[]) {
-    tCPU::dword pageAddress = 0x8000 + 0x4000 * pageIdx;
-    PrintInfo("Writing 16k PRG ROM to Page %d (@ 0x%08X)", pageIdx, (int) pageAddress);
-
-    memcpy(memory->getByteArray() + pageAddress, buffer, 0x4000);
-}
-
-void
-CPU::run() {
-    reset();
-    PrintCpu("Reset program-counter to 0x%X", registers->PC);
-
-    //while(cpuAlive) {
-    for (int i = 0; i < 30; i++) {
-        // grab next instruction
-        tCPU::byte opCode = memory->readByteDirectly(registers->PC);
-        executeOpcode(opCode);
-
-
-        // ...
-    }
 }
 
 /**
@@ -78,10 +39,6 @@ CPU::executeOpcode(int code) {
         const char *mnemonic = opcodes[code].Mnemonic;
         const char *title = AddressModeTitle[static_cast<uint8_t>(mode)];
 
-        //    sprintf( StatusBuffer, "C:%d Z:%d V:%d N:%d I:%d B:%d S:%d | A:$%02X X:$%02X Y:$%02X",
-        //             g_Registers.P.C, g_Registers.P.Z, g_Registers.P.V, g_Registers.P.N, g_Registers.P.I, g_Registers.P.B, g_Registers.A, g_Registers.X, g_Registers.Y, g_Registers.S );
-
-//        std::string instruction;
         char instruction[256], fmt[256];
         memset(fmt, 0, 256);
 
@@ -112,7 +69,7 @@ CPU::executeOpcode(int code) {
                 (int) numCycles, ctx->registers->P.C, ctx->registers->P.Z, ctx->registers->P.N
         );
 
-        PrintInfo("%-45s %s", instruction, cpuState);
+        PrintDbg("%-45s %s", instruction, cpuState);
     }
 
     // update program counter

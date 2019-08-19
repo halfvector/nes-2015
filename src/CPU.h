@@ -13,7 +13,6 @@ public:
     CPU(Registers*, Memory*, Stack*);
 
     void load(Cartridge&);
-    void run();
 
     void reset();
     int executeOpcode(int code);
@@ -35,10 +34,8 @@ protected:
     Instructions* instructions;
 
     InstructionContext* ctx;
-
-    bool cpuAlive = true;
-    void writePrgPage(int i, uint8_t buffer[]);
 };
 
 static const int RESET_VECTOR_ADDR = 0xFFFC;
 static const int NMI_VECTOR_ADDR = 0xFFFA;
+static const int IRQ_BRK_VECTOR_ADDR = 0xFFFE;

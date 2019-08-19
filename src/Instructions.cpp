@@ -2,6 +2,7 @@
 #include "Instructions.h"
 #include "MemoryOperation.h"
 #include "RegisterOperation.h"
+#include "CPU.h"
 
 Instructions::Instructions(Opcode *opcodes, AddressModeProperties *modes) {
     this->opcodes = opcodes;
@@ -957,7 +958,7 @@ DEFINE_OPCODE(BRK) {
     // disable irq
     ctx->registers->P.I = 1;
 
-    tCPU::word breakAddress = ctx->mem->readWord(0xFFFE);
+    tCPU::word breakAddress = ctx->mem->readWord(IRQ_BRK_VECTOR_ADDR);
 
     PrintCpu("Break Vector; saved next PC=$%04X in stack; setting PC=$%04X", ctx->registers->PC, breakAddress);
 
