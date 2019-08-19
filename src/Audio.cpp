@@ -1,6 +1,7 @@
 
 #include "Audio.h"
 #include "Logging.h"
+#include "Registers.h"
 #include <thread>
 #include <chrono>
 #include <fftw3.h>
@@ -251,23 +252,35 @@ Audio::close() {
 #endif
 }
 
+// $4015
 void
 Audio::setChannelStatus(tCPU::byte status) {
     this->channelStatus = status;
 
-    square1.enabled = ((status >> 0u) & 1u) == 1u;
-    square2.enabled = ((status >> 1u) & 1u) == 1u;
-    triangle.enabled = ((status >> 2u) & 1u) == 1u;
-    noise.enabled = ((status >> 3u) & 1u) == 1u;
-    bool dmc = status & 16;
+    square1.enabled = Bit<0>::IsSet(status);
+    square2.enabled = Bit<1>::IsSet(status);
+    triangle.enabled = Bit<2>::IsSet(status);
+    noise.enabled = Bit<3>::IsSet(status);
+    dmcEnabled = Bit<4>::IsSet(status);
+
+    if (!dmcEnabled) {
+        dmcBytesRemaining = 0;
+    } else {
+        if (dmcBytesRemaining == 0) {
+            // restart sample
+            dmcBytesRemaining = dmcLength;
+        }
+    }
+
+    dmcTriggerIRQ = false;
 
     if (!noise.enabled) {
         noise.lengthCounterLoad = 0;
         noise.lengthCounter = 0;
     }
 
-//    PrintApu("Set channels: Square 1 = %d / Square 2 = %d / Triangle = %d / Noise = %d / DMC = %d",
-//             square1.enabled, square2.enabled, triangle.enabled, noise.enabled, dmc);
+    PrintApu("Set channels (0x%X): Square 1 = %d / Square 2 = %d / Triangle = %d / Noise = %d / DMC = %d",
+             status, square1.enabled, square2.enabled, triangle.enabled, noise.enabled, dmcEnabled);
 
 #if AUDIO_ENABLED
     if (square1.enabled || square2.enabled || triangle.enabled || noise.enabled) {
@@ -280,13 +293,21 @@ Audio::setChannelStatus(tCPU::byte status) {
 
 tCPU::byte
 Audio::getChannelStatus() {
-    return this->channelStatus;
+    // clear frame interrupt flag
+//    frameTriggerIRQ = false;
+
+    tCPU::byte status = 0;
+    status |= Bit<0>::Set(square1.lengthCounter > 0);
+    status |= Bit<1>::Set(square2.lengthCounter > 0);
+    status |= Bit<2>::Set(triangle.lengthCounter > 0);
+    status |= Bit<3>::Set(noise.lengthCounter > 0);
+    status |= Bit<4>::Set(dmcBytesRemaining > 0);
+    status |= Bit<6>::Set(frameTriggerIRQ);
+    status |= Bit<7>::Set(dmcTriggerIRQ);
+
+    return status;
 }
 
-void
-Audio::writeDAC(tCPU::byte value) {
-    PrintDbg("DAC received byte %2X", value);
-}
 
 /**
  * Volume controls the channel's volume.  It's 4 bits long so it can have a value from 0-F.  A volume of 0 silences the channel.  1 is very quiet and F is loud.
@@ -399,10 +420,10 @@ void Audio::setSquare2Sweep(tCPU::byte value) {
 }
 
 void Audio::configureFrameSequencer(tCPU::byte value) {
-    bool mode = value & (1 << 7);
-    bool clearInterrupt = value & (1 << 6);
+    bool mode = Bit<7>::IsSet(value);
+    bool disableIRQ = Bit<6>::IsSet(value);
 
-    PrintDbg("  frame rate mode = %s, clear interrupt = %d", mode ? "5-step" : "4-step", clearInterrupt);
+    PrintApu("  frame rate mode = %s, disable-irq = %d", mode ? "5-step" : "4-step", disableIRQ);
 
     if (mode) {
         this->frameCounterMode = FIVE_STEP;
@@ -410,7 +431,7 @@ void Audio::configureFrameSequencer(tCPU::byte value) {
         this->frameCounterMode = FOUR_STEP;
     }
 
-    this->issueIRQ = !clearInterrupt;
+    this->allowFrameIRQ = !disableIRQ;
 
     // reset length counters
 //    triangle.lengthCounter = 0;
@@ -466,12 +487,12 @@ void Audio::execute(int cpuCycles) {
         // clock triangle channel every CPU cycle
         for (int i = 0; i < apuSampleCycleCounter; i++) {
 //            if (triangle.counterMode == LENGTH_COUNTER && triangle.lengthCounter > 0) {
-                if (triangle.timerValue == 0) {
-                    triangle.dutyStep = (triangle.dutyStep + 1) % 32;
-                    triangle.timerValue = triangle.timerPeriodReloader;
-                } else {
-                    triangle.timerValue--;
-                }
+            if (triangle.timerValue == 0) {
+                triangle.dutyStep = (triangle.dutyStep + 1) % 32;
+                triangle.timerValue = triangle.timerPeriodReloader;
+            } else {
+                triangle.timerValue--;
+            }
 //            }
         }
 
@@ -495,6 +516,30 @@ void Audio::execute(int cpuCycles) {
                 noise.timerPeriod--;
             }
 //            }
+        }
+
+        // advance DMC
+        if (dmcEnabled) {
+            for (int i = 0; i < apuSampleCycleCounter; i += 2) {
+                if (dmcTimerPeriod == 0) {
+                    dmcTimerPeriod = dmcRate;
+
+                    if (dmcBytesRemaining == 0) {
+                        if (dmcLoop) {
+                            dmcBytesRemaining = dmcLength;
+                        } else {
+                            dmcEnabled = false;
+                        }
+                        dmcTriggerIRQ = true;
+//                        PrintApu("DMC IRQ Triggered");
+                    } else {
+                        dmcBytesRemaining--;
+                    }
+
+                } else {
+                    dmcTimerPeriod--;
+                }
+            }
         }
 
         // output square wave
@@ -601,7 +646,7 @@ void Audio::execute(int cpuCycles) {
         const int writeSize = 441; // 10 msec worth of samples @ 44.1khz
 
         if (bufferWriteIdx >= writeSize) {
-			#if AUDIO_ENABLED
+#if AUDIO_ENABLED
             int queued = SDL_GetQueuedAudioSize(1);
 
 //            PrintApu("Soundcard has %d bytes queued. sampleInterval = %d", queued, sampleInterval);
@@ -628,10 +673,10 @@ void Audio::execute(int cpuCycles) {
                     std::this_thread::sleep_for(std::chrono::milliseconds(delay));
                     auto actual_sleep = std::chrono::duration_cast<std::chrono::milliseconds>(
                             std::chrono::high_resolution_clock::now() - now);
-                    PrintApu("throttling apu: wanted=%d msec got=%d msec (queued=%d samples)", delay, actual_sleep, queued);
+//                    PrintApu("throttling apu: wanted=%d msec got=%d msec (queued=%d samples)", delay, actual_sleep, queued);
                 }
             }
-			#endif
+#endif
 
             bufferWriteIdx -= writeSize;
         }
@@ -663,9 +708,10 @@ void Audio::execute(int cpuCycles) {
                     apuCycles = 0;
                     frameSequenceStep = 0;
 
-                    if (issueIRQ) {
-                        issueIRQ = false;
-                        PrintApu("UNIMPLEMENTED: Issue IRQ at last tick of 4 step sequencer");
+                    if (allowFrameIRQ) {
+//                        allowFrameIRQ = false;
+                        frameTriggerIRQ = true;
+                        PrintApu("Triggering frame IRQ");
                     }
                 }
                 break;
@@ -818,4 +864,41 @@ void Audio::setNoiseLength(tCPU::byte value) {
     noise.lengthCounter = noise.lengthCounterLoad;
     noise.envelopeStart = true;
 //    PrintApu("  length-counter = %d", noise.lengthCounterLoad);
+}
+
+bool Audio::pullIRQ() {
+    auto irq = frameTriggerIRQ || dmcTriggerIRQ;
+    frameTriggerIRQ = false;
+    return irq;
+}
+
+// $4010
+void Audio::writeFlagsAndRate(tCPU::byte value) {
+    dmcTriggerIRQ = Bit<7>::IsSet(value);
+    dmcLoop = Bit<6>::IsSet(value);
+    auto rate = value & 0xF;
+    int lut[] = {428, 380, 340, 320, 286, 254, 226, 214, 190, 160, 142, 128, 106, 84, 72, 54};
+    dmcRate = lut[rate];
+    dmcTimerPeriod = dmcRate;
+
+    PrintApu("Set dmc trigger irq = %d / dmc loop = %d / dmc rate = %d", dmcTriggerIRQ, dmcLoop, dmcRate);
+}
+
+// $4011
+void
+Audio::writeDAC(tCPU::byte value) {
+    PrintDbg("DAC received byte %2X", value);
+}
+
+// $4012
+void Audio::setSampleAddress(tCPU::byte value) {
+    dmcAddress = 0xC000 + (value << 6);
+    PrintApu("Set sample address = 0x%04X", dmcAddress);
+}
+
+// $4013
+void Audio::setSampleLength(tCPU::byte value) {
+    dmcLength = (value << 4) + 1;
+    dmcBytesRemaining = dmcLength;
+    PrintApu("Set sample length = 0x%04X", dmcLength);
 }

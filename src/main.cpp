@@ -91,6 +91,8 @@ int main(int argc, char **argv) {
 
     // https://www.pagetable.com/?p=410
     auto doVblankNMI = [&]() {
+//        PrintInfo("Triggering NMI");
+
         // clear break flag
         registers->P.B = 0;
         stack->pushStackWord(registers->PC);
@@ -98,7 +100,24 @@ int main(int argc, char **argv) {
 
         // disable irq
         registers->P.I = 1;
-        tCPU::word address = memory->readWord(0xFFFA);
+        tCPU::word address = memory->readWord(NMI_VECTOR_ADDR);
+
+        registers->PC = address;
+
+        cpu->addCycles(7);
+    };
+
+    auto doIRQ = [&]() {
+//        PrintInfo("Triggering IRQ");
+
+        // clear break flag
+        registers->P.B = 0;
+        stack->pushStackWord(registers->PC);
+        stack->pushStackByte(registers->P.asByte());
+
+        // disable irq
+        registers->P.I = 1;
+        tCPU::word address = memory->readWord(IRQ_BRK_VECTOR_ADDR);
 
         registers->PC = address;
 
@@ -109,8 +128,8 @@ int main(int argc, char **argv) {
 
 //    Loggy::Enabled = Loggy::DEBUG;
 //    registers->PC = 0xC000; // needed for nestest.nes
-    registers->P.X = 1;
-    registers->P.I = 1;
+//    registers->P.X = 1;
+//    registers->P.I = 1;
     registers->S = 0xFD;
 
     gui->render();
@@ -184,6 +203,14 @@ int main(int argc, char **argv) {
             doVblankNMI();
         }
 
+        if (!registers->P.I) {
+            // if IRQ is not masked, allow APU to trigger it
+            if (audio->pullIRQ()) {
+                PrintInfo("Triggering IRQ from APU");
+                doIRQ();
+            }
+        }
+
 //        if(cpu->getCycleRuntime() > 100) {
 //            alive = false;
 //        }
@@ -208,7 +235,7 @@ int main(int argc, char **argv) {
                 now = std::chrono::high_resolution_clock::now();
                 std::this_thread::sleep_for(gap);
                 auto actual_delay = std::chrono::high_resolution_clock::now() - now;
-                PrintInfo("throttling ppu: wanted=%d msec got=%d msec", gap, std::chrono::duration_cast<std::chrono::milliseconds>(actual_delay));
+//                PrintInfo("throttling ppu: wanted=%d msec got=%d msec", gap, std::chrono::duration_cast<std::chrono::milliseconds>(actual_delay));
             }
         }
     }
@@ -228,34 +255,41 @@ int main(int argc, char **argv) {
 
 Cartridge loadCartridge() {
     CartridgeLoader loader;
+    Cartridge rom = loader.loadCartridge("roms/official.nes");
+//    Cartridge rom = loader.loadCartridge("roms/nmi_and_irq.nes");
+//    Cartridge rom = loader.loadCartridge("roms/irq_and_dma.nes");
 //    Cartridge rom = loader.loadCartridge("../roms/SuperMarioClouds.nes"); // draws zeroes instead of clouds, almost scrolls
 //    Cartridge rom = loader.loadCartridge("../roms/stars.nes"); // draws tiles instead of stars
-//    Cartridge rom = loader.loadCartridge("../roms/scanline.nes"); // stabler
+//    Cartridge rom = loader.loadCartridge("roms/scanline.nes"); // stabler
 //    Cartridge rom = loader.loadCartridge("../roms/scroll.nes"); // doesn't work at all
 //    Cartridge rom = loader.loadCartridge("../roms/color_test.nes"); // doesn't work at all
 //    Cartridge rom = loader.loadCartridge("../roms/nestest.nes");
 //    Cartridge rom = loader.loadCartridge("../roms/instr_timing/instr_timing.nes");
-//    Cartridge rom = loader.loadCartridge("../roms/megaman1.nes");
-//    Cartridge rom = loader.loadCartridge("../roms/megaman.nes");
 //    Cartridge rom = loader.loadCartridge("../roms/apu_mixer/square.nes");
-//    Cartridge rom = loader.loadCartridge("../roms/Karateka (J) [p1].nes");
+//    Cartridge rom = loader.loadCartridge("roms/Karateka (J) [p1].nes");
 //    Cartridge rom = loader.loadCartridge("../../roms/Defender 2 (U).nes");
 //    Cartridge rom = loader.loadCartridge("../roms/all/nrom/Slalom (U).nes");
 
 //    Cartridge rom = loader.loadCartridge("../../src/roms/sound-test/sound-test.nes");
 
     /////////////////////////////////////////////////
-// mapper=0 aka NROM
-    Cartridge rom = loader.loadCartridge("roms/supermariobros.nes"); // played through at least one level
+    // mapper=0 aka NROM
+//    Cartridge rom = loader.loadCartridge("roms/supermariobros.nes"); // played through at least one level
 //    Cartridge rom = loader.loadCartridge("../roms/donkey_kong.nes"); // draws zeroes instead of sprites
 //    rom.info.memoryMapperId = 0;
 
     /////////////////////////////////////////////////
-// mapper=2 aka UNROM
+    // mapper=1 aka MMC1
+//    Cartridge rom = loader.loadCartridge("roms/zelda.nes"); // intro works with visual glitches
+//    Cartridge rom = loader.loadCartridge("roms/Mega Man 2 (U).nes"); // intro broken
+//    Cartridge rom = loader.loadCartridge("roms/Teenage Mutant Ninja Turtles (U).nes"); // ??
+
+    /////////////////////////////////////////////////
+    // mapper=2 aka UNROM
 // 4 or 8 banks of PRG ROMs
-//    Cartridge rom = loader.loadCartridge("../roms/all-roms/USA/Metal Gear (U).nes"); // works fine
-//    Cartridge rom = loader.loadCartridge("../roms/all-roms/USA/Contra (U).nes"); // sprite rendering glitch
-//    Cartridge rom = loader.loadCartridge("../roms/all-roms/USA/Duck Tales (U).nes"); // freezes on intro
+//    Cartridge rom = loader.loadCartridge("roms/Metal Gear (U).nes"); // irq audio bug
+//    Cartridge rom = loader.loadCartridge("roms/Contra (U).nes"); // sprite rendering glitch and audio i/o 4009 bug
+//    Cartridge rom = loader.loadCartridge("roms/all-roms/USA/Duck Tales (U).nes"); // freezes on intro
 // Mega Man
 // claims to mapper=66 (override)
 // intro rendering glitch, seems to be using wrong nametable, freezes on death
@@ -263,10 +297,10 @@ Cartridge loadCartridge() {
 //    rom.info.memoryMapperId = 2;
 
     /////////////////////////////////////////////////
-// mapper=3 aka CNROM
+    // mapper=3 aka CNROM
 //    Cartridge rom = loader.loadCartridge("../roms/all-roms/USA/Donkey Kong Classics (U).nes"); // works but claims to be mapper=64.
-//    Cartridge rom = loader.loadCartridge("../roms/arkanoid.nes"); // works fine
-//    Cartridge rom = loader.loadCartridge("../roms/all-roms/USA/Gradius (U).nes"); // works fine
+//    Cartridge rom = loader.loadCartridge("roms/Arkanoid (U).nes"); // works fine
+//    Cartridge rom = loader.loadCartridge("roms/Gradius (U).nes"); // works fine
 //    Cartridge rom = loader.loadCartridge("../roms/all-roms/USA/Arkista's Ring (U) [!].nes"); // doesn't boot
 //    Cartridge rom = loader.loadCartridge("../roms/all-roms/USA/Cybernoid - The Fighting Machine (U).nes"); // claims to be mapper=67
 //    Cartridge rom = loader.loadCartridge("../roms/all-roms/USA/Bump'n'Jump (U).nes"); // doesn't boot

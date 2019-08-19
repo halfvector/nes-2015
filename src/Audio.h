@@ -138,6 +138,14 @@ public:
 
     void setNoiseLength(tCPU::byte value);
 
+    bool pullIRQ();
+
+    void writeFlagsAndRate(tCPU::byte value);
+
+    void setSampleAddress(tCPU::byte value);
+
+    void setSampleLength(tCPU::byte value);
+
 private:
     tCPU::byte channelStatus;
     tCPU::word apuCycles = 0;
@@ -158,7 +166,16 @@ private:
 
     void executeQuarterFrame();
 
-    bool issueIRQ = false;
+    bool allowFrameIRQ = false;
+    bool frameTriggerIRQ = false;
+
+    bool dmcTriggerIRQ = false;
+    bool dmcLoop = false;
+    int dmcRate = 0;
+    int dmcTimerPeriod = 0;
+    tCPU::byte dmcLength, dmcBytesRemaining = 0;
+    tCPU::byte dmcAddress;
+    int dmcEnabled;
 
     // debugging
     ChannelDebug square1Debug, square2Debug, triangleDebug, noiseDebug;
