@@ -69,8 +69,8 @@ CartridgeLoader::analyzeHeader(Cartridge &rom) {
     rom.info.fourScreenVRAM = (CB1 & 0x08) != 0;
 
     // sanity check
-    assert(rom.header.numPrgPages < 10);
-    assert(rom.header.numChrPages < 10);
+    assert(rom.header.numPrgPages <= 16);
+    assert(rom.header.numChrPages <= 16);
 
     // determine memory mapper type (256 possible variants)
     int mapperId = ((rom.header.CB1 & 0xF0) >> 4) | (rom.header.CB2 & 0xF0);

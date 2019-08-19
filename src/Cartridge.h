@@ -2,8 +2,8 @@
 
 #include <stdint.h>
 
-const unsigned int PRG_ROM_PAGE_SIZE = 0x4000;
-const unsigned int CHR_ROM_PAGE_SIZE = 0x2000;
+const unsigned int PRG_ROM_PAGE_SIZE = 0x4000; // 16K
+const unsigned int CHR_ROM_PAGE_SIZE = 0x2000; // 8K
 
 #pragma pack(push, 1)
 struct RomHeader {
@@ -18,7 +18,7 @@ struct RomHeader {
 #pragma pack(pop)
 
 enum eMirroringType {
-    VERTICAL_MIRRORING, HORIZONTAL_MIRRORING
+    VERTICAL_MIRRORING, HORIZONTAL_MIRRORING, NONE
 };
 
 struct RomInfo {
@@ -39,8 +39,8 @@ struct ChrRomPage {
 
 struct Cartridge {
     Cartridge() {
-        programDataPages = new PrgRomPage[20];
-        characterDataPages = new ChrRomPage[10];
+        programDataPages = new PrgRomPage[32];
+        characterDataPages = new ChrRomPage[32];
     }
 
     RomHeader header;
