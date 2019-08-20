@@ -680,27 +680,18 @@ PPU::writeToVRam(tCPU::byte value) {
 
 tCPU::word
 PPU::GetEffectiveAddress(tCPU::word address) {
+    // pattern tables (potentially bank-switched chr-rom pages)
     if (address < 0x2000) {
-        // pattern table chr-rom page
 
         // use a memory mapper if one is available
         if (mapper != nullptr) {
             address = mapper->getEffectivePPUAddress(address);
         }
 
-//        PrintInfo("Address is < 0x2000; Referencing CHR-ROM @ $%04X", address);
-
         return address;
-
     }
 
-    // PPU
-//    if (address >= 0x2008 && address <= 0x3FFF) {
-//        // mirror [$2000,$2007] on repeat
-//        auto mirrored = address - 0x2008 % 8;
-//        PrintInfo("Address in range: (0x2008-0x3FFF); Mirror of $%04X", mirrored);
-//    }
-
+    // nametables
     if (address >= 0x2000 && address < 0x3000) {
         /*
          *        (0,0)     (256,0)     (511,0)
@@ -746,36 +737,30 @@ PPU::GetEffectiveAddress(tCPU::word address) {
         address = nametableId * 0x400 + 0x2000 + offset;
 
 //        PrintInfo("Mirrored 0x%X to 0x%X (nametableId=%d)", address, mirrored, nametableId);
-//        address = mirrored;
+        return address;
     }
 
+    // nametable mirrors
     if (address >= 0x3000 && address <= 0x3EFF) {
-        // mirror of 2000h-2EFFh
-        auto mirror = address - 0x1000;
-//        PrintInfo("Address in range: (0x3000-0x3EFF); Mirror of $%04X", mirror);
-        address = mirror;
+        // mirror of [0x2000, 0x2EFF]
+        return address - 0x1000;
     }
 
+    // palette mirrors
     if (address >= 0x3F20 && address <= 0x3FFF) {
-        // 7 mirrors of 3F00h-3F1Fh :(
-//        PrintInfo("Hit 7 Mirror Address: 0x%X", (int) address);
-        address -= ((address - 0x3F20) % 0x1F) * 0x1F;
-//        PrintInfo("-> Resolved it to: 0x%X", (int) address);
+        auto old = address;
+        address = 0x3F00 + (address % 0x20);
     }
 
-    // mirrors 3F10h,3F14h,3F18h,3F1Ch -> 3F00h,3F04h,3F08h,3F0Ch
-    // FIXME: im not sure if these mirrors are ranges or just single byte entries
-    if (address == 0x3F10 || address == 0x3F14 || address == 0x3F18 || address == 0x3F1C)
-        address -= 0x10;
-
-    if (address >= 0x3F00 && address <= 0x3F1F) {
-//        PrintDbg("address $%04X is a BG/Sprite Palette!", address);
+    // within 32 byte palette range
+    // every 4th byte mirrors 0x3F00 (commonly used as the background color)
+    if (address >= 0x3F00 && address < 0x3F20) {
+        if (address % 4 == 0) {
+            address = 0x3F00;
+        }
     }
 
-    if (address >= 0x4000) {
-//        PrintInfo("Address in range: (0x4000-0x10000); Mirror of $%04X? (FIXME: writing through)", address % 0x4000);
-//        address = address % 0x4000;
-    }
+    assert(address < 0x4000 && "PPU Address must be < 0x4000");
 
     return address;
 }
