@@ -868,7 +868,7 @@ PPU::StartSpriteXferDMA(Memory *memory, tCPU::byte address) {
     PrintDbg("DMA Transfer from RAM @ $%04X to SPR-RAM (scanline: %d, pixel: %d)", (int) startAddress, currentScanline, scanlinePixel);
 
     for (tCPU::word i = 0; i < 256; i++) {
-        SPR_RAM[i] = memory->readByte(startAddress + i);
+        SPR_RAM[(spriteRamAddress + i) % 256] = memory->readByte(startAddress + i);
     }
 
 //    vramAddress14bit = 0;
