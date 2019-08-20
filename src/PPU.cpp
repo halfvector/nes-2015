@@ -753,10 +753,11 @@ PPU::GetEffectiveAddress(tCPU::word address) {
     }
 
     // within 32 byte palette range
-    // every 4th byte mirrors 0x3F00 (commonly used as the background color)
-    if (address >= 0x3F00 && address < 0x3F20) {
+    // every 4th byte in sprite range mirrors bytes in background range
+    // 0x3F00 is the background color. this is key in mario.
+    if (address >= 0x3F10 && address < 0x3F20) {
         if (address % 4 == 0) {
-            address = 0x3F00;
+            address -= 0x10;
         }
     }
 
