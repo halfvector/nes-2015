@@ -19,7 +19,7 @@ Stack::pushStackWord(tCPU::word value) {
 
     PrintDbg("Pushing onto stack: 0x%04X / stack pointer: $%02X", (int) value, (int) reg->S);
     mem->writeByte(stackOffset + reg->S, (value >> 8) & 0xFF); // high byte
-    mem->writeByte(stackOffset + reg->S - 1_us, value & 0xFF_us); // low byte
+    mem->writeByte(stackOffset + reg->S - 1, value & 0xFF); // low byte
     reg->S -= 2;
 }
 
@@ -44,7 +44,9 @@ Stack::popStackWord() {
 
 void
 Stack::pushStackByte(tCPU::byte value) {
-    assert(reg->S > 0 && "Stack overflow");
+    if(reg->S == 0) {
+        PrintWarning("Possible Stack Overflow Detected");
+    }
 
     PrintDbg("Pushing onto stack: 0x%04X / stack pointer: $%02X", (int) value, (int) reg->S);
     mem->writeByte(stackOffset + reg->S, value);
@@ -53,13 +55,13 @@ Stack::pushStackByte(tCPU::byte value) {
 
 tCPU::byte
 Stack::popStackByte() {
-    assert(reg->S <= 0xFE && "Stack overflow");
+    if(reg->S >= 0xFF) {
+        PrintWarning("Possible Stack Underflow Detected");
+    }
 
     reg->S++;
     tCPU::byte value = mem->readByte(stackOffset + reg->S);
     PrintDbg("Popped from stack: 0x%02X / stack pointer: $%02X", (int) value, (int) reg->S);
-
-    mem->writeByte(stackOffset + reg->S, 0);
 
     return value;
 }

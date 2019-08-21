@@ -130,7 +130,7 @@ int main(int argc, char **argv) {
 //    registers->PC = 0xC000; // needed for nestest.nes
 //    registers->P.X = 1;
 //    registers->P.I = 1;
-    registers->S = 0xFD;
+    registers->S = 0xFF;
 
     gui->render();
     SDL_Event e;
