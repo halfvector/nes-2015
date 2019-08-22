@@ -42,6 +42,7 @@ struct PPU_Settings {
     bool SpriteClipping;
     bool BackgroundVisible = false;
     bool SpriteVisible = false;
+    unsigned int ColorEmphasis = 0;
     eMirroringType mirroring;
 };
 

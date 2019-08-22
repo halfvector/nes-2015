@@ -101,9 +101,10 @@ struct Registers {
         S = 0;
     }
 
-    // accumulator, index register x, index register y, stack pointer, and processor status register
+    // accumulator, index register x, index register y, stack pointer
     tCPU::byte A, X, Y, S;
 
+    // processor status register
     ProcessorStatusRegister P;
 
     // "program counter" - next instruction to be executed

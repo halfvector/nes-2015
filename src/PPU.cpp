@@ -206,7 +206,6 @@ PPU::setVerticalBlank() {
     // generate nmi trigger if we have one pending
     if (settings.GenerateInterruptOnVBlank) {
         vblankNmiAwaiting = true;
-        settings.GenerateInterruptOnVBlank = false;
     }
 }
 
@@ -335,7 +334,7 @@ void PPU::renderScanline(const tCPU::word Y) {
     unsigned short int numTiles = 32; // 32 tiles per scanline
     unsigned short int numAttributes = 8; // 8 attributes per scanline (4 per tile)
 
-    if (settings.BackgroundVisible)
+    if (settings.BackgroundVisible) {
         for (unsigned short int i = 0; i <= numTiles; i++) {
             auto nametable = nametableAddy;
             auto nametableAttributeOffset = nametableAddy + 0x3C0;
@@ -429,6 +428,7 @@ void PPU::renderScanline(const tCPU::word Y) {
                 *(backgroundMask++) = lowerBits * 64;
             }
         }
+    }
 
     // now we have to jump around memory to fetch the palette ids
     // its 1.5x faster doing it here than in the loop above :>
@@ -442,7 +442,7 @@ void PPU::renderScanline(const tCPU::word Y) {
     int numSpritesDrawn = 0;
 
     // iterate through all sprites and find ones that need to be rendered on this scanline
-    if (settings.SpriteVisible)
+    if (settings.SpriteVisible) {
         for (auto i = 0; i < 256; i += 4) {
             auto spriteY = SPR_RAM[i] + 1;
 
@@ -542,6 +542,7 @@ void PPU::renderScanline(const tCPU::word Y) {
                 }
             }
         }
+    }
 
     if (numSpritesDrawn >= 8) {
         //PrintPpu("sprite overflow!" );
@@ -575,6 +576,7 @@ PPU::getControlRegister1() {
     return controlRegister1;
 }
 
+// $2000
 void
 PPU::setControlRegister1(tCPU::byte value) {
     std::bitset<8> bits(value);
@@ -617,6 +619,7 @@ PPU::setControlRegister2(tCPU::byte value) {
     settings.SpriteClipping = bits.test(2);
     settings.BackgroundVisible = bits.test(3);
     settings.SpriteVisible = bits.test(4);
+    settings.ColorEmphasis = (value >> 5u) & 0x3u;
 }
 
 /**
