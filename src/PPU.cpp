@@ -467,13 +467,22 @@ void PPU::renderScanline(const tCPU::word Y) {
 
                 // lsb of tile index determines which pattern table to use
                 if ((tileIdx & 1) == 0) {
-                    patternTable = settings.BackgroundPatternTableAddress;
+                    patternTable = 0x0000;
+                } else {
+                    patternTable = 0x1000;
                 }
 
                 // are we inside first 8x8 tile of the 8x16 sprite?
                 if ((spriteY + 8) > Y) {
-                    // adjust tile number
-                    tileIdx--;
+                    // first tile
+                    if (tileIdx % 2 == 1) {
+                        tileIdx--;
+                    }
+                } else {
+                    // second tile
+                    if (tileIdx % 2 == 0) {
+                        tileIdx++;
+                    }
                 }
 
             } else {
@@ -521,14 +530,14 @@ void PPU::renderScanline(const tCPU::word Y) {
                 // absolute position on output screen
                 auto screenX = spriteX + column;
 
-                if ((!spriteBehindBG || raster->backgroundMask[Y * 256 + screenX] == 0) && colorLowerBits) {
+                if ((!spriteBehindBG || raster->backgroundMask[Y * 256 + screenX] == 0) &&
+                    (spriteBehindBG * 64 < raster->spriteMask[Y * 256 + screenX]) &&
+                    colorLowerBits) {
                     tPaletteEntry &color = colorPalette[paletteId];
-
                     // write final color output
                     ((int *) raster->screenBuffer)[Y * 256 + screenX] = color.ColorValue;
                     // write mask
-                    raster->spriteMask[Y * 256 + screenX] = colorLowerBits * 64;
-                    raster->backgroundMask[Y * 256 + screenX] += 0xf0;
+                    raster->spriteMask[Y * 256 + screenX] = spriteBehindBG * 64;
                 }
 
                 // test sprite-0 hit detection against background mask
@@ -553,8 +562,6 @@ void PPU::renderScanline(const tCPU::word Y) {
 // palettetype: 0 = background, 1 = sprites
 tCPU::byte
 PPU::GetColorFromPalette(int paletteType, int upperBits, int lowerBits) {
-    tCPU::byte Color = 0;
-
     if (lowerBits == 0) {
         // specifically for super mario brothers
         return ReadByteFromPPU(0x3F00);
@@ -562,13 +569,11 @@ PPU::GetColorFromPalette(int paletteType, int upperBits, int lowerBits) {
 
     // address is 5 bits long
     if (lowerBits <= 3) {
-        Color = ReadByteFromPPU(0x3F00 | paletteType << 4 | upperBits << 2 | lowerBits);
+        return ReadByteFromPPU(0x3F00 | paletteType << 4 | upperBits << 2 | lowerBits);
     } else {
         PrintError("PPU::GetColorFromPalette(%d, %d); Invalid Color Id", upperBits, lowerBits);
         throw std::runtime_error("Unexpected error");
     }
-
-    return Color;
 }
 
 tCPU::byte
@@ -594,7 +599,7 @@ PPU::setControlRegister1(tCPU::byte value) {
 
     settings.SpriteSize = bits.test(5) ? SPRITE_SIZE_8x16 : SPRITE_SIZE_8x8;
 
-//    PrintInfo("settings.SpriteSize = 8x16 = %d", settings.SpriteSize);
+//    PrintInfo("settings.SpriteSize = %s", settings.SpriteSize == SPRITE_SIZE_8x8 ? "8x8" : "8x16");
 
 //    PrintInfo("Set control register 1; value = %X", value);
 
